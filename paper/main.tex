@@ -1,6 +1,9 @@
 \documentclass{article}
 \usepackage{spconf,amsmath,amssymb,graphicx,booktabs,bm}
+\usepackage{multirow}
 \usepackage[hidelinks]{hyperref}
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
 
 % ---- result macros (set from results/*.json; see scripts/paper_numbers.py) ----
 \newcommand{\dipQRS}{0.92}      % NORM QRS dipolar fraction
@@ -168,8 +171,10 @@ shift-sensitive. We measure the gap and close it with weighted conformal
 
 \textbf{Data.} PTB-XL \cite{wagner2020ptbxl} (21{,}799 twelve-lead records, 100/500\,Hz;
 recommended 10-fold split, folds 1--8 train, fold 10 test) with P/QRS/ST/T delineation
-by NeuroKit2 \cite{makowski2021neurokit}; cross-device evaluation on PhysioNet/CinC-2021
-\cite{reyna2021cinc}. Every theorem is cross-checked by simulation before use.
+by NeuroKit2 \cite{makowski2021neurokit}; reduced-lead acquisition is the setting of the
+PhysioNet/CinC-2021 challenge \cite{reyna2021cinc}, and we evaluate device shift across
+PTB-XL's own acquisition devices (Schiller CS vs.\ AT families). Every theorem is
+cross-checked by simulation before use.
 
 \input{results_synthetic}
 \input{results_ptbxl}

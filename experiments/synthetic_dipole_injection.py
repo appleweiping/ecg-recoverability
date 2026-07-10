@@ -258,7 +258,8 @@ def _plot(out):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(1, 4, figsize=(14, 3.2))
+    fig, axes2 = plt.subplots(2, 2, figsize=(7.0, 5.4))
+    axes = axes2.ravel()
 
     # (A) Tier I certificate: error vs sigma per config.
     ax = axes[0]

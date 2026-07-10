@@ -1,0 +1,41 @@
+{
+  "config": "limb-6 -> precordial",
+  "n_eval": {
+    "dipolar": 799,
+    "ols": 799,
+    "generative": 799
+  },
+  "alpha": 0.1,
+  "reconstructors": {
+    "dipolar": {
+      "n": 799,
+      "fabricated_stemi": 226,
+      "masked_stemi": 165,
+      "mean_st_error_mv": 0.07382637634216667,
+      "flag_tau": 4.148499816773424e-16,
+      "fabricated_prevented_by_flag": 11,
+      "masked_prevented_by_flag": 10,
+      "flag_rate": 0.07509386733416772
+    },
+    "ols": {
+      "n": 799,
+      "fabricated_stemi": 6,
+      "masked_stemi": 360,
+      "mean_st_error_mv": 0.07500276882298842,
+      "flag_tau": 0.05987621436159412,
+      "fabricated_prevented_by_flag": 3,
+      "masked_prevented_by_flag": 26,
+      "flag_rate": 0.08886107634543179
+    },
+    "generative": {
+      "n": 799,
+      "fabricated_stemi": 263,
+      "masked_stemi": 134,
+      "mean_st_error_mv": 0.07999000343077498,
+      "flag_tau": 0.09238761034983804,
+      "fabricated_prevented_by_flag": 15,
+      "masked_prevented_by_flag": 17,
+      "flag_rate": 0.08635794743429287
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "config": [
+    "I",
+    "II",
+    "V2"
+  ],
+  "segment": "ST",
+  "target_lead": "V4",
+  "alpha": 0.1,
+  "target_coverage": 0.9,
+  "n_cs": 897,
+  "n_at": 896,
+  "coverage_CS_indist": 0.8997772828507795,
+  "coverage_AT_plain": 0.8236607142857143,
+  "coverage_AT_weighted": 1.0,
+  "coverage_AT_recalibrated": 0.9295302013422819
+}

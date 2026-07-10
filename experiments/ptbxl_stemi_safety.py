@@ -90,7 +90,8 @@ def main(n_train=500, n_test=800, rate=100, seed=0, alpha=0.1):
             continue
         recon, st_h = _reconstruct_full(sig, db, rate, models, LIMB6, recons)
         for rname in ("dipolar", "ols", "generative"):
-            flip = count_stemi_flips(sig, recon[rname], rate, leads=PRECORDIAL_IDX)
+            # recon[rname] is (12, T); st_deviation expects (T, 12).
+            flip = count_stemi_flips(sig, recon[rname].T, rate, leads=PRECORDIAL_IDX)
             if flip.get("valid"):
                 flip["st_h"] = st_h.get(rname, np.nan)
                 rows[rname].append(flip)
