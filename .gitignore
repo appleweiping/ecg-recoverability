@@ -1,6 +1,6 @@
 # --- Data (never commit raw datasets; download via scripts) ---
-# Ignore the entire data tree (WFDB signals, CSVs, multi-GB zips).
-data/
+# Anchor to repo root so this does NOT match the source package src/ecgcert/data/.
+/data/
 *.npy
 *.npz
 !results/*.npz
