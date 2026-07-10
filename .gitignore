@@ -1,0 +1,38 @@
+# --- Data (never commit raw datasets; download via scripts) ---
+# Ignore the entire data tree (WFDB signals, CSVs, multi-GB zips).
+data/
+*.npy
+*.npz
+!results/*.npz
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# --- Results: keep figures + small JSON, ignore large dumps ---
+results/**/*.pt
+results/**/*.ckpt
+results/cache/
+
+# --- LaTeX ---
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.fdb_latexmk
+paper/*.fls
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
