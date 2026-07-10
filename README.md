@@ -8,16 +8,17 @@ against Monte-Carlo simulation by the test suite before it is allowed into the
 manuscript.
 
 > **TL;DR** — Reconstructing missing ECG leads from a reduced set is an ill-posed
-> inverse problem. Everyone reports a point reconstruction and an aggregate error;
-> **generative reconstructors can fabricate clinically decisive morphology** — a
-> phantom ST elevation, an invented fractionated QRS — while the global error looks
-> fine. We stop reporting one number and instead output, **per waveform feature
-> (P/QRS/ST/T) and per lead, a certificate** of what is *provably recoverable*, what
-> is *statistically recoverable* (with a distribution-free calibrated interval), and
-> what is *provably unrecoverable* (flagged, with a guaranteed false-flag rate). The
-> theoretical engine is a fact the ECG has and generic inverse-problem theory does
-> not: **each waveform segment is an approximately rank-3 cardiac dipole plus a
-> non-dipolar residual.**
+> inverse problem, and a **scalar reconstruction error says nothing about *which*
+> features a clinician can trust**. We output, **per waveform feature (P/QRS/ST/T) and
+> per lead, a certificate** of what is *provably recoverable* (with a closed-form
+> conditioning κ that warns, before any reconstruction, which lead configurations can
+> support a feature), what is *statistically recoverable* (distribution-free calibrated
+> interval), and what is *provably unrecoverable* (flagged, held-out false-flag ≤ α).
+> The engine is a fact the ECG has and generic inverse-problem theory does not: **each
+> waveform segment is an approximately rank-3 cardiac dipole plus a non-dipolar
+> residual.** A trained CNN swept from distortion- to perception-optimal shows
+> **fabrication is a choice of *objective***, not an accident of the network — and the
+> certificate measures it.
 
 ---
 
@@ -132,11 +133,11 @@ reconstructor's Tier III error equals the `Var(u)` lower bound while a hallucina
 doubles it; the flag's false-flag rate is 0.099 ≤ α=0.1 with power → 1.0; Mondrian-CQR
 attains 0.90 coverage.
 
-**PTB-XL — RMSE hides fabrication, the certificate reveals it.** Reconstructing from
-`{I, II, V2}` on the held-out fold, three reconstructors have **near-identical RMSE**,
-but the certificate separates them:
+**PTB-XL — the certificate localises and explains.** Reconstructing from `{I, II, V2}`
+on the held-out fold, a scalar RMSE *ranks* three reconstructors (the generative model
+is worst) but does not say **which** feature is wrong or **why**. The certificate does:
 
-| segment | method | RMSE (mV) | `h` (mV) | non-dipolar corr. |
+| segment | method | RMSE (mV) | `h` (mV) | ρ (oracle) |
 |---|---|---|---|---|
 | QRS | dipolar | 0.196 | 0.000 | +0.00 |
 | QRS | OLS (learned linear) | 0.196 | 0.030 | **+0.13** |
@@ -148,15 +149,34 @@ but the certificate separates them:
 | T | OLS | 0.105 | 0.028 | **+0.44** |
 | T | generative | 0.163 | 0.067 | **−0.00** |
 
-The generative reconstructor places the **most** energy in the certified-unrecoverable
-subspace, but that energy is **uncorrelated with truth** — confident fabrication that
-RMSE cannot see. The learned-linear (OLS) reconstructor's non-dipolar energy *is*
-correlated with truth: it genuinely recovers Tier II. The dipolar baseline never
-fabricates (`h = 0`) but recovers only Tier I. The pattern is identical across the
-Lead-I and limb-6 configurations.
+`h` is the **deployable** hallucination energy (no ground truth); ρ is an **oracle**
+diagnostic (needs the true leads) used to *validate* that flagged energy is fabricated.
+The dipolar baseline never fabricates (`h=0`) but recovers only Tier I; OLS's
+non-dipolar energy is correlated with truth (it genuinely recovers Tier II); the
+generative model's is not. Honest caveat: `h` alone need not separate blur from
+fabrication when energies match — the dependable, deployable signal is the
+**configuration-level** certificate (κ, tiers) plus the held-out flag.
 
-**Safety case & device shift** — see `results/ptbxl_stemi.json` and
-`results/cross_device.json` (numbers reproduced by `experiments/run_all.py`).
+**Fabrication is the objective, not the network.** Sweeping a *real trained* 1-D CNN
+from distortion- to perception-optimal (`results/neural_perception_distortion.png`):
+at λ=0 (MSE) it recovers genuine Tier II (ρ=+0.24, like OLS); the moment realism enters
+the objective, ρ collapses to ≈0 and hallucination energy climbs (h up to 0.30 mV) —
+the perception-distortion tradeoff on the ECG, measured by the certificate. This is the
+honest fabrication demonstration; the sampled "generative" baseline is its idealised
+endpoint.
+
+**Safety case (honest).** Reconstructing precordial leads from limb-6 (κ=6.7×10⁴,
+effective rank 2 → precordial ST is Tier III) is *certified unsafe upfront*. Over 799
+records the danger is bidirectional and RMSE-invisible (~0.075 mV ST error all methods):
+the generative model **fabricates 263 phantom STEMIs**, OLS **masks 360 real ones**, and
+even the dipolar reconstructor fabricates 226 (inside the recoverable subspace, where
+`h` is blind). The null-space flag catches only a minority of fabrications (15/263). The
+reliable safety signal is the **configuration-level κ warning**, not the per-record flag.
+
+**Device shift.** CS→AT device shift drops Tier II coverage 0.90→0.82; a 300-record
+recalibration restores it to 0.93 at modest width increase (0.15→0.24 mV). (Naive
+likelihood-ratio weighting over-widens to trivial 1.00 coverage — not a repair.) Only
+the Tier II *level* is shift-sensitive; Tier I exactness and Tier III soundness hold.
 
 ## 6. Repository layout
 
@@ -250,9 +270,18 @@ downloader. If your network reaches PhysioNet directly, use `--source physionet`
   "disease lowers dipolarity" (it does not — see `results/precheck_dipolarity.json`).
 - PTB-XL has no per-lead ST-elevation millivolt label; the STEMI safety case uses a
   *measured* ST-deviation endpoint (J+60 ms, 0.1 mV), stated as such.
-- The "generative" baseline is a controlled perceptual sampler that reproduces the
-  hallucination mechanism; a heavier diffusion reconstructor is left as the extended
-  version's exhibit. The certificate is reconstructor-agnostic and wraps any method.
+- The deployable hallucination energy `h` detects fabrication **in the null space**; it
+  is blind to error **inside** the recoverable subspace (a contaminated dipole estimate),
+  which is instead warned by the conditioning κ. The dependable, deployable signal is the
+  **configuration-level** certificate (κ + tiers) plus the held-out flag; the
+  correlation ρ used in the results table is an **oracle** diagnostic (needs ground
+  truth) that only *validates* what `h` measures.
+- The sampled "generative" baseline is an idealised perceptual endpoint; the honest
+  fabrication evidence is the **real trained-CNN perception-distortion sweep**. The
+  certificate is reconstructor-agnostic and wraps any method.
+- Theorem 1 is honest about scope: recovery is *exact* only in the purely-dipolar limit;
+  otherwise the observed non-dipolar residual contaminates the estimate, amplified by the
+  same κ (which is why a large κ is a warning, not just a noise bound).
 
 ## 12. 中文速览
 

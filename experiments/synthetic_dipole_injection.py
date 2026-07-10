@@ -171,21 +171,23 @@ def experiment_flag_roc():
     from ecgcert.estimators import LinearDipolarReconstructor
     Sel_idx = [LEAD_INDEX[l] for l in OBS]
     rec = LinearDipolarReconstructor(M, mu, OBS)
-    # Calibrate flag threshold on faithful reconstructions' hallucination energy.
+    # Faithful hallucination energies; split into calibration and a HELD-OUT test set
+    # so the reported false-flag rate is out-of-sample (not tautological).
     h_faithful = np.array([
         hallucination_energy(M, mu, OBS, rec.predict(L[Sel_idx, i:i+1])).max()
-        for i in range(0, 1000)
+        for i in range(0, 2000)
     ])
+    h_cal, h_test = h_faithful[:1000], h_faithful[1000:2000]
     alpha = 0.1
-    tau = conformal_quantile(h_faithful, alpha)
-    # Now inject Tier III of growing energy into a hallucinated reconstruction.
+    tau = conformal_quantile(h_cal, alpha)                    # calibrate on cal only
+    # Inject Tier III of growing energy into a hallucinated reconstruction (records 2000+).
     deltas = [0.0, 0.05, 0.1, 0.2, 0.4, 0.8]
     rng = np.random.default_rng(9)
     B = g["B"]
     power = []
     for delta in deltas:
         det = 0
-        for i in range(1000, 2000):
+        for i in range(2000, 3000):
             base = rec.predict(L[Sel_idx, i:i+1])            # faithful dipolar recon
             # a hallucinating reconstructor adds independent non-dipolar content
             hall = base + delta * (B[:, 3:4] @ rng.standard_normal((1, 1)))
@@ -193,7 +195,7 @@ def experiment_flag_roc():
             det += int(h > tau)
         power.append(det / 1000.0)
     return {"alpha": alpha, "tau": float(tau), "deltas": deltas, "power": power,
-            "false_flag_rate": float(np.mean(h_faithful > tau))}
+            "false_flag_rate_heldout": float(np.mean(h_test > tau))}
 
 
 def experiment_coverage():
@@ -247,7 +249,7 @@ def main():
                              t3["hallucinator_mse"]):
         print(f"  delta={dlt:.2f}  bayes={b:.4f}  Var(u)={lb:.4f}  hallucinator={h:.4f}")
     roc = out["flag_roc"]
-    print(f"flag: false-flag rate={roc['false_flag_rate']:.3f} (alpha={roc['alpha']}), "
+    print(f"flag: false-flag rate={roc['false_flag_rate_heldout']:.3f} (alpha={roc['alpha']}), "
           f"power@delta: {list(zip(roc['deltas'], roc['power']))}")
     cov = out["coverage"]
     print(f"coverage: empirical={cov['empirical_coverage']:.3f} target={cov['target_coverage']}")
@@ -285,7 +287,7 @@ def _plot(out):
     ax.plot(roc["deltas"], roc["power"], "o-")
     ax.axhline(roc["alpha"], color="grey", ls=":", label=r"$\alpha$ (false-flag)")
     ax.set_xlabel(r"injected Tier III energy $\delta$"); ax.set_ylabel("detection power")
-    ax.set_title(f"Hallucination flag (FF={roc['false_flag_rate']:.2f})")
+    ax.set_title(f"Hallucination flag (FF={roc['false_flag_rate_heldout']:.2f})")
     ax.legend(fontsize=7, frameon=False)
 
     # (D) Coverage.

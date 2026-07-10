@@ -29,7 +29,7 @@ def test_tier3_bayes_hits_var_lower_bound():
 
 def test_flag_false_flag_and_power():
     out = S.experiment_flag_roc()
-    assert out["false_flag_rate"] <= out["alpha"] + 0.02
+    assert out["false_flag_rate_heldout"] <= out["alpha"] + 0.02
     # Power reaches 1.0 for any non-trivial injected energy.
     assert min(out["power"][1:]) >= 0.95
 

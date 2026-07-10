@@ -125,6 +125,11 @@ def main(n_train=500, rate=100, seed=0, alpha=0.1):
         "coverage_AT_plain": float(cov_at_plain),
         "coverage_AT_weighted": float(cov_at_weighted),
         "coverage_AT_recalibrated": float(cov_at_recal),
+        # interval widths (mV): a "restored" coverage is only meaningful if the
+        # interval did not merely blow up.
+        "width_AT_plain": float(2 * spread + 2 * Q),
+        "width_AT_weighted": float(2 * spread + 2 * Qw),
+        "width_AT_recalibrated": float(2 * spread + 2 * Qs),
     }
     (RESULTS / "cross_device.json").write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))

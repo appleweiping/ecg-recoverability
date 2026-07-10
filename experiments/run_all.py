@@ -18,6 +18,7 @@ STEPS = [
     ("scripts/precheck_dipolarity.py", "risk-2 dipolarity gate"),
     ("experiments/synthetic_dipole_injection.py", "synthetic theorem validation"),
     ("experiments/ptbxl_reduced_lead.py", "PTB-XL hallucination quantification"),
+    ("experiments/neural_baselines.py", "trained deep reconstructors (MSE vs adversarial)"),
     ("experiments/ptbxl_stemi_safety.py", "STEMI safety case"),
     ("experiments/cross_device.py", "cross-device coverage"),
 ]

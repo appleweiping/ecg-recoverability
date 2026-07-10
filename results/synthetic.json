@@ -109,14 +109,14 @@
       0.8
     ],
     "power": [
-      0.084,
+      0.077,
       1.0,
       1.0,
       1.0,
       1.0,
       1.0
     ],
-    "false_flag_rate": 0.099
+    "false_flag_rate_heldout": 0.084
   },
   "coverage": {
     "alpha": 0.1,

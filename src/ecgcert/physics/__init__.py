@@ -1,4 +1,5 @@
 from ecgcert.physics.dipolar_subspace import (
+    RECON_RCOND,
     LEADS,
     LEAD_INDEX,
     INDEPENDENT_LEADS,
@@ -13,6 +14,7 @@ from ecgcert.physics.dipolar_subspace import (
 )
 
 __all__ = [
+    "RECON_RCOND",
     "LEADS",
     "LEAD_INDEX",
     "INDEPENDENT_LEADS",

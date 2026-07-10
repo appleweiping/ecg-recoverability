@@ -116,23 +116,28 @@
   "kappa_QRS": {
     "Lead-I": {
       "kappa": 2.217529018927934,
-      "dipole_rank": 1
+      "dipole_rank": 1,
+      "effective_rank": 1
     },
     "3-lead spanning {I,II,V2}": {
       "kappa": 3.0896171432635384,
-      "dipole_rank": 3
+      "dipole_rank": 3,
+      "effective_rank": 3
     },
     "3-lead coplanar {I,II,III}": {
       "kappa": 392331.93157513806,
-      "dipole_rank": 3
+      "dipole_rank": 3,
+      "effective_rank": 2
     },
     "3-lead collinear {V1,V2,V3}": {
       "kappa": 4.849876694355033,
-      "dipole_rank": 3
+      "dipole_rank": 3,
+      "effective_rank": 3
     },
     "limb-6": {
       "kappa": 67207.51745407157,
-      "dipole_rank": 3
+      "dipole_rank": 3,
+      "effective_rank": 2
     }
   },
   "gate": {

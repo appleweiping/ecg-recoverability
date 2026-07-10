@@ -1,25 +1,43 @@
 \subsection{Safety case: precordial ST from limb leads}
 The certificate warns \emph{before} reconstruction that limb-6$\to$precordial is
-unsafe for an ST decision: $\kappa{=}\kapLimb$ and the ST segment is only $\dipST$
-dipolar, so precordial ST is largely Tier~III. The danger is real and
-\emph{bidirectional}. Over $799$ fold-10 records, measuring ST deviation (J$+$60\,ms
-vs.\ the PR baseline, $0.1$\,mV threshold) on true vs.\ reconstructed V1--V6, the
-generative reconstructor \emph{fabricates} $263$ phantom STEMIs (true signal negative),
-whereas the conservative OLS reconstructor \emph{masks} $360$ real ones---opposite,
-both-dangerous failures, at an identical $\sim\!0.075$\,mV mean ST error that RMSE
-cannot separate. The per-reconstruction flag catches \emph{fabrication} (it detects
-added, not missing, energy), abstaining on the highest-$h$ generative ST segments at a
-controlled rate; masking is a property of the configuration, which the certificate's
-$\kappa$ flags upfront. The lesson is the certificate's, not a single reconstructor's:
-this configuration should not drive a precordial ST call. Counts in
-\texttt{results/ptbxl\_stemi.json}.
+unsafe for an ST decision: $\kappa{=}\kapLimb$, effective rank $2$, and the ST segment
+is only $\dipST$ dipolar, so precordial ST is largely Tier~III. The danger is real,
+\emph{bidirectional}, and RMSE-invisible: over $799$ fold-10 records
+(Table~\ref{tab:stemi}), all methods have $\sim\!0.075$\,mV ST error, yet the
+generative reconstructor \emph{fabricates} $\stFab$ phantom STEMIs and the conservative
+OLS \emph{masks} $\stMask$. Two honest caveats we report rather than hide: (a) even the
+dipolar reconstructor---blessed with $h{\equiv}0$---fabricates $\stDipFab$ STEMIs,
+because that error lives \emph{inside} the recoverable subspace (a contaminated dipole
+estimate) where $h$ is blind; (b) the null-space flag catches only a minority of
+generative fabrications ($15/263$). The dependable safety signal is therefore the
+\emph{configuration-level} certificate: this lead set should not drive a precordial ST
+call, and $\kappa$ says so with no reconstruction at all.
+
+\begin{table}[t]
+\centering
+\caption{Limb-6$\to$precordial STEMI failures (PTB-XL fold 10, $799$ records; ST at
+J$+$60\,ms vs.\ PR baseline, $0.1$\,mV threshold). RMSE-invisible, bidirectional, and
+only partly flaggable---the reliable signal is the upfront $\kappa$ warning.}
+\label{tab:stemi}
+\small
+\begin{tabular}{lccc}
+\toprule
+method & fabricated & masked & ST err (mV) \\
+\midrule
+dipolar ($h{\equiv}0$) & 226 & 165 & 0.074 \\
+OLS                    & 6   & 360 & 0.075 \\
+generative             & 263 & 134 & 0.080 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Guarantees under device shift}
 Calibrating on the Schiller CS device family and testing on the AT family (a genuine
-within-PTB-XL device shift), the ST/V4 interval keeps nominal $0.90$ coverage
-in-distribution but drops to $0.82$ on the shifted device under plain conformal.
-Weighted conformal \cite{tibshirani2019weighted} restores coverage (conservatively, to
-$1.00$) and a $300$-record slice recalibration returns it to $0.93$
-(\texttt{results/cross\_device.json}). Tier~I exactness and the Tier~III flag's
-soundness are unaffected, as promised: only the Tier~II \emph{level} is shift-sensitive,
-and it is both measurable and repairable.
+within-PTB-XL device shift), the ST/V4 interval keeps nominal $\covCS$ coverage
+in-distribution but drops to $\covATplain$ on the shifted device---Tier~II coverage
+\emph{is} shift-sensitive. A small ($300$-record) recalibration on the new device
+restores it to $\covATrecal$ at a modest width increase ($0.15\!\to\!0.24$\,mV); naive
+likelihood-ratio weighting instead over-widens to trivial ($1.00$) coverage and is not
+a repair. Tier~I exactness and the Tier~III flag's soundness are unaffected, as
+promised: only the Tier~II \emph{level} is shift-sensitive, and it is measurable and
+repairable.

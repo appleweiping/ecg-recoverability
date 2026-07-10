@@ -1,29 +1,33 @@
 \subsection{Geometry, not lead count}
-On the PTB-XL QRS dipolar subspace, the closed-form gain $\kappa_s(S)$ ranks
-configurations by \emph{conditioning}, not lead count: a single Lead~I observes only
-one of three dipole directions (rank 1); a spread triplet $\{$I,\,II,\,V2$\}$ gives
-$\kappa{=}\kapSpan$; three adjacent precordials $\{$V1,\,V2,\,V3$\}$ give
-$\kappa{=}\kapColl$; but three \emph{coplanar} limb leads $\{$I,\,II,\,III$\}$ give
-$\kappa{=}\kapCopl$ and the six limb leads $\kappa{=}\kapLimb$---so six frontal-plane
-leads recover the (transverse) dipole far worse than three well-chosen ones.
+On the PTB-XL QRS dipolar subspace, $\kappa_s(S)$ ranks configurations by
+\emph{conditioning}: a single Lead~I observes one of three dipole directions
+(effective rank $1$); a spread triplet $\{$I,\,II,\,V2$\}$ gives $\kappa{=}\kapSpan$
+(rank $3$); three adjacent precordials $\{$V1,\,V2,\,V3$\}$ give $\kappa{=}\kapColl$;
+but three \emph{coplanar} limb leads $\{$I,\,II,\,III$\}$ and the six limb leads have
+$\kappa$ of order $10^{5}$ and $10^{4}$ and \emph{effective rank $2$}---their third
+(transverse) dipole direction is Tier~III. This is a property of the lead set alone,
+available before any reconstruction: it says, upfront, that limb leads cannot recover
+the transverse-dipole content that precordial ST depends on.
 
-\subsection{RMSE hides fabrication; the certificate reveals it}
+\subsection{The certificate localises and explains}
 Table~\ref{tab:hall} reconstructs the unobserved leads from $\{$I,\,II,\,V2$\}$ with
-three methods. Their per-lead RMSE is nearly identical, yet the certificate separates
-them. The dipolar baseline places \emph{zero} energy in the certified-unrecoverable
-subspace ($h{=}0$): it never fabricates, but recovers only Tier~I. The learned linear
-(OLS) reconstructor places moderate energy there that is \emph{positively correlated}
-with the true non-dipolar content (it genuinely recovers Tier~II). The generative
-reconstructor places the \emph{most} energy there, but that energy is
-\emph{uncorrelated with truth} (correlation $\approx\genCorr$)---confident
-fabrication that RMSE cannot detect and the certificate flags. The pattern is
-identical across the Lead-I and limb-6 configurations (see \texttt{results/}).
+three methods. A scalar RMSE ranks them (the generative model is worst) but does not
+say \emph{which} feature is wrong or \emph{why}. The certificate does. The dipolar
+baseline places \emph{zero} energy in the certified-unrecoverable subspace ($h{=}0$):
+it never fabricates, but recovers only Tier~I. The learned linear (OLS) reconstructor
+places moderate energy there whose oracle correlation $\rho$ with the true non-dipolar
+content is \emph{positive}---it genuinely recovers Tier~II. The generative
+reconstructor places more energy there, uncorrelated with truth ($\rho\!\approx\!0$).
+We stress the honest scope: $\rho$ is an oracle validation, and $h$ alone need not
+separate blur from fabrication when energies match---the deployable guarantee is the
+configuration-level certificate ($\kappa$, tiers) plus the held-out flag.
 
 \begin{table}[t]
 \centering
-\caption{Reconstruction from $\{$I,\,II,\,V2$\}$ on PTB-XL (fold 10). RMSE is matched;
-the certificate's hallucination energy $h$ (mV) and non-dipolar correlation
-$\rho$ with truth are not. Generative energy is uncorrelated with truth.}
+\caption{Reconstruction from $\{$I,\,II,\,V2$\}$ on PTB-XL (fold 10). $h$\,(mV) is the
+deployable hallucination energy; $\rho$ is the oracle correlation of the non-dipolar
+component with truth. The dipolar row's $\rho{=}0$ is degenerate (it has no non-dipolar
+component); the generative row's is genuine decorrelation.}
 \label{tab:hall}
 \small
 \begin{tabular}{llccc}
@@ -48,13 +52,5 @@ seg & method & RMSE\,(mV) & $h$\,(mV) & $\rho$ \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{../results/ptbxl_hallucination.png}
-  \caption{Left: global RMSE is similar for all reconstructors (limb-6$\to$precordial).
-  Right: in the hallucination-energy vs.\ non-dipolar-correlation plane the generative
-  model sits at high $h$, near-zero correlation---fabrication the certificate isolates.}
-  \label{fig:ptbxl}
-\end{figure}
-
+\input{results_neural}
 \input{results_stemi}

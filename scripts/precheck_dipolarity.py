@@ -1,16 +1,17 @@
 """Risk-2 gate: is the per-feature dipolarity story real on PTB-XL?
 
-The whole paper rests on two empirical facts:
+The paper's per-feature framing rests on ONE empirical fact, which this script
+checks (and it holds):
 
  1. **Per-feature separation.** The QRS complex is more dipolar than the ST segment
     and T wave -- so "which feature is recoverable" genuinely varies by feature.
- 2. **Disease-dependent non-dipolarity.** Dipolarity *decreases* from NORM to MI /
-    STTC -- so the non-dipolar (Tier II/III) content our certificate is about is
-    real and concentrated exactly in the pathological cases the safety story targets.
 
-If (1) fails (QRS/ST/T dipolar fractions do not separate), the per-feature framing
-is weak and the plan must change.  This script measures both, per diagnostic
-superclass, and also reports the closed-form kappa_s(S) for the planned lead
+We also probed a second hypothesis -- that dipolarity *decreases* from NORM to
+MI/STTC -- and it does NOT hold: dipolarity is feature-and-pathology specific and is
+if anything *higher* for ST/T in disease (see the JSON ``gate.disease_drop=false``).
+We therefore do NOT motivate the safety story via disease non-dipolarity; the honest
+statement is that substantial non-dipolar content exists in every non-QRS feature in
+all classes.  This script also reports the closed-form kappa_s(S) for the planned lead
 configurations to confirm "geometry, not lead count."
 
 Outputs: results/precheck_dipolarity.json + results/precheck_dipolarity.png
@@ -65,11 +66,18 @@ def main(n_records: int = 300, rate: int = 100, seed: int = 0) -> None:
             else f"{seg}:NA" for seg in SEGMENTS))
 
     # kappa for the planned configs on the NORM-QRS dipolar subspace.
+    # We report the full-precision conditioning number kappa AND the *effective*
+    # dipole rank at the deployed truncation tolerance (RECON_RCOND=1e-2): a config
+    # whose smallest observed dipole singular value falls below that tolerance
+    # recovers fewer than 3 dipole directions (the rest become Tier III).
+    from ecgcert.physics import RECON_RCOND
     if fitted_qrs_M is not None:
         for name, leads in CONFIGS.items():
-            k, r = kappa(fitted_qrs_M, leads)
-            out["kappa_QRS"][name] = {"kappa": float(k), "dipole_rank": int(r)}
-            print(f"  kappa[{name}] = {k:.3f}  (dipole rank {r})")
+            k, r = kappa(fitted_qrs_M, leads)                     # full precision
+            _, r_eff = kappa(fitted_qrs_M, leads, rcond=RECON_RCOND)  # deployed
+            out["kappa_QRS"][name] = {"kappa": float(k), "dipole_rank": int(r),
+                                      "effective_rank": int(r_eff)}
+            print(f"  kappa[{name}] = {k:.3f}  (rank {r}, effective rank {r_eff} @ rcond={RECON_RCOND})")
 
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "precheck_dipolarity.json").write_text(json.dumps(out, indent=2))
