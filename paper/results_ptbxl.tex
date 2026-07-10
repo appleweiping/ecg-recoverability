@@ -1,0 +1,60 @@
+\subsection{Geometry, not lead count}
+On the PTB-XL QRS dipolar subspace, the closed-form gain $\kappa_s(S)$ ranks
+configurations by \emph{conditioning}, not lead count: a single Lead~I observes only
+one of three dipole directions (rank 1); a spread triplet $\{$I,\,II,\,V2$\}$ gives
+$\kappa{=}\kapSpan$; three adjacent precordials $\{$V1,\,V2,\,V3$\}$ give
+$\kappa{=}\kapColl$; but three \emph{coplanar} limb leads $\{$I,\,II,\,III$\}$ give
+$\kappa{=}\kapCopl$ and the six limb leads $\kappa{=}\kapLimb$---so six frontal-plane
+leads recover the (transverse) dipole far worse than three well-chosen ones.
+
+\subsection{RMSE hides fabrication; the certificate reveals it}
+Table~\ref{tab:hall} reconstructs the unobserved leads from $\{$I,\,II,\,V2$\}$ with
+three methods. Their per-lead RMSE is nearly identical, yet the certificate separates
+them. The dipolar baseline places \emph{zero} energy in the certified-unrecoverable
+subspace ($h{=}0$): it never fabricates, but recovers only Tier~I. The learned linear
+(OLS) reconstructor places moderate energy there that is \emph{positively correlated}
+with the true non-dipolar content (it genuinely recovers Tier~II). The generative
+reconstructor places the \emph{most} energy there, but that energy is
+\emph{uncorrelated with truth} (correlation $\approx\genCorr$)---confident
+fabrication that RMSE cannot detect and the certificate flags. The pattern is
+identical across the Lead-I and limb-6 configurations (see \texttt{results/}).
+
+\begin{table}[t]
+\centering
+\caption{Reconstruction from $\{$I,\,II,\,V2$\}$ on PTB-XL (fold 10). RMSE is matched;
+the certificate's hallucination energy $h$ (mV) and non-dipolar correlation
+$\rho$ with truth are not. Generative energy is uncorrelated with truth.}
+\label{tab:hall}
+\small
+\begin{tabular}{llccc}
+\toprule
+seg & method & RMSE\,(mV) & $h$\,(mV) & $\rho$ \\
+\midrule
+\multirow{3}{*}{QRS}
+ & dipolar     & 0.196 & 0.000 & $+0.00$ \\
+ & OLS         & 0.196 & 0.030 & $+0.13$ \\
+ & generative  & 0.228 & 0.097 & $+0.00$ \\
+\midrule
+\multirow{3}{*}{ST}
+ & dipolar     & 0.125 & 0.000 & $+0.00$ \\
+ & OLS         & 0.112 & 0.016 & $+0.28$ \\
+ & generative  & 0.149 & 0.063 & $-0.00$ \\
+\midrule
+\multirow{3}{*}{T}
+ & dipolar     & 0.140 & 0.000 & $+0.00$ \\
+ & OLS         & 0.105 & 0.028 & $+0.44$ \\
+ & generative  & 0.163 & 0.067 & $-0.00$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../results/ptbxl_hallucination.png}
+  \caption{Left: global RMSE is similar for all reconstructors (limb-6$\to$precordial).
+  Right: in the hallucination-energy vs.\ non-dipolar-correlation plane the generative
+  model sits at high $h$, near-zero correlation---fabrication the certificate isolates.}
+  \label{fig:ptbxl}
+\end{figure}
+
+\input{results_stemi}

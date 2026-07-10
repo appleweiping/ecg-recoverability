@@ -50,7 +50,7 @@ def selection_matrix(observed_leads) -> np.ndarray:
 
 
 def recoverable_dipole_projector(M_s: np.ndarray, observed_leads,
-                                 rcond: float = 1e-10) -> tuple[np.ndarray, int]:
+                                 rcond: float | None = None) -> tuple[np.ndarray, int]:
     """Projector ``R_s`` onto the dipole subspace the observation constrains.
 
     ``R_s = M_s P_obs M_s^T`` where ``P_obs = M_{s,S}^+ M_{s,S}`` projects the
@@ -58,6 +58,9 @@ def recoverable_dipole_projector(M_s: np.ndarray, observed_leads,
     ``(R_s, r)`` with ``r = rank(M_{s,S})`` the number of recoverable dipole
     directions (``r = 3`` => the whole dipole is recoverable).
     """
+    from ecgcert.physics.dipolar_subspace import RECON_RCOND
+
+    rcond = RECON_RCOND if rcond is None else rcond
     idx = _observed_idx(observed_leads)
     M_S = M_s[idx]                                   # (|S|, 3)
     P_obs = np.linalg.pinv(M_S, rcond=rcond) @ M_S    # (3, 3) projector on observable dipole

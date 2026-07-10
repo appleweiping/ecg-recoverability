@@ -1,0 +1,137 @@
+"""M5: STEMI safety case -- fabricated / masked ST elevation, and abstention.
+
+Clinical framing: limb-lead monitors reconstruct the precordial leads (V1-V6),
+but the precordial ST content is largely non-dipolar and lies in the observation
+null space (kappa(limb-6 -> precordial) ~ 6.7e4).  A generative reconstructor
+*fabricates* precordial ST deviation (phantom STEMI); a dipolar / OLS
+reconstructor *blurs* it (masking a real STEMI).  We measure both, and show that
+abstaining on certificate-flagged (high-``h``) reconstructed ST segments removes
+the dangerous cases -- the "error prevented by the certificate" number.
+
+Outputs: results/ptbxl_stemi.json
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+
+from ecgcert.certify import hallucination_energy
+from ecgcert.clinical import count_stemi_flips, st_deviation, stemi_positive
+from ecgcert.conformal import flag_threshold
+from ecgcert.data import PTBXL
+from ecgcert.estimators import GenerativeSampleReconstructor, LinearDipolarReconstructor, OLSReconstructor
+from ecgcert.models import fit_segment_models
+from ecgcert.physics import LEAD_INDEX
+
+RESULTS = Path(__file__).resolve().parent.parent / "results"
+SEGMENTS = ("P", "QRS", "ST", "T")
+LIMB6 = ["I", "II", "III", "aVR", "aVL", "aVF"]
+PRECORDIAL = ["V1", "V2", "V3", "V4", "V5", "V6"]
+PRECORDIAL_IDX = [LEAD_INDEX[l] for l in PRECORDIAL]
+
+
+def _reconstruct_full(sig, db, rate, models, obs, recons):
+    """Reconstruct the whole (T,12) signal per-segment; unlabelled samples kept as
+    the dipolar recon of the QRS model (baseline). Returns {recon_name: (T,12)}."""
+    segidx = db.segment_indices(sig, fs=rate)
+    obs_idx = [LEAD_INDEX[l] for l in obs]
+    T = sig.shape[0]
+    out = {}
+    # per-record hallucination energy on the ST segment (precordial), for flagging.
+    st_h = {}
+    for rname in recons:
+        rec_full = np.tile(sig.mean(axis=0)[:, None], (1, T)).astype(float)  # (12,T) default=mean
+        rec_full[obs_idx] = sig[:, obs_idx].T                                # keep observed
+        out[rname] = rec_full
+    for seg in SEGMENTS:
+        idx = segidx[seg]
+        if idx.size < 4 or seg not in models:
+            continue
+        m = models[seg]
+        yS = sig[idx][:, obs_idx].T
+        builders = {
+            "dipolar": LinearDipolarReconstructor(m.M, m.mu, obs),
+            "ols": recons["ols"],
+            "generative": GenerativeSampleReconstructor(m.M, m.mu, obs, m.Sigma_r, seed=1),
+        }
+        for rname, rec in builders.items():
+            Lhat = rec.predict(yS)                       # (12, T_seg)
+            out[rname][:, idx] = Lhat
+            if seg == "ST":
+                h = hallucination_energy(m.M, m.mu, obs, Lhat)
+                st_h[rname] = float(np.mean(h[PRECORDIAL_IDX]))
+    return out, st_h
+
+
+def main(n_train=500, n_test=800, rate=100, seed=0, alpha=0.1):
+    db = PTBXL()
+    rng = np.random.default_rng(seed)
+    train_ids = rng.permutation(db.ids_with_superclass("NORM", exclusive=False,
+                                                       folds=range(1, 9)))
+    seg_samples = db.collect_all_segments(train_ids, rate=rate, max_per_record=40,
+                                          max_records=n_train, seed=seed)
+    models = fit_segment_models(seg_samples)
+    L_train = np.hstack([seg_samples[s].T for s in SEGMENTS if seg_samples[s].shape[0] > 0])
+    ols = OLSReconstructor(LIMB6).fit(L_train)
+
+    # Test on fold 10, over all superclasses (need genuine ST changes -> include MI/STTC).
+    test_ids = rng.permutation(db.meta[db.meta["strat_fold"] == 10].index.to_numpy())[:n_test]
+
+    recons = {"dipolar": None, "ols": ols, "generative": None}
+    rows = {r: [] for r in ("dipolar", "ols", "generative")}
+    st_h_all = {r: [] for r in recons}
+    # First pass: gather ST hallucination energies on NORM (faithful-ish) for tau.
+    for eid in test_ids:
+        try:
+            sig = db.signal(int(eid), rate=rate)
+        except Exception:
+            continue
+        recon, st_h = _reconstruct_full(sig, db, rate, models, LIMB6, recons)
+        for rname in ("dipolar", "ols", "generative"):
+            flip = count_stemi_flips(sig, recon[rname], rate, leads=PRECORDIAL_IDX)
+            if flip.get("valid"):
+                flip["st_h"] = st_h.get(rname, np.nan)
+                rows[rname].append(flip)
+
+    out = {"config": "limb-6 -> precordial", "n_eval": {r: len(rows[r]) for r in rows},
+           "alpha": alpha, "reconstructors": {}}
+    for rname in ("dipolar", "ols", "generative"):
+        R = rows[rname]
+        if not R:
+            continue
+        fab = np.array([r["fabricated"] for r in R])
+        msk = np.array([r["masked"] for r in R])
+        sterr = np.array([r["st_error_mv"] for r in R])
+        h = np.array([r["st_h"] for r in R])
+        # Calibrate the ST-segment flag threshold on the dipolar reconstructor's h
+        # over records that are NOT fabricated/masked (faithful), then apply to all.
+        faithful_h = h[~(fab | msk)]
+        tau = flag_threshold(faithful_h[~np.isnan(faithful_h)], alpha) if faithful_h.size else np.inf
+        flagged = h > tau
+        # Error "prevented" by abstaining on flagged reconstructed ST segments.
+        fab_prevented = int(np.sum(fab & flagged))
+        msk_prevented = int(np.sum(msk & flagged))
+        out["reconstructors"][rname] = {
+            "n": len(R),
+            "fabricated_stemi": int(fab.sum()),
+            "masked_stemi": int(msk.sum()),
+            "mean_st_error_mv": float(np.nanmean(sterr)),
+            "flag_tau": float(tau),
+            "fabricated_prevented_by_flag": fab_prevented,
+            "masked_prevented_by_flag": msk_prevented,
+            "flag_rate": float(np.mean(flagged)),
+        }
+        d = out["reconstructors"][rname]
+        print(f"[{rname:11s}] fabricated={d['fabricated_stemi']:3d} masked={d['masked_stemi']:3d} "
+              f"ST-err={d['mean_st_error_mv']:.3f}mV  flagged={d['flag_rate']:.2f}  "
+              f"prevented(fab/msk)={fab_prevented}/{msk_prevented}")
+
+    RESULTS.mkdir(exist_ok=True)
+    (RESULTS / "ptbxl_stemi.json").write_text(json.dumps(out, indent=2))
+    print("\n[json] results/ptbxl_stemi.json")
+
+
+if __name__ == "__main__":
+    main()

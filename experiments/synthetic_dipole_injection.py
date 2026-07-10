@@ -101,7 +101,9 @@ def experiment_tier1_certificate():
         G = M @ np.linalg.pinv(M_S)                    # (12, |S|), the certificate operator
         gF = float(np.linalg.norm(G, "fro"))
         k = float(np.linalg.norm(G, 2))
-        rec = LinearDipolarReconstructor(M, mu, leads)
+        # Full-precision inversion: this experiment demonstrates the theoretical
+        # noise-gain law err = sigma*||G||_F (no truncation).
+        rec = LinearDipolarReconstructor(M, mu, leads, rcond=1e-12)
         errs, bound = [], []
         for sigma in sigmas:
             noise = sigma * rng.standard_normal((len(idx), n))

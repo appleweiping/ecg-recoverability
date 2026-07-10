@@ -47,6 +47,13 @@ from dataclasses import dataclass
 
 import numpy as np
 
+# Truncation tolerance for the pseudo-inverse in dipolar recovery.  Dipole
+# directions whose observed singular value falls below RECON_RCOND * (largest)
+# are treated as effectively unobserved (Tier III) instead of being inverted --
+# this keeps recovery numerically stable on ill-conditioned configurations
+# (e.g. limb-only leads reconstructing precordials, where kappa ~ 1e4-1e5).
+RECON_RCOND: float = 1e-2
+
 # Standard clinical 12-lead order.
 LEADS: tuple[str, ...] = (
     "I", "II", "III", "aVR", "aVL", "aVF",
@@ -162,7 +169,7 @@ def kappa(M_s: np.ndarray, observed_leads, rcond: float = 1e-10) -> tuple[float,
 
 
 def reconstruct_dipolar(M_s: np.ndarray, mu_s: np.ndarray, observed_leads, y_S: np.ndarray,
-                        rcond: float = 1e-10) -> np.ndarray:
+                        rcond: float = RECON_RCOND) -> np.ndarray:
     """Recover the population-dipolar projection of the full 12-lead from ``y_S``.
 
     ``L_hat = mu_s + M_s M_{s,S}^+ (y_S - mu_{s,S})``.  ``y_S`` may be a vector

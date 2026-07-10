@@ -21,6 +21,7 @@ from __future__ import annotations
 import numpy as np
 
 from ecgcert.certify.tier_decomposition import selection_matrix
+from ecgcert.physics.dipolar_subspace import LEAD_INDEX
 
 
 def prior_mean_reconstructor(mu_s: np.ndarray, T: int) -> np.ndarray:
@@ -31,8 +32,10 @@ def prior_mean_reconstructor(mu_s: np.ndarray, T: int) -> np.ndarray:
 class LinearDipolarReconstructor:
     """Tier I reconstructor: the recovered population-dipolar projection."""
 
-    def __init__(self, M_s: np.ndarray, mu_s: np.ndarray, observed_leads, rcond: float = 1e-10):
-        from ecgcert.physics.dipolar_subspace import reconstruct_dipolar
+    def __init__(self, M_s: np.ndarray, mu_s: np.ndarray, observed_leads, rcond=None):
+        from ecgcert.physics.dipolar_subspace import RECON_RCOND, reconstruct_dipolar
+
+        rcond = RECON_RCOND if rcond is None else rcond
 
         self.M_s, self.mu_s, self.observed = M_s, mu_s, observed_leads
         self._recon = reconstruct_dipolar
@@ -70,3 +73,69 @@ class BayesianDipolarReconstructor:
         gain = Cxy @ np.linalg.inv(Cyy)                               # (12,|S|)
         resid = y - S @ self.mu_s[:, None]
         return self.mu_s[:, None] + gain @ resid                     # (12, T)
+
+
+class OLSReconstructor:
+    """Learned linear reconstructor: least-squares map ``y_S -> L`` from data.
+
+    This is the population-optimal *linear* reconstruction.  Unlike the pure
+    dipolar reconstructor it also picks up the population-correlated non-dipolar
+    content (Tier II), but being MSE-optimal it regresses Tier III content to the
+    mean -- it does not fabricate (its hallucination energy stays low; it is
+    "honestly incomplete", blurring rather than inventing).  A standard baseline.
+    """
+
+    def __init__(self, observed_leads):
+        self.observed = observed_leads
+        self.idx = [LEAD_INDEX[l] if isinstance(l, str) else int(l) for l in observed_leads]
+        self.W = None
+        self.b = None
+
+    def fit(self, L_train: np.ndarray) -> "OLSReconstructor":
+        """``L_train`` is (12, N) training samples (per-time-sample, any segments)."""
+        X = L_train[self.idx].T                          # (N, |S|)
+        Y = L_train.T                                    # (N, 12)
+        X1 = np.hstack([X, np.ones((X.shape[0], 1))])    # bias
+        coef, *_ = np.linalg.lstsq(X1, Y, rcond=None)    # (|S|+1, 12)
+        self.W = coef[:-1].T                             # (12, |S|)
+        self.b = coef[-1]                                # (12,)
+        return self
+
+    def predict(self, y_S: np.ndarray) -> np.ndarray:
+        y = np.asarray(y_S, float)
+        return self.W @ y + self.b[:, None]
+
+
+class GenerativeSampleReconstructor:
+    """Perceptual/generative baseline that *samples* non-dipolar content.
+
+    Mimics what a generative reconstructor (diffusion / GAN) does to look
+    realistic: start from the dipolar reconstruction and add a plausible sample of
+    non-dipolar texture drawn from the population non-dipolar covariance.  Because
+    that sample is independent of the observation on the Tier III subspace, the
+    added content is *fabricated* -- realistic-looking but uncorrelated with the
+    truth.  This is the hallucination exhibit; the certificate flags exactly its
+    Tier III energy.
+    """
+
+    def __init__(self, M_s: np.ndarray, mu_s: np.ndarray, observed_leads,
+                 Sigma_r: np.ndarray, scale: float = 1.0, seed: int = 0):
+        from ecgcert.physics.dipolar_subspace import reconstruct_dipolar
+
+        self.M_s, self.mu_s, self.observed = M_s, mu_s, observed_leads
+        self._recon = reconstruct_dipolar
+        # Non-dipolar sampling covariance (project Sigma_r off the dipole subspace).
+        U = np.eye(12) - M_s @ M_s.T
+        C = U @ Sigma_r @ U.T
+        C = 0.5 * (C + C.T)
+        vals, vecs = np.linalg.eigh(C)
+        vals = np.clip(vals, 0, None)
+        self._chol = vecs @ np.diag(np.sqrt(vals))       # (12, 12) sampler
+        self.scale = scale
+        self.rng = np.random.default_rng(seed)
+
+    def predict(self, y_S: np.ndarray) -> np.ndarray:
+        dip = self._recon(self.M_s, self.mu_s, self.observed, y_S)
+        T = dip.shape[1] if dip.ndim == 2 else 1
+        noise = self._chol @ self.rng.standard_normal((12, T))
+        return dip + self.scale * noise
