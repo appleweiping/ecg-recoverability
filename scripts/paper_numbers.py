@@ -29,7 +29,7 @@ def main():
         def kap(name):
             return k[name]["kappa"]
         lines += [f"\\newcommand{{\\kapSpan}}{{{kap('3-lead spanning {I,II,V2}'):.1f}}}",
-                  f"\\newcommand{{\\kapColl}}{{{kap('3-lead collinear {V1,V2,V3}'):.1f}}}"]
+                  f"\\newcommand{{\\kapColl}}{{{kap('3-lead adjacent {V1,V2,V3}'):.1f}}}"]
     st = _load("ptbxl_stemi.json")
     if st:
         r = st["reconstructors"]

@@ -155,17 +155,19 @@ class DiffusionReconstructor:
                 pred = self.net(xt, t, cond)
                 loss = ((pred - noise) ** 2).mean()
                 opt.zero_grad(); loss.backward(); opt.step()
-                tot += float(loss) * x0.shape[0]
+                tot += loss.item() * x0.shape[0]
             if (ep + 1) % log_every == 0 or ep == 0:
                 print(f"  [ddpm] epoch {ep+1}/{epochs} loss={tot/n:.5f}", flush=True)
         return self
 
-    def sample(self, y_full, guidance=0.0, replace=True, steps=None, seed=0):
+    def sample(self, y_full, guidance=1.0, replace=True, steps=None, seed=0):
         """Reconstruct from observed leads.
 
         y_full: (B,12,W) with observed leads set to their true values (others
-        arbitrary; only observed rows are read). guidance: CFG scale w (0 = plain
-        conditional). replace: RePaint measurement replacement of observed leads.
+        arbitrary; only observed rows are read). guidance: CFG scale w. w=1 is the
+        plain conditional model (no guidance term); w>1 sharpens toward the
+        conditional mode (more realistic, more fabrication); w=0 is fully
+        unconditional. replace: RePaint measurement replacement of observed leads.
         Returns (B,12,W) numpy.
         """
         torch = _t()
@@ -177,22 +179,31 @@ class DiffusionReconstructor:
         B, _, W = yt.shape
         x = torch.randn(B, 12, W, device=self.device, generator=g)
         ts = list(range(self.T))[::-1]
-        if steps is not None:
-            ts = ts[:: max(1, self.T // steps)]
+        clip = 6.0                                     # x0 clamp (robust-normalized units)
+        m = self.lead_mask[None, :, None]
         with torch.no_grad():
             for t in ts:
                 tt = torch.full((B,), t, device=self.device, dtype=torch.long)
                 eps = self.net(x, tt, cond)
-                if guidance > 0:
+                if guidance != 1.0:                            # w=1 is plain conditional
                     eps_u = self.net(x, tt, zero_cond)
-                    eps = eps_u + (1 + guidance) * (eps - eps_u)
-                a = self.alphas[t]; ac = self.acp[t]
+                    eps = eps_u + guidance * (eps - eps_u)     # CFG: eps_u + w*(cond-uncond)
+                ac = self.acp[t]
+                ac_prev = self.acp[t - 1] if t > 0 else torch.tensor(1.0, device=self.device)
                 beta = self.betas[t]
-                mean = (x - beta / (1 - ac).sqrt() * eps) / a.sqrt()
-                if t > 0:
-                    mean = mean + beta.sqrt() * torch.randn(x.shape, device=self.device, generator=g)
-                x = mean
+                # predict + clamp x0 (Tweedie), then form the DDPM posterior mean.
+                x0 = (x - (1 - ac).sqrt() * eps) / ac.sqrt()
+                x0 = torch.clamp(x0, -clip, clip)
                 if replace:
-                    # measurement replacement: overwrite observed leads with truth
-                    x = x * (1 - self.lead_mask[None, :, None]) + yt * self.lead_mask[None, :, None]
+                    # anchor observed leads to the (noise-free) measurement
+                    x0 = x0 * (1 - m) + yt * m
+                coef_x0 = ac_prev.sqrt() * beta / (1 - ac)
+                coef_xt = self.alphas[t].sqrt() * (1 - ac_prev) / (1 - ac)
+                mean = coef_x0 * x0 + coef_xt * x
+                if t > 0:
+                    var = beta * (1 - ac_prev) / (1 - ac)
+                    mean = mean + var.sqrt() * torch.randn(x.shape, device=self.device, generator=g)
+                x = mean
+        if replace:
+            x = x * (1 - m) + yt * m
         return x.cpu().numpy()

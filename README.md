@@ -2,10 +2,12 @@
 
 **Certified Reduced-Lead ECG Reconstruction — a per-feature recoverability certificate with distribution-free calibration.**
 
-Targeting the **IEEE ICASSP** *Biomedical Signal Processing* track. CPU-only, fully
-reproducible, real public data (PTB-XL). Every theorem in the paper is cross-checked
-against Monte-Carlo simulation by the test suite before it is allowed into the
-manuscript.
+Targeting the **IEEE ICASSP** *Biomedical Signal Processing* track. The certificate and
+every theory-validation experiment are **CPU-only and fully reproducible** on real public
+data (PTB-XL); the single generative-fabrication exhibit trains a conditional diffusion
+model and needs a **GPU** (`experiments/gpu_diffusion_clean.py`). Every theorem in the
+paper is cross-checked against Monte-Carlo simulation by the test suite before it is
+allowed into the manuscript.
 
 > **TL;DR** — Reconstructing missing ECG leads from a reduced set is an ill-posed
 > inverse problem, and a **scalar reconstruction error says nothing about *which*
@@ -16,9 +18,10 @@ manuscript.
 > interval), and what is *provably unrecoverable* (flagged, held-out false-flag ≤ α).
 > The engine is a fact the ECG has and generic inverse-problem theory does not: **each
 > waveform segment is an approximately rank-3 cardiac dipole plus a non-dipolar
-> residual.** A trained CNN swept from distortion- to perception-optimal shows
-> **fabrication is a choice of *objective***, not an accident of the network — and the
-> certificate measures it.
+> residual.** A real conditional **diffusion model**, scored against a held-out
+> recoverability oracle, shows **fabrication is a choice of *objective***, not an accident
+> of the network: raising the realism knob injects a *growing recoverability deficit* that
+> the certificate localizes and a scalar RMSE cannot see.
 
 ---
 
@@ -157,20 +160,32 @@ generative model's is not. Honest caveat: `h` alone need not separate blur from
 fabrication when energies match — the dependable, deployable signal is the
 **configuration-level** certificate (κ, tiers) plus the held-out flag.
 
-**Fabrication is the objective, not the network.** Sweeping a *real trained* 1-D CNN
-from distortion- to perception-optimal (`results/neural_perception_distortion.png`):
-at λ=0 (MSE) it recovers genuine Tier II (ρ=+0.24, like OLS); the moment realism enters
-the objective, ρ collapses to ≈0 and hallucination energy climbs (h up to 0.30 mV) —
-the perception-distortion tradeoff on the ECG, measured by the certificate. This is the
-honest fabrication demonstration; the sampled "generative" baseline is its idealised
-endpoint.
+**Fabrication is the objective, not the network — a real diffusion model, measured
+non-circularly** (`results/gpu_diffusion_frontier.png`). A subtlety makes the naive test
+circular: on the certified-unrecoverable subspace, correlation-with-truth ρ≈0 for *any*
+sampler (even Bayes-optimal), so ρ≈0 there measures the *definition*, not fabrication. We
+defeat this with a **held-out recoverability oracle** — a supervised ridge predictor whose
+out-of-sample correlation `ρ_oracle` is a *lower bound* on recoverability: `ρ_oracle>0`
+*proves* content is recoverable (a linear map attains it). For `S={I,II,V1,V3,V5}→{V2,V4,V6}`
+the QRS non-dipolar content is provably recoverable (`ρ_oracle=+0.33`). We then train a real
+conditional 1-D **DDPM** (classifier-free guidance + RePaint) on PTB-XL and score it with the
+certificate, comparing the diffusion **posterior mean** (variance-free) to a single deployed
+draw to avoid a mean-vs-sample confound. At the honest end (guidance `w=1`) the posterior
+mean *matches* the oracle (Δρ≈0 — the model is competent); as guidance pushes toward realism,
+the mean develops a **growing recoverability deficit** (Δρ: 0 → +0.10 at `w=4`) while staying
+faithful on the recoverable dipole subspace (ρ_recoverable≈0.83) and while **RMSE stays flat**
+— the deficit is invisible to a scalar and localized only by the certificate. On the limb-6
+negative control (QRS, `ρ_oracle≈0`) the deficit never turns positive: no false alarm. (A
+complementary `results/neural_perception_distortion.png` shows the same phenomenon in a CNN
+swept over an explicit distortion–perception weight.)
 
 **Safety case (honest).** Reconstructing precordial leads from limb-6 (κ=6.7×10⁴,
 effective rank 2 → precordial ST is Tier III) is *certified unsafe upfront*. Over 799
 records the danger is bidirectional and RMSE-invisible (~0.075 mV ST error all methods):
 the generative model **fabricates 263 phantom STEMIs**, OLS **masks 360 real ones**, and
 even the dipolar reconstructor fabricates 226 (inside the recoverable subspace, where
-`h` is blind). The null-space flag catches only a minority of fabrications (15/263). The
+`h` is blind — its flag correctly never fires). The null-space flag catches only a
+minority of fabrications (18/263, held-out threshold). The
 reliable safety signal is the **configuration-level κ warning**, not the per-record flag.
 
 **Device shift.** CS→AT device shift drops Tier II coverage 0.90→0.82; a 300-record
@@ -189,11 +204,16 @@ src/ecgcert/
   models.py                     # fit per-segment (M_s, mu_s, Sigma_r) from a population
   clinical.py                   # ST-deviation measurement + STEMI flip counting
   data/ptbxl.py                 # PTB-XL loader + NeuroKit2 P/QRS/ST/T delineation
+estimators/diffusion.py         # conditional 1-D DDPM (CFG + RePaint), GPU
 experiments/
   synthetic_dipole_injection.py # M3: validates all theorems (figures)
   ptbxl_reduced_lead.py         # M4: 3 configs, baselines, hallucination quantification
-  ptbxl_stemi_safety.py         # M5: fabricated/masked STEMI + abstention
+  ptbxl_stemi_safety.py         # M5: fabricated/masked STEMI + abstention (held-out flag)
   cross_device.py               # M5b: CS->AT device-shift coverage + repair
+  neural_baselines.py           # M6: real CNN distortion->perception sweep (CPU)
+  gpu_fabrication.py            # M7: oracle gate (Band A/B) + diffusion scoring (GPU)
+  gpu_diffusion_clean.py        # M8: de-noised CRAFT exhibit -> gpu_diffusion.json (GPU)
+  gpu_diffusion_figure.py       # M8: recoverability-deficit frontier figure
 scripts/
   download_data.py              # PTB-XL via HuggingFace mirror (GFW-friendly)
   precheck_dipolarity.py        # risk-2 gate: per-segment dipolarity by diagnosis

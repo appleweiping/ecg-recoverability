@@ -106,12 +106,23 @@ def main(n_train=500, n_test=800, rate=100, seed=0, alpha=0.1):
         msk = np.array([r["masked"] for r in R])
         sterr = np.array([r["st_error_mv"] for r in R])
         h = np.array([r["st_h"] for r in R])
-        # Calibrate the ST-segment flag threshold on the dipolar reconstructor's h
-        # over records that are NOT fabricated/masked (faithful), then apply to all.
-        faithful_h = h[~(fab | msk)]
-        tau = flag_threshold(faithful_h[~np.isnan(faithful_h)], alpha) if faithful_h.size else np.inf
-        flagged = h > tau
-        # Error "prevented" by abstaining on flagged reconstructed ST segments.
+        # Calibrate the ST-segment flag threshold on a HELD-OUT half of this
+        # reconstructor's own faithful (not fabricated/masked) records, and evaluate
+        # the flag on the disjoint other half + all fabricated/masked records, so the
+        # false-flag rate is a genuine held-out quantity, not guaranteed in-sample.
+        # tau is floored at a physical epsilon (1e-6 mV): a reconstructor with h==0
+        # (the dipolar one) then never flags -- h is blind inside the recoverable
+        # subspace, which is the honest behaviour, not a machine-epsilon "detection".
+        eps = 1e-6
+        faithful_idx = np.where(~(fab | msk) & ~np.isnan(h))[0]
+        cal_rng = np.random.default_rng(seed + 777)
+        cal_rng.shuffle(faithful_idx)
+        cal_idx = faithful_idx[: faithful_idx.size // 2]
+        eval_mask = np.ones(len(R), bool)
+        eval_mask[cal_idx] = False                       # held-out evaluation records
+        tau = max(flag_threshold(h[cal_idx], alpha), eps) if cal_idx.size else np.inf
+        flagged = (h > tau) & eval_mask
+        eval_faithful = eval_mask & ~(fab | msk) & ~np.isnan(h)
         fab_prevented = int(np.sum(fab & flagged))
         msk_prevented = int(np.sum(msk & flagged))
         out["reconstructors"][rname] = {
@@ -122,11 +133,12 @@ def main(n_train=500, n_test=800, rate=100, seed=0, alpha=0.1):
             "flag_tau": float(tau),
             "fabricated_prevented_by_flag": fab_prevented,
             "masked_prevented_by_flag": msk_prevented,
-            "flag_rate": float(np.mean(flagged)),
+            "flag_rate_heldout_faithful": float(np.mean((h > tau)[eval_faithful]))
+            if eval_faithful.any() else 0.0,
         }
         d = out["reconstructors"][rname]
         print(f"[{rname:11s}] fabricated={d['fabricated_stemi']:3d} masked={d['masked_stemi']:3d} "
-              f"ST-err={d['mean_st_error_mv']:.3f}mV  flagged={d['flag_rate']:.2f}  "
+              f"ST-err={d['mean_st_error_mv']:.3f}mV  ff={d['flag_rate_heldout_faithful']:.3f}  "
               f"prevented(fab/msk)={fab_prevented}/{msk_prevented}")
 
     RESULTS.mkdir(exist_ok=True)

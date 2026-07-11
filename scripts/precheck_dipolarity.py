@@ -33,7 +33,7 @@ CONFIGS = {
     "Lead-I": ["I"],
     "3-lead spanning {I,II,V2}": ["I", "II", "V2"],
     "3-lead coplanar {I,II,III}": ["I", "II", "III"],
-    "3-lead collinear {V1,V2,V3}": ["V1", "V2", "V3"],
+    "3-lead adjacent {V1,V2,V3}": ["V1", "V2", "V3"],
     "limb-6": ["I", "II", "III", "aVR", "aVL", "aVF"],
 }
 

@@ -1,0 +1,26 @@
+/root/miniconda3/lib/python3.12/site-packages/neurokit2/signal/signal_period.py:83: NeuroKitWarning: Too few peaks detected to compute the rate. Returning empty vector.
+  warn(
+[diffusion] train (3000, 12, 1000), scale=[0.231 0.279 0.215 0.234 0.175 0.217 0.331 0.57  0.547 0.483 0.412 0.387]
+  [ddpm] epoch 1/45 loss=0.73427
+  [ddpm] epoch 5/45 loss=0.14255
+  [ddpm] epoch 10/45 loss=0.08558
+  [ddpm] epoch 15/45 loss=0.06894
+  [ddpm] epoch 20/45 loss=0.05725
+  [ddpm] epoch 25/45 loss=0.04984
+  [ddpm] epoch 30/45 loss=0.04508
+  [ddpm] epoch 35/45 loss=0.04276
+  [ddpm] epoch 40/45 loss=0.03804
+  [ddpm] epoch 45/45 loss=0.03675
+/root/miniconda3/lib/python3.12/site-packages/neurokit2/signal/signal_period.py:83: NeuroKitWarning: Too few peaks detected to compute the rate. Returning empty vector.
+  warn(
+  [w=1.0] QRS:V4 h=0.154 rho_m=+0.31 Drho=+0.02  ST:V4 h=0.137 rho_m=+0.20 Drho=+0.07  T:V4 h=0.146 rho_m=+0.07 Drho=+0.16
+/root/miniconda3/lib/python3.12/site-packages/neurokit2/signal/signal_period.py:83: NeuroKitWarning: Too few peaks detected to compute the rate. Returning empty vector.
+  warn(
+  [w=2.0] QRS:V4 h=0.178 rho_m=+0.30 Drho=+0.03  ST:V4 h=0.168 rho_m=+0.13 Drho=+0.14  T:V4 h=0.163 rho_m=+0.01 Drho=+0.22
+/root/miniconda3/lib/python3.12/site-packages/neurokit2/signal/signal_period.py:83: NeuroKitWarning: Too few peaks detected to compute the rate. Returning empty vector.
+  warn(
+  [w=4.0] QRS:V4 h=0.274 rho_m=+0.22 Drho=+0.11  ST:V4 h=0.277 rho_m=+0.09 Drho=+0.18  T:V4 h=0.286 rho_m=-0.02 Drho=+0.25
+/root/miniconda3/lib/python3.12/site-packages/neurokit2/signal/signal_period.py:83: NeuroKitWarning: Too few peaks detected to compute the rate. Returning empty vector.
+  warn(
+  [MMSE] QRS:V4 h=0.155 rho_m=+0.38 Drho=-0.05  ST:V4 h=0.148 rho_m=+0.21 Drho=+0.06  T:V4 h=0.156 rho_m=+0.10 Drho=+0.12
+[json] results/gpu_diffusion.json

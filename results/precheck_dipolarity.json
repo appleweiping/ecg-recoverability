@@ -129,7 +129,7 @@
       "dipole_rank": 3,
       "effective_rank": 2
     },
-    "3-lead collinear {V1,V2,V3}": {
+    "3-lead adjacent {V1,V2,V3}": {
       "kappa": 4.849876694355033,
       "dipole_rank": 3,
       "effective_rank": 3

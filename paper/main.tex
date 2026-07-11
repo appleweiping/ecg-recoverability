@@ -18,13 +18,13 @@
 \newcommand{\covCS}{0.90}       % CS in-distribution coverage
 \newcommand{\covATplain}{0.82}  % AT plain (shifted) coverage
 \newcommand{\covATrecal}{0.93}  % AT recalibrated coverage
-\newcommand{\corrMSE}{+0.24}    % lambda=0 (MSE) non-dipolar correlation
+\input{_gpu_macros}             % \OraAgg \OraQRS \negOra \RhoRec \dRhoMean* \negQRSdRho ...
 
 \title{Certified Reduced-Lead ECG Reconstruction:\\
 What Is Recoverable, and What Is Fabricated}
 
-\name{Anonymous}
-\address{Anonymous}
+\name{Weiping Yan}
+\address{University of Minnesota, Twin Cities}
 
 \begin{document}
 \maketitle
@@ -43,11 +43,12 @@ a distribution-free calibrated interval for the population-predictable residual;
 (iii) a flag, with a \emph{held-out} false-flag rate $\le\alpha$, for content a
 reconstruction places in the certified-unrecoverable subspace. The certificate warns
 \emph{upfront} that a configuration cannot support a decision---e.g.\ precordial ST
-from limb leads---which no per-reconstruction error reveals. Sweeping a trained CNN
-from distortion- to perception-optimal, we show that optimising for realism
-monotonically injects certified-unrecoverable energy that decorrelates from truth
-(correlation $\corrMSE\!\to\!0$): fabrication is a property of the \emph{objective},
-and the certificate measures it.
+from limb leads---which no per-reconstruction error reveals. Scoring a real
+conditional diffusion model against a held-out recoverability oracle, we show that
+optimising for realism injects a growing recoverability deficit---content the
+certificate proves recoverable yet the model increasingly trades for population-typical
+morphology---invisible to scalar error: fabrication is a property of the
+\emph{objective}, and the certificate measures it.
 \end{abstract}
 
 \begin{keywords}
@@ -61,7 +62,7 @@ trustworthy machine learning
 Wearable and reduced-lead ECG acquisition makes lead \emph{reconstruction}
 ubiquitous: recover the standard 12 leads from one, three, or six observed leads.
 Dozens of recent methods---linear, U-Net, transformer, and diffusion---report low
-mean-squared error \cite{gradowski2025reveals,cardoso2024bayesian}. Yet a low
+mean-squared error \cite{cardoso2024bayesian}. Yet a low
 aggregate error certifies nothing about \emph{which} morphological features are
 trustworthy. Generative reconstructors optimise realism, and by the
 perception-distortion tradeoff \cite{blau2018perception} realism on an ill-posed
@@ -69,15 +70,19 @@ inverse problem is bought by \emph{inventing} content. On an ECG this is not a
 cosmetic artifact: a fabricated ST-segment deviation is a fabricated diagnosis.
 
 A recent line of work formalises hallucination in generic inverse problems
-$\bm y=\bm A\bm x+\bm n$ and gives distribution-free assessment
-\cite{gottschling2026hallucinations,kim2025distshift}. Porting that machinery to
-ECG would be incremental: its lower bounds hold for \emph{arbitrary} $\bm A$ and say
-only that ``something is unrecoverable.'' The ECG is special. Its forward operator
-carries a \emph{physical} structure---a low-rank dipole and a physically meaningful
-non-dipolar null space---absent from a generic $\bm A$. This lets us make a
-\emph{positive}, closed-form statement (which named cardiac feature, on which lead,
-is recoverable and with what noise gain) that the generic theory cannot, and to
-\emph{name} the unrecoverable content physically and meter it clinically.
+$\bm y=\bm A\bm x+\bm n$: \cite{gottschling2026hallucinations} derives computable,
+forward-model-dependent bounds on hallucination magnitude and a test for the
+faithfulness of reconstructed detail, and \cite{kim2025distshift} a calibration-free
+indicator of distribution shift---both for an \emph{arbitrary} $\bm A$. The ECG is
+special: its forward operator carries a \emph{physical} structure---a low-rank dipole
+and a physically meaningful non-dipolar null space---absent from a generic $\bm A$.
+This lets us make a \emph{positive}, closed-form, \emph{per-feature} statement (which
+named cardiac feature, on which lead, is recoverable and with what noise gain), name
+the unrecoverable content physically, and meter it clinically---a specialisation the
+forward-model-only bounds do not provide. Closest to us,
+\cite{gradowski2025reveals} uses a U-Net to \emph{quantify} each lead's information
+content empirically; our certificate is closed-form, per-segment, and calibrated,
+derived from cardiac physics rather than a learned model.
 
 \noindent\textbf{Contributions.} (1) A per-segment operator decomposition of
 reduced-lead ECG into three tiers---provably recoverable (dipolar), statistically
@@ -90,10 +95,10 @@ non-dipolar part, and a conformal-risk-controlled hallucination flag, with a hel
 false-flag guarantee, for the unrecoverable part (Sec.~\ref{sec:calib}). (3) Evidence
 on PTB-XL that the certificate localises and \emph{explains} reconstruction error
 where a scalar cannot: it flags configurations that cannot support a decision
-(precordial ST from limb leads) upfront, and---sweeping a trained CNN along the
-perception--distortion frontier---shows that fabrication is chosen by the
-\emph{objective}, injecting certified-unrecoverable energy that decorrelates from
-truth (Sec.~\ref{sec:exp}).
+(precordial ST from limb leads) upfront, and---scoring a real conditional diffusion
+model against a held-out recoverability oracle---shows that fabrication is chosen by
+the \emph{objective}, injecting a growing recoverability deficit a scalar error
+cannot see (Sec.~\ref{sec:exp}).
 
 \section{The Recoverability Certificate}
 \label{sec:cert}
