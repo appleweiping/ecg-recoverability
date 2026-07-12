@@ -1,0 +1,67 @@
+% Corrected mathematical core (P0-1). Drop-in replacement for the old Theorem 1;
+% to be wired into main.tex during the paper rewrite. No claim of residual
+% independence on real data; per-target-lead identifiability + conditioning; the
+% strict independence/Var(u) lower bound is stated only for the synthetic model.
+
+\newtheorem{theoremc}{Theorem}
+\newtheorem{propc}{Proposition}
+
+% ---------------------------------------------------------------- setup
+\paragraph{Model.} Within segment $s$ write the population 12-lead vector as
+$\bm L_s = \bm\mu_s + \bm M_s\bm d + \bm r_s$, where $\bm M_s\in\mathbb R^{12\times3}$
+is the (population-estimated, PCA) dipolar basis, $\bm d$ the dipole coordinates, and
+$\bm r_s$ the non-dipolar residual. Observing $S$ gives $\bm y_S=\bm{\mathrm{Sel}}_S\bm L_s
++\bm n$. Let $\bm M_{s,S}=\bm{\mathrm{Sel}}_S\bm M_s$ have truncated SVD at relative
+tolerance $\varrho$; $\bm M_{s,S}^{+}$ its truncated pseudo-inverse and
+$\bm P_{\mathrm{obs}}=\bm M_{s,S}^{+}\bm M_{s,S}$ the projector onto the observed dipole
+coordinate directions.
+
+% ---------------------------------------------------------------- theorem
+\begin{theoremc}[Per-target-lead dipolar identifiability and conditioning]
+\label{thm:perlead}
+The mean-centred dipolar estimate
+$\widehat{\bm L}_s=\bm\mu_s+\bm M_s\bm M_{s,S}^{+}(\bm y_S-\bm\mu_{s,S})$ satisfies, for
+each target lead $\ell$ with $\bm e_\ell$ the $\ell$-th unit vector:
+\begin{enumerate}
+\item[(i)] \emph{Identifiability.} Define
+$\eta_{s,\ell}(S)=\big\|\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})\big\|_2$.
+If $\eta_{s,\ell}(S)=0$, the dipolar component of lead $\ell$ is identifiable from $S$:
+$\bm e_\ell^{\top}\bm M_s\bm d$ is determined by $\bm{\mathrm{Sel}}_S\bm M_s\bm d$. If
+$\eta_{s,\ell}(S)>0$, there is a dipole direction unobserved by $S$ that changes lead
+$\ell$; its dipolar component is not identifiable at any SNR.
+\item[(ii)] \emph{Conditioning.} On the identifiable part, the error from observation
+noise and from the observed non-dipolar residual is amplified into lead $\ell$ by
+$\kappa_{s,\ell}(S)=\big\|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}\big\|_2$:
+$\big|\bm e_\ell^{\top}(\widehat{\bm L}_s-\bm\mu_s-\bm M_s\bm P_{\mathrm{obs}}\bm d)\big|
+\le \kappa_{s,\ell}(S)\,\big(\|\bm{\mathrm{Sel}}_S\bm r_s\|+\|\bm n\|\big).$
+\end{enumerate}
+The global $\kappa_s(S)=\|\bm M_s\bm M_{s,S}^{+}\|_2=\max_\ell\kappa_{s,\ell}(S)$ is a
+configuration-level worst case. Both $\eta_{s,\ell}$ and $\kappa_{s,\ell}$ depend on the
+estimated $\bm M_s$ and on $\varrho$; near-rank-deficient $S$ are reported with an
+$\varrho$-sensitivity sweep and record-bootstrap confidence intervals.
+\end{theoremc}
+
+% ---------------------------------------------------------------- residual (honest)
+\paragraph{The non-dipolar residual (no independence claim on real data).}
+Let $\bm m_s(\bm y_S)=\mathbb E[\bm r_s\mid\bm y_S]$ and
+$\bm u_s=\bm r_s-\bm m_s(\bm y_S)$, so $\mathbb E[\bm u_s\mid\bm y_S]=\bm 0$. We do
+\emph{not} assume $\bm u_s\perp\bm y_S$. The Bayes-optimal reconstruction error of the
+residual is
+\[
+\inf_{\hat{\bm r}}\ \mathbb E\big\|\bm r_s-\hat{\bm r}(\bm y_S)\big\|^2
+=\mathbb E\big[\operatorname{Var}(\bm r_s\mid\bm y_S)\big].
+\]
+Part of $\bm r_s$ (the \emph{empirically predictable residual}) is recovered by a
+predictor trained on $\bm y_S$ and metered with distribution-free calibrated intervals;
+the remainder is an \emph{achievability gap}, established by a held-out achievability
+analysis for a stated predictor family---\emph{not} declared unrecoverable a priori.
+
+\begin{propc}[Strict independence limit -- synthetic model only]
+\label{prop:synth}
+If the data are generated so that a component $\bm u$ is statistically independent of
+$\bm y_S$ (an explicit synthetic construction), then $p(\bm u\mid\bm y_S)=p(\bm u)$, the
+Bayes estimate of $\bm u$ is its prior mean, and
+$\mathbb E\|\widehat{\bm u}-\bm u\|^2\ge\operatorname{Var}(\bm u)$ for any estimator. This
+strict limit is invoked \emph{only} for the synthetic model; on real ECG we make no such
+independence claim.
+\end{propc}
