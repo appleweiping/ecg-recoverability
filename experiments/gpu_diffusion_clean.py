@@ -81,21 +81,23 @@ def _preload(db, test_ids, rate=100):
 
 
 # ------------------------------------------------------------------ batched recon
-def _batched(model, sigs, scale, guidance, T, seed, chunk=128):
-    """Reconstruct all `sigs` in GPU batches. Returns list of (12,1000) mV."""
+def _batched(model, sigs, scale, guidance, T, seed, obs_idx, chunk=128):
+    """Reconstruct all `sigs` in GPU batches, conditioned ONLY on `obs_idx`.
+    Returns list of (12,1000) mV."""
     yn = np.stack([(s.T / scale[:, None]).astype(np.float32) for s in sigs])   # (N,12,1000)
     out = [None] * len(sigs)
     for i in range(0, len(sigs), chunk):
-        rec = model.sample(yn[i:i + chunk], guidance=guidance, replace=True, steps=T, seed=seed)
+        rec = model.sample(yn[i:i + chunk], obs_idx=obs_idx, guidance=guidance,
+                           replace=True, steps=T, seed=seed)
         for j in range(rec.shape[0]):
             out[i + j] = rec[j] * scale[:, None]
     return out
 
 
-def _postmean(model, sigs, scale, guidance, T, K, chunk=128):
+def _postmean(model, sigs, scale, guidance, T, K, obs_idx, chunk=128):
     acc = [np.zeros((12, 1000)) for _ in sigs]
     for k in range(K):
-        L = _batched(model, sigs, scale, guidance, T, seed=200 + k, chunk=chunk)
+        L = _batched(model, sigs, scale, guidance, T, seed=200 + k, obs_idx=obs_idx, chunk=chunk)
         for i in range(len(sigs)):
             acc[i] += L[i]
     return [a / K for a in acc]
@@ -176,13 +178,14 @@ def _agg_rmse(panel):
 def run_config(sigs, segidxs, models, cfg, tr_samples, te_samples, model, scale, T,
                guidances, seeds, K, cname, chunk):
     oracle_rho = _oracle(models, tr_samples, te_samples, cfg)
+    oi = tuple(LEAD_INDEX[l] for l in cfg["obs"])          # condition ONLY on this config
     out = {"config": cfg, "oracle_rho": oracle_rho, "sweep": {}}
     for g in guidances:
         samp = _avg_panels([_score(sigs, segidxs, models, oracle_rho,
-                                   _batched(model, sigs, scale, g, T, seed=1 + sd, chunk=chunk), cfg)
+                                   _batched(model, sigs, scale, g, T, seed=1 + sd, obs_idx=oi, chunk=chunk), cfg)
                             for sd in range(seeds)])
         mean = _score(sigs, segidxs, models, oracle_rho,
-                      _postmean(model, sigs, scale, g, T, K, chunk=chunk), cfg)
+                      _postmean(model, sigs, scale, g, T, K, obs_idx=oi, chunk=chunk), cfg)
         out["sweep"][str(g)] = {"sample": samp, "postmean": mean}
         oa = float(np.mean([oracle_rho.get(s, {}).get(l, 0) for s in CORE_SEGS for l in BAND_A]))
         print(f"  [{cname} w={g}] mean dRho={_agg(mean,'delta_rho'):+.3f} h={_agg(mean,'h_mV'):.3f} "
@@ -212,8 +215,7 @@ def _build(n_train, n_test, epochs, T, seed):
     X, _, scale = _load_full(db, norm_train, 100, max_records=n_train)
     Xn = X / scale[None, :, None]
     print(f"[clean] train {Xn.shape} scale={np.round(scale,3)}", flush=True)
-    obs_idx = [LEAD_INDEX[l] for l in CONFIGS["precordial-interp"]["obs"]]
-    model = DiffusionReconstructor(obs_idx, T=T, base=64, device="cuda", cond_dropout=0.15, seed=seed)
+    model = DiffusionReconstructor(T=T, base=64, device="cuda", cond_dropout=0.15, seed=seed)
     model.train(Xn, epochs=epochs, bs=64, lr=2e-4, log_every=10)
     torch.save({"sd": model.net.state_dict(), "scale": scale, "T": T}, RESULTS / "gpu_ddpm.pt")
     return db, models, tr_samples, te_samples, sigs, segidxs, kept, model, scale
@@ -249,14 +251,15 @@ def main_ci(n_train, n_test, epochs, T, guidances, K, n_seeds, seed, chunk):
     Xn = X / scale[None, :, None]
     print(f"[ci] test={len(sigs)} train={Xn.shape} n_seeds={n_seeds}", flush=True)
 
+    oi = tuple(obs_idx)
     per_seed = {str(g): [] for g in guidances}
     for ms in range(n_seeds):
-        model = DiffusionReconstructor(obs_idx, T=T, base=64, device="cuda",
+        model = DiffusionReconstructor(T=T, base=64, device="cuda",
                                        cond_dropout=0.15, seed=100 + ms)
         model.train(Xn, epochs=epochs, bs=64, lr=2e-4, log_every=20)
         for g in guidances:
             panel = _score(sigs, segidxs, models, oracle_rho,
-                           _postmean(model, sigs, scale, g, T, K, chunk=chunk), cfg)
+                           _postmean(model, sigs, scale, g, T, K, obs_idx=oi, chunk=chunk), cfg)
             d = _agg(panel, "delta_rho")
             per_seed[str(g)].append(d)
             print(f"  [seed {ms} w={g}] dRho={d:+.3f}", flush=True)
@@ -300,7 +303,8 @@ def validate(seed=0):
         n_train=800, n_test=24, epochs=2, T=50, seed=seed)
     cfg = CONFIGS["precordial-interp"]
     oracle_rho = _oracle(models, tr_samples, te_samples, cfg)
-    Lhats = _batched(model, sigs, scale, guidance=2.0, T=50, seed=7)
+    oi = tuple(LEAD_INDEX[l] for l in cfg["obs"])
+    Lhats = _batched(model, sigs, scale, guidance=2.0, T=50, seed=7, obs_idx=oi)
     mine = _score(sigs, segidxs, models, oracle_rho, Lhats, cfg)
     it = iter(Lhats)
     ref = _score_recon(db, models, oracle_rho, lambda _s: next(it), kept, cfg, 100, "ref")
