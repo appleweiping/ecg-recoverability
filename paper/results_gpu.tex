@@ -15,23 +15,27 @@ conditional 1-D DDPM (classifier-free guidance, RePaint measurement replacement)
 PTB-XL and score held-out NORM reconstructions with the certificate (Fig.~\ref{fig:gpu};
 all quantities below are averaged over QRS/ST/T $\times\{$V2,V4,V6$\}$).
 
-Two comparisons are needed to avoid a mean-vs-sample confound: the diffusion
-\emph{posterior mean} ($K$-sample average, variance-free) and a single deployed draw.
-At the honest end ($w{=}1$) the posterior mean \emph{matches} the oracle
-($\Delta\rho{=}\dRhoMeanOne$): the model is competent and Band~A is genuinely
-recoverable. As the guidance scale $w$ rises the mean output sharpens toward
-population-typical morphology and develops a \emph{growing recoverability deficit}
-$\Delta\rho{=}\rho_{\rm oracle}{-}\rho_{\rm mean}$, reaching $\dRhoMeanMax$ at
-$w{=}\wmaxval$ --- a genuine distributional effect, not single-sample variance. A single
-deployed draw carries an \emph{additional} sampling-variance deficit (total
-$\dRhoSampMax$). Crucially the same outputs stay faithful on the recoverable
-\emph{dipole} subspace ($\rho_{\rm recoverable}{=}\RhoRec$): the model is competent, not
-broken, and RMSE stays in a narrow, non-monotone band ($\rmseLo$--$\rmseHi$\,mV) that
-does \emph{not} track the deficit --- which is therefore invisible to a scalar and
-localized only by the certificate. On the limb-6 control, where the linear reference is
-lower but nonzero ($\negOra$), the diffusion still matches or exceeds it and the deficit
-stays negative ($\Delta\rho{=}\negQRSdRho$, QRS): a positive $\Delta\rho$ flags a genuine
-\emph{failure to recover} provable content, not the mere act of raising guidance.
+Two comparisons avoid a mean-vs-sample confound: the diffusion \emph{posterior mean}
+($K$-sample average, variance-free) and a single deployed draw. At the honest end
+($w{=}1$) the posterior mean \emph{matches} the oracle ($\Delta\rho{=}\dRhoMeanOne$): the
+model is competent and Band~A is genuinely recoverable. As the guidance scale $w$ rises
+the mean sharpens toward population-typical morphology and develops a \emph{growing
+recoverability deficit} $\Delta\rho{=}\rho_{\rm oracle}{-}\rho_{\rm mean}$ --- a
+distributional effect, not single-sample variance. The growth is monotone in the seed
+mean and in $\monoFull$ of $\nSeeds$ independently trained models (all $\monoFromTwo$ for
+$w{\ge}2$), and unambiguous at high realism: $\Delta\rho{=}\dRhoCImax{\pm}\dRhoCIsd$ at
+$w{=}\wCImax$ ($\dRhoCIsigma\sigma$ over seeds). Crucially, already in the operational
+regime ($w{\le}\wfour$) --- where RMSE is \emph{flat} ($\rmseFour$\,mV, posterior mean)
+and the model stays faithful on the recoverable dipole subspace
+($\rho_{\rm recoverable}{=}\RhoRecFour$) --- the deficit is present, if marginal
+($\dRhoCIfour{\pm}\dRhoCIfoursd$, $\dRhoCIfoursigma\sigma$): the fabrication is invisible to
+a scalar and localized only by the certificate. Only at extreme guidance ($w{=}\wmaxval$)
+does the model visibly degrade on \emph{every} metric (RMSE $\rmseHi$\,mV,
+$\rho_{\rm recoverable}{\to}\RhoRec$) --- by then the fabrication is severe enough to move
+even RMSE, which the certificate had flagged all along. On the limb-6 control the linear reference is lower but nonzero ($\negOra$); the
+diffusion matches or exceeds it and the deficit stays negative ($\Delta\rho{=}\negQRSdRho$,
+QRS), so a \emph{positive} $\Delta\rho$ marks a genuine failure to recover provable
+content, not the mere act of raising guidance.
 
 \begin{figure}[t]
   \centering
@@ -40,9 +44,10 @@ stays negative ($\Delta\rho{=}\negQRSdRho$, QRS): a positive $\Delta\rho$ flags 
   NORM PTB-XL. \emph{Left}: the posterior mean tracks the held-out recoverable reference
   $\rho_{\rm oracle}$ at low guidance and pulls away as $w$ rises (red band = a genuine
   recoverability deficit); a single deployed draw sits a fixed sampling-variance band
-  below (orange). \emph{Right}: the deficit $\Delta\rho$ grows monotonically with the
-  realism knob while RMSE stays in a narrow non-monotone band, and the limb-6 control
-  shows no positive deficit --- the certificate sees, and localizes, what a scalar
-  cannot. All curves average QRS/ST/T $\times\{$V2,V4,V6$\}$.}
+  below (orange). \emph{Right}: the deficit $\Delta\rho$ (mean$\pm$s.d.\ over $\nSeeds$
+  seeds) grows monotonically with the realism knob; RMSE stays flat through $w{=}\wfour$
+  and rises only at extreme guidance, and the limb-6 control shows no positive deficit ---
+  the certificate sees, and localizes, what a scalar cannot until far later. All curves
+  average QRS/ST/T $\times\{$V2,V4,V6$\}$.}
   \label{fig:gpu}
 \end{figure}

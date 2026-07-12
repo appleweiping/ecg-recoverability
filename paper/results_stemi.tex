@@ -41,3 +41,16 @@ likelihood-ratio weighting instead over-widens to trivial ($1.00$) coverage and 
 a repair. Tier~I exactness and the Tier~III flag's soundness are unaffected, as
 promised: only the Tier~II \emph{level} is shift-sensitive, and it is measurable and
 repairable.
+
+\textbf{Cross-dataset.} On the geographically distinct Chapman--Shaoxing database
+\cite{zheng2020chapman} ($\crossN$ Chinese hospital records, identical processing), the
+data-estimated dipole basis $\bm M_s$ transfers. Per-segment dipolarity matches PTB-XL
+(QRS $\crossDipChap$/$\crossDipPtb$, ST $\crossDipSTchap$/$\crossDipSTptb$, T
+$\crossDipTchap$/$\crossDipTptb$); the dominant QRS directions align (principal angles
+${\le}\crossQRSang^\circ$); and the \emph{well-conditioned} $\kappa_s(S)$ agrees (spanning
+$\{$I,II,V1,V3,V5$\}$: $\crossKapSpanChap$ vs $\crossKapSpanPtb$). The lead-mixing operator
+$\bm T$ (Einthoven/Goldberger) is dataset-independent by definition; the fit confirms the
+estimated $\bm M_s$ is too --- save the lowest-variance dipole direction of the
+\emph{less-dipolar} ST/T segments, and the limb-6 configuration, which is effectively
+rank-deficient in both cohorts ($\kappa_s{\gtrsim}10^{4}$, its transverse dipole
+unobserved and its magnitude numerically unstable).

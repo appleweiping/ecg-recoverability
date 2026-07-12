@@ -1,0 +1,112 @@
+{
+  "n_chapman_records": 349,
+  "processing": "100Hz, lead-II dwt, top-3 spatial eig",
+  "segments": {
+    "P": {
+      "principal_angles_deg": [
+        88.38,
+        31.83,
+        6.1
+      ],
+      "max_angle_deg": 88.38,
+      "ptbxl_evr3": [
+        0.238,
+        0.175,
+        0.127
+      ],
+      "chapman_evr3": [
+        0.315,
+        0.231,
+        0.151
+      ],
+      "n_ptb": 59940,
+      "n_chap": 13781
+    },
+    "QRS": {
+      "principal_angles_deg": [
+        20.28,
+        9.06,
+        1.61
+      ],
+      "max_angle_deg": 20.28,
+      "ptbxl_evr3": [
+        0.558,
+        0.273,
+        0.076
+      ],
+      "chapman_evr3": [
+        0.545,
+        0.272,
+        0.064
+      ],
+      "n_ptb": 59917,
+      "n_chap": 13954
+    },
+    "ST": {
+      "principal_angles_deg": [
+        88.34,
+        12.97,
+        10.61
+      ],
+      "max_angle_deg": 88.34,
+      "ptbxl_evr3": [
+        0.382,
+        0.237,
+        0.098
+      ],
+      "chapman_evr3": [
+        0.417,
+        0.246,
+        0.1
+      ],
+      "n_ptb": 59913,
+      "n_chap": 13867
+    },
+    "T": {
+      "principal_angles_deg": [
+        89.15,
+        22.39,
+        6.75
+      ],
+      "max_angle_deg": 89.15,
+      "ptbxl_evr3": [
+        0.513,
+        0.143,
+        0.085
+      ],
+      "chapman_evr3": [
+        0.518,
+        0.147,
+        0.094
+      ],
+      "n_ptb": 59945,
+      "n_chap": 13782
+    }
+  },
+  "kappa_QRS": {
+    "{I,II,V2}": {
+      "ptbxl": 3.14,
+      "chapman": 4.11,
+      "rank_ptb": 3,
+      "rank_chap": 3
+    },
+    "{I,II,V1,V3,V5}": {
+      "ptbxl": 2.54,
+      "chapman": 2.26,
+      "rank_ptb": 3,
+      "rank_chap": 3
+    },
+    "{V1,V2,V3}": {
+      "ptbxl": 3.94,
+      "chapman": 6.74,
+      "rank_ptb": 3,
+      "rank_chap": 3
+    },
+    "limb-6": {
+      "ptbxl": 206991.81,
+      "chapman": 184162.7,
+      "rank_ptb": 3,
+      "rank_chap": 3
+    }
+  }
+}

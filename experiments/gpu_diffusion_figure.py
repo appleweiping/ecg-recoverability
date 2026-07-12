@@ -70,10 +70,16 @@ def main():
               f"{prim['rmse'][i]:>6.3f} {prim['h'][i]:>6.3f} {prim['rhoRec'][i]:>7.2f}")
     if neg:
         print("limb6 negctrl mean dRho:", [round(v, 3) for v in neg["mean_drho"]])
-    _plot(prim, neg)
+    ci = None
+    ci_path = RESULTS / "gpu_deficit_ci.json"
+    if ci_path.exists():
+        c = json.loads(ci_path.read_text())
+        ci = {float(w): (c["mean"][w], c["std"][w]) for w in c["mean"]}
+        print("CI (mean+/-std over seeds):", {w: (round(m, 3), round(s, 3)) for w, (m, s) in ci.items()})
+    _plot(prim, neg, ci)
 
 
-def _plot(p, neg):
+def _plot(p, neg, ci=None):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -94,8 +100,16 @@ def _plot(p, neg):
     ax.grid(alpha=0.3); ax.set_ylim(0, max(0.45, p["oracle"] + 0.08))
 
     ax = axes[1]
-    ax.plot(x, p["mean_drho"], "s-", color="tab:red", lw=2,
-            label=r"$\Delta\rho$ deficit (posterior mean)")
+    if ci is not None:
+        cx = [w for w in x if w in ci]
+        cmean = [ci[w][0] for w in cx]
+        cerr = [ci[w][1] for w in cx]
+        ax.errorbar(cx, cmean, yerr=cerr, fmt="s-", color="tab:red", lw=2, elinewidth=1.4,
+                    capsize=3, zorder=5,
+                    label=r"$\Delta\rho$ deficit (mean$\pm$s.d. over seeds)")
+    else:
+        ax.plot(x, p["mean_drho"], "s-", color="tab:red", lw=2,
+                label=r"$\Delta\rho$ deficit (posterior mean)")
     if neg:
         ax.plot(neg["x"], neg["mean_drho"], "d--", color="tab:gray", lw=1.5,
                 label=r"$\Delta\rho$ limb-6 negctrl ($\rho_{\rm or}\!\approx\!0$)")

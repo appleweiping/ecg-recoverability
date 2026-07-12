@@ -172,10 +172,15 @@ conditional 1-D **DDPM** (classifier-free guidance + RePaint) on PTB-XL and scor
 certificate, comparing the diffusion **posterior mean** (variance-free) to a single deployed
 draw to avoid a mean-vs-sample confound. At the honest end (guidance `w=1`) the posterior
 mean *matches* the oracle (Δρ≈0 — the model is competent); as guidance pushes toward realism,
-the mean develops a **growing recoverability deficit** (Δρ: 0 → +0.10 at `w=4`) while staying
-faithful on the recoverable dipole subspace (ρ_recoverable≈0.83) and while **RMSE stays flat**
-— the deficit is invisible to a scalar and localized only by the certificate. On the limb-6
-negative control (QRS, `ρ_oracle≈0`) the deficit never turns positive: no false alarm. (A
+the mean develops a **growing recoverability deficit** — monotone in the seed mean and in
+**3 of 4 independently trained models** (all 4 for `w≥2`), reaching **Δρ = +0.15 ± 0.03 at
+`w=6` (≈4.3σ over seeds)**. Through the operational regime (`w≤4`) RMSE stays **flat** (~0.21
+mV, posterior mean) and the model stays faithful on the recoverable dipole subspace
+(ρ_recoverable≈0.89) even though the deficit is already present, if marginal (+0.08 ± 0.04, ~1.9σ)
+— the fabrication is invisible to a scalar and localized only by the certificate. Only at
+extreme guidance (`w=6`) does the model visibly degrade on *every* metric (RMSE→0.32), by which
+point the certificate had flagged it all along. On the limb-6 control the linear reference is
+lower but nonzero; the diffusion matches or exceeds it (Δρ stays negative) — no false alarm. (A
 complementary `results/neural_perception_distortion.png` shows the same phenomenon in a CNN
 swept over an explicit distortion–perception weight.)
 
@@ -192,6 +197,18 @@ reliable safety signal is the **configuration-level κ warning**, not the per-re
 recalibration restores it to 0.93 at modest width increase (0.15→0.24 mV). (Naive
 likelihood-ratio weighting over-widens to trivial 1.00 coverage — not a repair.) Only
 the Tier II *level* is shift-sensitive; Tier I exactness and Tier III soundness hold.
+
+**Cross-dataset (`results/cross_dataset.json`).** The certificate's only data-estimated
+object — the dipolar subspace `M_s`, hence the conditioning `κ_s(S)` — is
+population-independent. Refit on the geographically distinct **Chapman-Shaoxing-Ningbo**
+database (349 Chinese hospital records, identical processing), the per-segment dipolarity
+matches PTB-XL (QRS 0.88/0.91, ST 0.76/0.72, T 0.76/0.74), the dominant QRS dipole directions
+align (principal angles ≤21°), and the **well-conditioned** `κ_s(S)` agrees (the exhibit's
+`{I,II,V1,V3,V5}`: 2.3 vs 2.5). The lead-mixing operator `T` (Einthoven/Goldberger) is
+dataset-independent *by definition*; the fit confirms the *estimated* `M_s` is too — except
+the lowest-variance dipole direction of the less-dipolar ST/T segments, and limb-6, which is
+effectively rank-deficient in both cohorts (`κ≳10⁴`, magnitude numerically unstable). (`κ`
+is **not** pure algebra — it depends on the estimated `M_s`; only the lead operator `T` is.)
 
 ## 6. Repository layout
 
@@ -212,8 +229,9 @@ experiments/
   cross_device.py               # M5b: CS->AT device-shift coverage + repair
   neural_baselines.py           # M6: real CNN distortion->perception sweep (CPU)
   gpu_fabrication.py            # M7: oracle gate (Band A/B) + diffusion scoring (GPU)
-  gpu_diffusion_clean.py        # M8: de-noised CRAFT exhibit -> gpu_diffusion.json (GPU)
-  gpu_diffusion_figure.py       # M8: recoverability-deficit frontier figure
+  gpu_diffusion_clean.py        # M8: de-noised CRAFT exhibit + --ci error bars (GPU)
+  gpu_diffusion_figure.py       # M8: recoverability-deficit frontier figure (+CI bars)
+  cross_dataset.py              # M9: Chapman-Shaoxing-Ningbo M_s/kappa transfer check
 scripts/
   download_data.py              # PTB-XL via HuggingFace mirror (GFW-friendly)
   precheck_dipolarity.py        # risk-2 gate: per-segment dipolarity by diagnosis
