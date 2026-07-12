@@ -1,0 +1,96 @@
+Table 2. Limb-6→precordial STEMI failures (PTB-XL fold
+10, 799 records; ST at J+60 ms vs. PR baseline, 0.1 mV
+threshold). RMSE-invisible, bidirectional, and only partly
+flaggable—the reliable signal is the upfront κ warning.
+method
+
+Fig. 2.
+Conditional DDPM, S={I,II,V1,V3,V5} →
+{V2,V4,V6}, held-out NORM PTB-XL. Left: the posterior
+mean tracks the held-out recoverable reference ρoracle at low
+guidance and pulls away as w rises (red band = a genuine
+recoverability deficit); a single deployed draw sits a fixed
+sampling-variance band below (orange). Right: the deficit
+∆ρ (mean±s.d. over 4 seeds) grows monotonically with the
+realism knob; RMSE stays flat through w=4 and rises only
+at extreme guidance, and the limb-6 control shows no positive deficit — the certificate sees, and localizes, what a
+scalar cannot until far later. All curves average QRS/ST/T
+×{V2,V4,V6}.
+
+dipolar (h≡0)
+OLS
+generative
+
+fabricated
+
+masked
+
+ST err (mV)
+
+226
+6
+263
+
+165
+360
+134
+
+0.074
+0.075
+0.080
+
+over-widens to trivial (1.00) coverage and is not a repair.
+Tier I exactness and the Tier III flag’s soundness are unaffected, as promised: only the Tier II level is shift-sensitive,
+and it is measurable and repairable.
+Cross-dataset. On the geographically distinct Chapman–
+Shaoxing database [13] (349 Chinese hospital records, identical processing), the data-estimated dipole basis Ms transfers.
+Per-segment dipolarity matches PTB-XL (QRS 0.88/0.91,
+ST 0.76/0.72, T 0.76/0.74); the dominant QRS directions
+align (principal angles ≤21◦ ); and the well-conditioned
+κs (S) agrees (spanning {I,II,V1,V3,V5}: 2.3 vs 2.5). The
+lead-mixing operator T (Einthoven/Goldberger) is datasetthe deficit stays negative (∆ρ= − 0.31, QRS), so a positive
+independent by definition; the fit confirms the estimated Ms
+∆ρ marks a genuine failure to recover provable content, not
+is too — save the lowest-variance dipole direction of the lessthe mere act of raising guidance.
+dipolar ST/T segments, and the limb-6 configuration, which
+is effectively rank-deficient in both cohorts (κs ≳104 , its
+4.5. Safety case: precordial ST from limb leads
+transverse dipole unobserved and its magnitude numerically
+The certificate warns before reconstruction that limb-6→precordialunstable).
+is unsafe for an ST decision: κ=6.7 × 104 , effective rank 2,
+and the ST segment is only 0.74 dipolar, so precordial ST is
+largely Tier III. The danger is real, bidirectional, and RMSEinvisible: over 799 fold-10 records (Table 2), all methods
+have ∼ 0.075 mV ST error, yet the generative reconstructor fabricates 263 phantom STEMIs and the conservative
+OLS masks 360. Two honest caveats we report rather than
+hide: (a) even the dipolar reconstructor—blessed with h≡0—
+fabricates 226 STEMIs, because that error lives inside the
+recoverable subspace (a contaminated dipole estimate) where
+h is blind; (b) the null-space flag catches only a minority
+of generative fabrications (18/263, held-out threshold). The
+dependable safety signal is therefore the configuration-level
+certificate: this lead set should not drive a precordial ST call,
+and κ says so with no reconstruction at all.
+4.6. Guarantees under device shift
+Calibrating on the Schiller CS device family and testing on
+the AT family (a genuine within-PTB-XL device shift), the
+ST/V4 interval keeps nominal 0.90 coverage in-distribution
+but drops to 0.82 on the shifted device—Tier II coverage
+is shift-sensitive. A small (300-record) recalibration on the
+new device restores it to 0.93 at a modest width increase
+(0.15 → 0.24 mV); naive likelihood-ratio weighting instead
+
+5. CONCLUSION
+Reduced-lead ECG reconstruction is not just ill-posed but illposed with a known physical structure. Exploiting the cardiac
+dipole turns “trust the reconstruction” into a per-feature certificate: exact recovery where the dipole is spanned (with a
+conditioning κs (S) that warns where it is not), a calibrated interval where the population constrains the residual, and a flag
+where nothing does. It tells you, before any reconstruction,
+which features a lead configuration can support—and shows
+that fabrication is a choice of objective, not an accident of the
+network. The certificate is reconstructor-agnostic and wraps
+any method.
+6. REFERENCES
+[1] Gabriel V. Cardoso, Lisa Bedin, Josselin Duchateau,
+Rémi Dubois, and Eric Moulines, “Bayesian ECG reconstruction using denoising diffusion generative models,” arXiv preprint arXiv:2401.05388, 2024.
+[2] Yochai Blau and Tomer Michaeli, “The perceptiondistortion tradeoff,” Proc. IEEE/CVF Conf. Computer
+
+

@@ -1,0 +1,47 @@
+Vision and Pattern Recognition (CVPR), pp. 6228–6237,
+2018.
+[3] David Iagaru, Nina M. Gottschling, Anders C. Hansen,
+and Josselin Garnier, “On hallucinations in inverse
+problems: Fundamental limits and provable assessment
+methods,” arXiv preprint arXiv:2605.13146, 2026.
+[4] Namhoon Kim and Sara Fridovich-Keil, “Towards
+distribution-shift uncertainty estimation for inverse
+problems with generative priors,” in IEEE Int. Workshop
+on Computational Advances in Multi-Sensor Adaptive
+Processing (CAMSAP), 2025.
+[5] Tomasz Gradowski and Teodor Buchner, “Deep learning model for ECG reconstruction reveals the information content of ECG leads,”
+arXiv preprint
+arXiv:2502.00559, 2025.
+[6] Lars Edenbrandt and Olle Pahlm, “Vectorcardiogram
+synthesized from a 12-lead ECG: superiority of the inverse Dower matrix,” Journal of Electrocardiology, vol.
+21, no. 4, pp. 361–367, 1988.
+[7] Yaniv Romano, Evan Patterson, and Emmanuel J.
+Candès, “Conformalized quantile regression,” in
+Advances in Neural Information Processing Systems
+(NeurIPS), 2019, vol. 32.
+[8] Anastasios N. Angelopoulos, Stephen Bates, Adam
+Fisch, Lihua Lei, and Tal Schuster, “Conformal risk
+control,” in International Conference on Learning Representations (ICLR), 2024.
+[9] Ryan J. Tibshirani, Rina Foygel Barber, Emmanuel J.
+Candès, and Aaditya Ramdas, “Conformal prediction
+under covariate shift,” in Advances in Neural Information Processing Systems (NeurIPS), 2019, vol. 32.
+[10] Patrick Wagner, Nils Strodthoff, Ralf-Dieter Bousseljot,
+Dieter Kreiseler, Fatima I. Lunze, Wojciech Samek, and
+Tobias Schaeffter, “PTB-XL, a large publicly available
+electrocardiography dataset,” Scientific Data, vol. 7, no.
+1, pp. 154, 2020.
+[11] Dominique Makowski, Tam Pham, Zen J. Lau, et al.,
+“NeuroKit2: A Python toolbox for neurophysiological
+signal processing,” Behavior Research Methods, vol.
+53, no. 4, pp. 1689–1696, 2021.
+[12] Matthew A. Reyna, Nadi Sadr, Erick A. Perez Alday,
+et al., “Will two do? varying dimensions in electrocardiography: The PhysioNet/Computing in cardiology
+challenge 2021,” in Computing in Cardiology (CinC),
+2021, vol. 48, pp. 1–4.
+
+[13] Jianwei Zheng, Jianming Zhang, Sidy Danioko, Hai
+Yao, Hangyuan Guo, and Cyril Rakovski, “A 12lead electrocardiogram database for arrhythmia research
+covering more than 10,000 patients,” Scientific Data,
+vol. 7, no. 1, pp. 48, 2020.
+
+

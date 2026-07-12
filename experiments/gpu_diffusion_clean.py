@@ -32,7 +32,7 @@ from pathlib import Path
 import numpy as np
 
 from ecgcert.certify.tier_decomposition import (
-    certified_unrecoverable_projector, recoverable_dipole_projector)
+    off_dipole_projector, recoverable_dipole_projector)
 from ecgcert.data import PTBXL
 from ecgcert.models import fit_segment_models
 from ecgcert.physics import LEAD_INDEX
@@ -53,7 +53,7 @@ def _oracle(models, tr_samples, te_samples, cfg):
         m = models.get(s)
         if m is None or tr_samples[s].shape[0] < 200 or te_samples[s].shape[0] < 200:
             continue
-        U = certified_unrecoverable_projector(m.M, cfg["obs"])
+        U = off_dipole_projector(m.M, cfg["obs"])
         Ftr, Fte = tr_samples[s][:, obs_idx], te_samples[s][:, obs_idx]
         Rtr, Rte = (tr_samples[s] - m.mu) @ U.T, (te_samples[s] - m.mu) @ U.T
         out[s] = {}
@@ -109,7 +109,7 @@ def _score(sigs, segidxs, models, oracle_rho, Lhats, cfg):
     for s in SEGMENTS:
         m = models.get(s)
         if m is not None:
-            U = certified_unrecoverable_projector(m.M, cfg["obs"])
+            U = off_dipole_projector(m.M, cfg["obs"])
             R, _ = recoverable_dipole_projector(m.M, cfg["obs"])
             proj[s] = (U, R)
     acc = {s: {l: {"rec": [], "true": [], "recR": [], "trueR": []} for l in tgt} for s in SEGMENTS}

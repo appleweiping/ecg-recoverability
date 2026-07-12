@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ecgcert.certify import hallucination_energy
+from ecgcert.certify import off_dipole_energy
 from ecgcert.clinical import count_stemi_flips, st_deviation, stemi_positive
 from ecgcert.conformal import flag_threshold
 from ecgcert.data import PTBXL
@@ -60,7 +60,7 @@ def _reconstruct_full(sig, db, rate, models, obs, recons):
             Lhat = rec.predict(yS)                       # (12, T_seg)
             out[rname][:, idx] = Lhat
             if seg == "ST":
-                h = hallucination_energy(m.M, m.mu, obs, Lhat)
+                h = off_dipole_energy(m.M, m.mu, obs, Lhat)
                 st_h[rname] = float(np.mean(h[PRECORDIAL_IDX]))
     return out, st_h
 

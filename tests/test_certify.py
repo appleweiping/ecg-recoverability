@@ -4,10 +4,10 @@ import pytest
 
 from ecgcert.certify import (
     Tier,
-    certified_unrecoverable_projector,
-    hallucination_energy,
+    off_dipole_projector,
+    off_dipole_energy,
     recoverable_dipole_projector,
-    supported_reconstruction,
+    dipole_supported_reconstruction,
     tier_report,
 )
 from ecgcert.physics import (
@@ -41,7 +41,7 @@ def test_hallucination_energy_zero_for_faithful_dipolar():
     L = _dipolar_population()
     M_s, mu_s, _ = fit_dipolar_subspace(L, rank=3)
     Ltest = _dipolar_population(n=64, seed=7).T          # (12, 64) exactly dipolar
-    h = hallucination_energy(M_s, mu_s, ["I", "II", "V2"], Ltest)
+    h = off_dipole_energy(M_s, mu_s, ["I", "II", "V2"], Ltest)
     # Purely dipolar signal has no certified-unrecoverable energy.
     assert np.max(h) < 1e-8
 
@@ -57,7 +57,7 @@ def test_hallucination_energy_scales_with_injection():
     for delta in [0.0, 0.05, 0.1, 0.2, 0.4]:
         L_hat = base.copy()
         L_hat[v3] += delta * rng.standard_normal(base.shape[1])
-        h = hallucination_energy(M_s, mu_s, ["I", "II", "V2"], L_hat)
+        h = off_dipole_energy(M_s, mu_s, ["I", "II", "V2"], L_hat)
         energies.append(delta)
         hs.append(h[v3])
     # Monotone increasing hallucination energy with injected non-dipolar energy.
@@ -71,10 +71,10 @@ def test_supported_reconstruction_strips_injection():
     base = _dipolar_population(n=32, seed=5).T
     L_hat = base.copy()
     L_hat[LEAD_INDEX["V3"]] += 0.3
-    supported = supported_reconstruction(M_s, mu_s, ["I", "II", "V2"], L_hat)
+    supported = dipole_supported_reconstruction(M_s, mu_s, ["I", "II", "V2"], L_hat)
     # The supported reconstruction lives in the dipole subspace: its residual has
     # no certified-unrecoverable energy.
-    h = hallucination_energy(M_s, mu_s, ["I", "II", "V2"], supported)
+    h = off_dipole_energy(M_s, mu_s, ["I", "II", "V2"], supported)
     assert np.max(h) < 1e-8
     # And the supported reconstruction equals the recovered dipolar projection.
     R_s, _ = recoverable_dipole_projector(M_s, ["I", "II", "V2"])
@@ -82,18 +82,22 @@ def test_supported_reconstruction_strips_injection():
     assert np.linalg.norm(supported - expect) < 1e-10
 
 
-def test_tier_report_labels():
-    L = _dipolar_population()
-    # Build a 4-segment model (reuse the same dipolar pop for all segments here).
+def test_tier_report_per_lead_identifiability():
+    """Per-lead tiers via eta_{s,ell}: observed / identifiable (eta=0) /
+    unidentifiable (eta>0). Replaces the coarse global-rank rule."""
     segs = {s: _dipolar_population(n=2000, seed=i) for i, s in enumerate(["P", "QRS", "ST", "T"])}
     model = DipolarModel.fit(segs, rank=3)
-    # Dipole-spanning config: observed leads OBSERVED, others RECOVERABLE (dipolar pop).
-    rep = tier_report(model, ["I", "II", "V2"], dipolar_threshold=0.8)
+    # Dipole-spanning config: observed leads OBSERVED, an unobserved lead is
+    # IDENTIFIABLE (its dipolar component lies in the observed dipole directions).
+    rep = tier_report(model, ["I", "II", "V2"])
     assert rep["QRS"]["I"]["tier"] == Tier.OBSERVED.value
-    assert rep["QRS"]["V6"]["tier"] == Tier.RECOVERABLE.value
-    # Coplanar limb triplet (rank 2) => reconstructed leads UNRECOVERABLE.
-    rep2 = tier_report(model, ["I", "II", "III"], dipolar_threshold=0.8)
-    assert rep2["QRS"]["V6"]["tier"] == Tier.UNRECOVERABLE.value
+    assert rep["QRS"]["V6"]["tier"] == Tier.IDENTIFIABLE.value
+    assert rep["QRS"]["V6"]["eta"] < 1e-6
+    # Coplanar limb triplet (rank 2): an unobserved dipole direction changes V6, so
+    # V6 is UNIDENTIFIABLE (eta>0) -- per-lead, not a blanket "everything Tier III".
+    rep2 = tier_report(model, ["I", "II", "III"])
+    assert rep2["QRS"]["V6"]["tier"] == Tier.UNIDENTIFIABLE.value
+    assert rep2["QRS"]["V6"]["eta"] > 1e-3
 
 
 if __name__ == "__main__":
