@@ -1,39 +1,44 @@
 \subsection{Baselines and what the map predicts}
 Table~\ref{tab:base} reports reconstruction RMSE (mV) of the unobserved target leads under a
 \emph{single, identical protocol} for all methods: per-timepoint waveform RMSE on the same
-$\NTestFair$ held-out fold-10 records, same segment indices, record-bootstrap CIs. This is
-the fair comparison---an earlier draft scored the classical baselines on segment-mean vectors
-and the neural baseline on waveforms, which is not comparable. We include a \emph{strong
-neural baseline}: an arbitrary-mask conditional 1-D U-Net trained with random lead masks (so
-one model serves any configuration, no target-lead leakage), the masked-reconstruction
-architecture the reduced-lead literature uses \cite{gradowski2025reveals}.
+$\NTestFair$ held-out fold-10 records, same segment indices, record-bootstrap CIs. We include
+a \emph{strong neural baseline}: an arbitrary-mask conditional 1-D U-Net trained with random
+lead masks (so one model serves any configuration, no target-lead leakage), the
+masked-reconstruction architecture the reduced-lead literature uses
+\cite{gradowski2025reveals,nelwan2004reduced}.
 
 On a dipole-spanning set the methods form a monotone ladder---prior-mean $\to$ dipolar
 (Tier~I) $\to$ per-segment ridge (Tier~I+II) $\to$ U-Net---confirming there is recoverable
 non-dipolar content (the calibrated Tier~II layer), yet the strong neural model's margin over
 a simple ridge is small (QRS $\FairSpanUnetQRS$ vs.\ $\FairSpanRidgeQRS$\,mV on
-$\{$I,II,V1,V3,V5$\}$). The decisive result is on \textbf{limb-6}: \emph{every} reconstructor
-degrades sharply, and the U-Net---despite its capacity---reaches only QRS $\FairLimbUnetQRS$,
-$\FairUnetLimbSpanRatio\times$ its spanning-set error, still far above what it achieves when
-the target is identifiable. No amount of model capacity crosses the identifiability ceiling
-the map's $\eta{>}0$ warning marks out \emph{a priori}: limb$\to$precordial morphology is not
-recoverable, so a low reconstruction error there would be spurious.
+$\{$I,II,V1,V3,V5$\}$). On \textbf{limb-6} the U-Net still \emph{lowers} error substantially
+over the prior mean (QRS $\FairLimbPriorQRS\!\to\!\FairLimbUnetQRS$)---it recovers the
+predictable, largely population-correlated structure---but plateaus at
+$\FairUnetLimbSpanRatio\times$ its spanning-set error and no reconstructor closes that gap.
+The residual gap is exactly the \emph{unobserved dipolar coordinate} the map's
+$\eta{>}0$ marks as unidentifiable: capacity recovers the predictable part but not the
+missing coordinate, so a reconstruction that looked confident about anterior precordial
+morphology here would be inventing that coordinate. We therefore scope the certified claim to
+the dipolar component, not to a blanket ``not recoverable.''
 
 \begin{table}[t]
 \centering\small
 \caption{Reconstruction RMSE (mV) of target leads, QRS segment, under one identical
 per-timepoint protocol ($\NTestFair$ test records). ``dipolar'' = Tier~I; ``ridge'' =
 per-segment ridge (Tier~I+II); ``U-Net'' = strong arbitrary-mask neural baseline. Best in
-bold. On limb-6 even the neural baseline cannot recover precordial morphology, as $\eta{>}0$
-predicts. Numbers auto-generated from \texttt{results/fair\_baselines.json}.}
+bold. On limb-6 even the neural baseline plateaus far above its identifiable-set error, the
+gap being the unobserved dipolar coordinate $\eta{>}0$ flags. Numbers auto-generated from
+\texttt{results/fair\_baselines.json}.}
 \label{tab:base}
 \input{auto/fair_baselines_table}
 \end{table}
 
-\textbf{Empirical, not physical, dipole.} On real PTB-XL the estimated $\bm M_s$ shares two
-directions with the classical inverse-Dower vectorcardiographic space (principal angles
-$2$--$6^\circ$) but its third direction differs materially (max angle $43$--$55^\circ$,
-bootstrap CIs excluding small angles). We therefore treat $\bm M_s$ as an \emph{empirical
-rank-3 spatial subspace}, not a physical cardiac dipole; the earlier synthetic
-``matches inverse-Dower'' check used inverse-Dower to generate the data and is not evidence
-on real ECG. All certificate quantities are stated with respect to this estimated subspace.
+\textbf{Empirical, not physical, subspace.} On real PTB-XL the estimated $\bm M_s$ shares two
+directions with the classical inverse-Dower vectorcardiographic space
+\cite{edenbrandt1988dower,kors1990vcg} (principal angles $2$--$6^\circ$) but its third
+direction differs materially (max angle $43$--$55^\circ$, bootstrap CIs excluding small
+angles). We therefore treat $\bm M_s$ as an \emph{empirical rank-3 spatial subspace}
+estimated from the data, not a physical cardiac dipole; all certificate quantities are stated
+with respect to this estimated subspace. This empirical, data-driven subspace---rather than a
+fixed physiological transform---is what makes the map dataset-specific and, we verify, stable
+across PTB-XL and Chapman for the QRS segment.

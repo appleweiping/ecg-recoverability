@@ -79,6 +79,59 @@ def main():
         r"\newcommand{\FairUnetLimbSpanRatio}{"
         + f"{g('limb-6','unet','QRS')/g(span,'unet','QRS'):.2f}" + "}",
     ]
+    # ---- ST-safety macros (graded eta gradient + full reconstructor matrix) ----
+    sp = ROOT / "results" / "st_safety.json"
+    if sp.exists():
+        sd = json.loads(sp.read_text())
+        eta = sd["certificate_eta_ST_precordial"]
+        rec = sd["reconstructors"]
+
+        def pct(x):
+            return f"{100*x:.1f}"
+
+        # LaTeX macro names must be letters only -> map V1..V6 to word suffixes
+        _word = {"V1": "Vone", "V2": "Vtwo", "V3": "Vthree", "V4": "Vfour", "V5": "Vfive", "V6": "Vsix"}
+        for lead, v in eta.items():
+            m.append(r"\newcommand{\EtaST" + _word.get(lead, lead) + "}{" + f"{v:.3f}" + "}")
+        m.append(r"\newcommand{\SafetyN}{" + str(sd.get("n_valid_delineation", sd.get("n_test"))) + "}")
+        for name, r in rec.items():
+            tag = name.capitalize()  # Dipolar / Ridge / Ols
+            m.append(r"\newcommand{\Fab" + tag + "}{" + pct(r["fabricated_event_rate"]) + "}")
+            m.append(r"\newcommand{\Msk" + tag + "}{" + pct(r["masked_event_rate"]) + "}")
+            m.append(r"\newcommand{\Err" + tag + "}{" + f"{r['mean_st_error_mv']:.3f}" + "}")
+            tot = r["fabricated_event_rate"] + r["masked_event_rate"]
+            m.append(r"\newcommand{\Tot" + tag + "}{" + pct(tot) + "}")
+        # reconstructor-invariant floor: min and max total wrong-event rate
+        tots = [rec[n]["fabricated_event_rate"] + rec[n]["masked_event_rate"] for n in rec]
+        m.append(r"\newcommand{\TotWrongLo}{" + pct(min(tots)) + "}")
+        m.append(r"\newcommand{\TotWrongHi}{" + pct(max(tots)) + "}")
+
+    # ---- calibration macros (headline group + honest worst subgroup) ----
+    cp = ROOT / "results" / "tier2_conformal.json"
+    if cp.exists():
+        cd = json.loads(cp.read_text())
+        # headline group: {I,II,V1,V3,V5} QRS/V2
+        try:
+            hg = cd["configs"]["{I,II,V1,V3,V5}"]["groups"]["QRS/V2"]
+            m.append(r"\newcommand{\CalCov}{" + f"{hg['coverage']:.2f}" + "}")
+            m.append(r"\newcommand{\CalCovLo}{" + f"{hg['coverage_ci'][0]:.2f}" + "}")
+            m.append(r"\newcommand{\CalCovHi}{" + f"{hg['coverage_ci'][1]:.2f}" + "}")
+            m.append(r"\newcommand{\CalWidth}{" + f"{hg['mean_width_mV']:.3f}" + "}")
+        except Exception:
+            pass
+        # honest worst subgroup coverage across all (config,group,disease)
+        worst = None
+        for cname, cc in cd.get("configs", {}).items():
+            for gk, gv in cc.get("groups", {}).items():
+                for dis, dv in (gv.get("subgroup_coverage") or {}).items():
+                    cov = dv.get("coverage")
+                    if cov is not None and (worst is None or cov < worst[0]):
+                        worst = (cov, dis, dv.get("n"), cname, gk)
+        if worst:
+            m.append(r"\newcommand{\WorstSubCov}{" + f"{worst[0]:.2f}" + "}")
+            m.append(r"\newcommand{\WorstSubName}{" + str(worst[1]) + "}")
+            m.append(r"\newcommand{\WorstSubN}{" + str(worst[2]) + "}")
+
     (AUTO / "fair_baselines_macros.tex").write_text("\n".join(m) + "\n")
     print("wrote", AUTO / "fair_baselines_table.tex")
     print("wrote", AUTO / "fair_baselines_macros.tex")

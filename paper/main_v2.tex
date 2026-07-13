@@ -24,14 +24,18 @@ waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead $
 closed-form numbers derived from one truncated SVD of the segment's empirical rank-3 spatial
 (``dipolar'') sub-matrix---an \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the
 target's low-rank component is recoverable from $S$) and a \emph{conditioning}
-$\kappa_{s,\ell}(S)$ (its noise/observed-residual gain). On PTB-XL the map is stable to the
-truncation tolerance for the well-posed configurations and rank-sensitive (with reported
-sensitivity) for the ill-posed ones; e.g.\ it proves \emph{a priori} that precordial ST is
-not identifiable from limb leads. We add distribution-free calibrated intervals for the
-empirically predictable residual (conformalized quantile regression with strict train/
-calibrate/test fold discipline; within-group coverage near nominal), and contextualize with
-reconstruction baselines. The map is reconstructor-agnostic and turns ``trust the
-reconstruction'' into a per-feature, per-lead, calibrated statement.
+$\kappa_{s,\ell}(S)$ (its noise/observed-residual gain). The per-lead criterion is the
+classical estimability condition specialized to ECG, but made \emph{graded}: on PTB-XL the map
+ranks target leads on a continuum---e.g.\ from limb leads, anterior precordial ST (V1--V4) is
+not identifiable while lateral V5/V6 are near-identifiable---a call a physiological
+precordial/limb split cannot make. It is stable to the truncation tolerance for well-posed
+configurations and rank-sensitive (with reported sensitivity) for ill-posed ones. We attach
+distribution-free calibrated intervals for the empirically predictable residual (conformalized
+quantile regression, strict fold discipline, honestly stated within-group coverage), and give
+a reconstructor-\emph{invariant} safety certificate: the total ST-threshold error floor is
+near-invariant across reconstructors while the false-positive/false-negative split is a
+design choice. The map turns ``trust the reconstruction'' into a per-feature, per-lead,
+calibrated statement.
 \end{abstract}
 
 \begin{keywords}
@@ -56,16 +60,28 @@ the population lead covariance). We stress that $\bm M_s$ is a \emph{population-
 vectorcardiographic (inverse-Dower) dipole but its third direction differs materially, so we
 call it an empirical rank-3 subspace rather than a physical dipole (Sec.~\ref{sec:exp}).
 
-\noindent\textbf{Contributions.} (1) A \emph{target-specific} recoverability map: closed-form
-per-lead identifiability $\eta_{s,\ell}(S)$ and conditioning $\kappa_{s,\ell}(S)$ from a
-single truncated SVD, replacing coarse ``global rank$<$3'' rules, with a truncation-tolerance
-sensitivity analysis and record-bootstrap confidence intervals (Sec.~\ref{sec:cert}). (2) A
-distribution-free calibration layer for the empirically predictable residual, with strict
-fold discipline and honestly stated within-group marginal coverage (Sec.~\ref{sec:calib}).
-(3) Evidence on PTB-XL: reconstruction baselines that quantify what each configuration can
-recover, and a certificate-level safety statement---precordial ST is not identifiable from
-limb leads---available before any reconstruction (Sec.~\ref{sec:exp}).
+\noindent\textbf{Related work and contributions.} Classical work reconstructs missing leads
+(regression / VCG synthesis \cite{edenbrandt1988dower,kors1990vcg,nelwan2004reduced}, deep
+models \cite{gradowski2025reveals,cardoso2024bayesian}) or \emph{selects} optimal leads
+\cite{joshi2009sensor}; whether a given target is even recoverable is the classical
+estimability question \cite{scheffe1959anova}. None attaches a graded, per-target-lead
+recoverability certificate with calibrated per-record error to a reconstruction. We do not
+claim the underlying identity as new. Our contributions are: (1) a \emph{graded},
+per-target-lead recoverability map---continuous $\eta_{s,\ell}(S)$/$\kappa_{s,\ell}(S)$ from a
+single truncated SVD that \emph{rank} target leads (not a binary rank test), over an
+\emph{empirically-estimated} $\bm M_s$ that differs $43$--$55^\circ$ from the textbook
+inverse-Dower dipole, with a truncation-tolerance sensitivity analysis and record-bootstrap
+CIs (Sec.~\ref{sec:cert}); (2) a calibration layer attaching distribution-free intervals
+(a sound application of conformalized quantile regression + Mondrian \cite{romano2019cqr}, not
+a new method) to the map per feature and lead, with strict fold discipline and honest
+within-group (not per-diagnosis) coverage (Sec.~\ref{sec:calib}); (3) a
+reconstructor-invariant safety certificate on PTB-XL---the total ST-threshold error floor is
+near-invariant across reconstructors while the false-positive/false-negative split is a
+design choice---showing anterior precordial ST is uncertifiable from limb leads
+(Sec.~\ref{sec:exp}).
 
+\section{The Recoverability Certificate}
+\label{sec:cert}
 \input{theorem_corrected}
 
 \section{Distribution-Free Calibration}
@@ -87,16 +103,25 @@ distribution-free under an arbitrary shift.
 \label{sec:exp}
 \textbf{Data.} PTB-XL \cite{wagner2020ptbxl} (21{,}799 twelve-lead records, 100/500\,Hz,
 10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}.
+
+\textbf{Reproducibility.} Code, fixed seeds, an exact environment lock, and a one-command
+pipeline are released\footnote{Anonymized for review; released on acceptance.}; every number
+in the tables is regenerated from result JSON (no hand-typed values). The neural baseline is a
+24$\to$12-channel 1-D U-Net (base width 64, residual GroupNorm blocks, 60 epochs, Adam
+$2{\times}10^{-4}$, MSE on masked leads under random lead masks); the residual predictor is a
+gradient-boosted quantile regressor (pinball loss). The map is evaluated on records disjoint
+from the folds used to estimate $\bm\mu_s,\bm M_s$.
 \input{results_v2_maps}
 \input{results_v2_calib}
 \input{results_v2_baseline}
 
 \section{Conclusion}
 Reduced-lead ECG reconstruction has a \emph{known low-rank structure per segment}. Exploiting
-it gives a per-target-lead recoverability map---what is identifiable, how well-conditioned,
-and (via calibration) what interval the predictable residual admits---before and independent
-of any reconstructor. It tells a clinician which lead configuration can support a decision,
-e.g.\ that precordial ST cannot be read from limb leads.
+it gives a graded per-target-lead recoverability map---what is identifiable, how
+well-conditioned, and (via calibration) what interval the predictable residual admits---before
+and independent of any reconstructor. It tells a clinician which lead configuration can support
+a decision, e.g.\ that anterior precordial ST cannot be read from limb leads while lateral
+V5/V6 can, and reports the reconstructor-invariant error floor that any recovery must pay.
 
 \bibliographystyle{IEEEbib}
 \bibliography{refs}

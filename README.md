@@ -45,8 +45,12 @@ so a lead is either observed or not, everywhere.
 
 **On real PTB-XL** (`results/recoverability_map.png`): a single lead leaves every other lead
 unidentifiable; a dipole-spanning triplet `{I,II,V2}` or `{I,II,V1,V3,V5}` makes all targets
-identifiable; **limb-6 leaves all precordial leads V1–V6 unidentifiable** — precordial ST
-cannot be read from limb leads, a warning available before any reconstruction.
+identifiable. The map is **graded**, not binary — for limb-6, ST identifiability falls
+smoothly from strongly unidentifiable anterior leads (`η_ST`: V2 0.71, V3 0.55, V1 0.33,
+V4 0.27) to **near-identifiable** lateral leads (V5 0.084, V6 0.027). So the honest a-priori
+warning is specific: **anterior precordial ST (V1–V4) cannot be read from limb leads**, while
+lateral V5/V6 largely can — a distinction a physiological "precordial vs. limb" split cannot
+make, but the empirical graded map does.
 
 **Truncation-tolerance sensitivity.** Rank/`κ` of well-posed configurations are stable across
 `ϱ∈{1e-4,…,1e-1}`; near-rank-deficient sets are `ϱ`-sensitive (synthetic `{V1,V2,V3}`: rank 2
@@ -66,16 +70,25 @@ evaluation on fold 10). We report **within-group marginal coverage under exchang
 
 ## 4. Baselines and safety
 
-**Baselines** (`results/baselines_physics.json`): on a spanning set, learned linear ridge/OLS
-beats pure dipolar beats inverse-Dower beats prior-mean (there is recoverable non-dipolar
-content). On **limb-6 every reconstructor barely beats the prior mean** and inverse-Dower is
-worse — limb→precordial is near-unrecoverable, exactly as `η>0` warns. A **strong neural
-baseline** (arbitrary-mask 1-D U-Net) is included.
+**Baselines** (`results/fair_baselines.json`, one identical per-timepoint waveform-RMSE
+protocol for all methods, incl. a **strong arbitrary-mask 1-D U-Net**): on a spanning set the
+methods form a monotone ladder — prior-mean → dipolar → ridge → U-Net (QRS 0.484 → 0.186 →
+0.168 → 0.164 mV) — so there is recoverable non-dipolar content, though the neural margin over
+a simple ridge is small. On **limb-6 the U-Net still lowers error substantially** (QRS 0.484 →
+0.239) by recovering the predictable structure, but **plateaus at 1.46× its spanning-set
+error and no reconstructor closes that gap** — the residual gap is exactly the unobserved
+dipolar coordinate `η>0` flags. Capacity recovers the predictable part, not the missing
+coordinate; we scope the certified claim to the dipolar component, not a blanket "not
+recoverable".
 
-**Certificate-level ST safety** (`results/st_safety.json`): the `η>0` warning is actionable —
-reconstructing precordial ST from limb-6 with a real reconstructor yields 32.5% fabricated /
-17.6% masked *ST-threshold events* (|ST|>0.1 mV crossings; bootstrap CIs) at 0.076 mV ST
-error. We report ST-threshold events, not diagnoses.
+**Certificate-level ST safety** (`results/st_safety.json`): the `η>0` warning is actionable,
+and stated on a **reconstructor-invariant** quantity. Reconstructing anterior precordial ST
+from limb-6, the *total* wrong-event rate (false-positive + false-negative |ST|>0.1 mV
+crossings) is near-invariant across reconstructors (47–50%, at 0.059–0.081 mV ST error) — this
+floor is the cost of the certified unidentifiability. What the reconstructor *chooses* is the
+FP/FN split: dipolar leans to false positives (32.5%/17.6%), OLS to false negatives
+(1.1%/46.0%). We report the whole matrix and anchor the certificate on the invariant floor,
+not a single cell; and we report ST-threshold events, not diagnoses.
 
 ## 5. `M_s` is an *empirical* subspace, not the physical dipole
 

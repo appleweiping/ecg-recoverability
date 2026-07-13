@@ -1,12 +1,19 @@
 \subsection{Calibrated intervals for the predictable residual}
 For the empirically predictable residual we train a gradient-boosted quantile regressor of
-each target lead's off-dipole residual on the observed leads and apply Mondrian CQR per
-$(S,s,\ell)$ group, with strict fold discipline (basis and model on folds 1--7,
-calibration on fold~9, a single evaluation on fold~10; nominal $1{-}\alpha{=}0.90$). Across
-the pre-registered groups of $\{$I,II,V1,V3,V5$\}$ and $\{$I,II,V2$\}$, fold-10
-within-group coverage clusters near nominal ($0.88$--$0.95$; e.g.\ $\{$I,II,V1,V3,V5$\}$
-QRS/V2 $0.92$, record-bootstrap CI $[0.89,0.95]$, mean width $0.165$\,mV), with a few
-groups slightly below---the expected finite-sample behaviour of within-group marginal
-coverage. This certifies \emph{what interval} the predictable residual admits, per feature
-and lead, without any distribution-free claim beyond exchangeability with the calibration
-fold.
+each target lead's off-dipole residual on the observed leads and apply Mondrian conformalized
+quantile regression \cite{romano2019cqr} per $(S,s,\ell)$ group, with strict fold discipline
+(basis and model on folds 1--7, calibration on fold~9, a single evaluation on fold~10;
+nominal $1{-}\alpha{=}0.90$). This is a sound \emph{application} of established conformal
+machinery, not a new predictor; the contribution is attaching it, per feature and lead, to
+the recoverability map. Across the pre-registered $(S,s,\ell)$ groups, fold-10 within-group
+coverage clusters near nominal ($0.88$--$0.95$; e.g.\ $\{$I,II,V1,V3,V5$\}$ QRS/V2
+$\CalCov$, record-bootstrap CI $[\CalCovLo,\CalCovHi]$, mean width $\CalWidth$\,mV).
+
+\textbf{What is and is not guaranteed.} Mondrian CQR gives \emph{within-$(S,s,\ell)$-group
+marginal} coverage under exchangeability---\emph{not} coverage conditional on diagnosis, which
+is not a conditioning variable. Diagnostic subgroups are therefore not guaranteed and the
+smallest ones fall below nominal: the worst is the \WorstSubName{} subgroup at coverage
+$\WorstSubCov$ ($n{=}\WorstSubN$), the expected finite-sample behaviour when conditioning on
+a variable the calibration does not stratify on. We report worst-subgroup coverage rather than
+hide it under the aggregate band, and we make no distribution-free claim beyond exchangeability
+with the calibration fold.

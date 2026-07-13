@@ -1,30 +1,59 @@
 \subsection{The recoverability map on PTB-XL}
 We estimate $\bm M_s$ (rank 3) per segment on the training folds and evaluate the map on
-$1{,}200$ NORM records (per-lead $\eta,\kappa$ with $200$-sample bootstrap CIs, truncation
-tolerance $\varrho{=}10^{-2}$; Fig.~\ref{fig:map}). The map is per target lead: a single
-observed lead (e.g.\ Lead~I) leaves \emph{every} other lead's dipolar component
-unidentifiable ($\eta{>}0$; rank~1); a dipole-spanning triplet $\{$I,II,V2$\}$ or the
-five-lead $\{$I,II,V1,V3,V5$\}$ makes all targets identifiable ($\eta{\approx}0$). For the
-six limb leads, \emph{all} precordial leads V1--V6 are unidentifiable for QRS/ST/T: the
-transverse dipole is unobserved, so precordial ST cannot be read from limb leads---a
-warning available before any reconstruction.
+$1{,}200$ NORM records disjoint from the estimation folds (per-lead $\eta,\kappa$ with
+$200$-sample bootstrap CIs, truncation tolerance $\varrho{=}10^{-2}$; Fig.~\ref{fig:map}).
+The map is \emph{graded and per target lead}: a single observed lead (e.g.\ Lead~I) leaves
+every other lead's dipolar component unidentifiable ($\eta{>}0$; rank~1); a dipole-spanning
+triplet $\{$I,II,V2$\}$ or the five-lead $\{$I,II,V1,V3,V5$\}$ makes all targets identifiable
+($\eta{\approx}0$ to machine precision, since $S$ then spans the rank-3 subspace). The value
+over a binary rank test is the \emph{gradient} it resolves: for limb-6 the ST identifiability
+falls smoothly from strongly unidentifiable anterior leads
+(V2\,$\eta{=}\EtaSTVtwo$, V3\,$\EtaSTVthree$, V1\,$\EtaSTVone$, V4\,$\EtaSTVfour$) to
+\emph{near-identifiable} lateral leads (V5\,$\EtaSTVfive$, V6\,$\EtaSTVsix$). So the honest a
+priori warning is specific: \textbf{anterior precordial ST (V1--V4) is not identifiable from
+limb leads}---the direction of the estimated subspace it needs is unobserved---while lateral
+V5/V6 are largely recoverable. A physiological binary ``precordial vs.\ limb'' split cannot
+make this call; the empirical graded map does.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{../results/recoverability_map.png}
   \caption{Per-lead identifiability $\eta_{s,\ell}(S)$ across configurations and segments
-  (green: identifiable, red: unidentifiable; grey hatched: observed). limb-6 leaves all
-  precordial leads unidentifiable.}
+  (green: identifiable, red: unidentifiable; grey hatched: observed). For limb-6 the anterior
+  precordial leads are unidentifiable while lateral V5/V6 grade toward identifiable.}
   \label{fig:map}
 \end{figure}
 
-\textbf{Certificate-level safety.} The warning is actionable. On $1{,}498$ delineated
-fold-10 records, reconstructing precordial ST from limb-6 with a real dipolar reconstructor
-produces $32.5\%$ fabricated (CI $[29.9,34.9]$) and $17.6\%$ masked (CI $[15.8,19.7]$)
-ST-threshold events (a $|$ST$|{>}0.1$\,mV crossing present in the reconstruction but not the
-truth, or vice-versa), at a mean ST error of $0.076$\,mV---the cost of the certified
-unidentifiability ($\eta_{\mathrm{ST},\ell}{>}0$ for every precordial $\ell$). We report ST-
-threshold events, not diagnoses.
+\textbf{Certificate-level safety is reconstructor-invariant at the floor.} The warning is
+actionable but must be stated on a reconstructor-\emph{invariant} quantity. On $\SafetyN$
+delineated fold-10 records we reconstruct anterior precordial ST from limb-6 with three
+reconstructors and count ST-threshold events ($|$ST$|{>}0.1$\,mV crossings)---false positives
+(a crossing in the reconstruction, not the truth) and false negatives (vice versa;
+Table~\ref{tab:safety}). The \emph{total} wrong-event rate is near-invariant across
+reconstructors ($\TotWrongLo$--$\TotWrongHi\%$, at mean ST error $\ErrRidge$--$\ErrOls$\,mV):
+this floor is the cost of the certified unidentifiability. What the reconstructor \emph{does}
+choose is the false-positive/false-negative split---dipolar leans to false positives
+($\FabDipolar\%$/$\MskDipolar\%$), OLS to false negatives ($\FabOls\%$/$\MskOls\%$)---a design
+trade-off, not a certified number. We therefore report the whole matrix and anchor the
+certificate on the invariant floor, not a single cell.
+
+\begin{table}[t]
+\centering\small
+\caption{Limb-6 $\to$ anterior-precordial ST reconstruction, $\SafetyN$ fold-10 records. FP =
+false-positive, FN = false-negative ST-threshold crossings (\%). The \emph{total} (FP+FN) is
+near-invariant---the certified floor; the split is a reconstructor choice. Auto-generated from
+\texttt{results/st\_safety.json}.}
+\label{tab:safety}
+\begin{tabular}{lcccc}
+\toprule
+reconstructor & FP\,\% & FN\,\% & total\,\% & ST err (mV) \\
+\midrule
+dipolar & \FabDipolar & \MskDipolar & \TotDipolar & \ErrDipolar \\
+ridge   & \FabRidge   & \MskRidge   & \TotRidge   & \ErrRidge \\
+OLS     & \FabOls     & \MskOls     & \TotOls     & \ErrOls \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \textbf{Truncation-tolerance sensitivity.} Rank/$\kappa$ of well-posed configurations are
 stable across $\varrho\!\in\!\{10^{-4},\dots,10^{-1}\}$ (e.g.\ $\{$I,II,V1,V3,V5$\}$ is

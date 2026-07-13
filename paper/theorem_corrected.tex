@@ -3,8 +3,8 @@
 % independence on real data; per-target-lead identifiability + conditioning; the
 % strict independence/Var(u) lower bound is stated only for the synthetic model.
 
-\newtheorem{theoremc}{Theorem}
-\newtheorem{propc}{Proposition}
+\newtheorem{theoremc}{Proposition}
+\newtheorem{propc}[theoremc]{Proposition}
 
 % ---------------------------------------------------------------- setup
 \noindent\textbf{Model.} Within segment $s$ write the population 12-lead vector as
@@ -40,6 +40,16 @@ configuration-level worst case. Both $\eta_{s,\ell}$ and $\kappa_{s,\ell}$ depen
 estimated $\bm M_s$ and on $\varrho$; near-rank-deficient $S$ are reported with an
 $\varrho$-sensitivity sweep and record-bootstrap confidence intervals.
 \end{theoremc}
+
+\noindent\emph{Relation to classical estimability.} Part~(i) is the classical estimability
+criterion (Gauss--Markov / \cite{scheffe1959anova}) specialized to the per-lead linear
+functional $\bm e_\ell^{\top}\bm M_s\bm d$: $\eta_{s,\ell}(S)=0$ iff that functional lies in
+the row space of $\bm M_{s,S}$, and $\kappa_{s,\ell}$ is its coefficient norm. We claim no
+novelty for this identity. The contribution (Sec.~\ref{sec:exp}) is its use as a
+\emph{graded}, per-target-lead, \emph{empirically-estimated} recoverability map: a continuous
+$\eta$ that ranks target leads (not a binary rank test), a subspace $\bm M_s$ that differs
+materially from the textbook inverse-Dower dipole, and per-record calibrated error rates
+(Sec.~\ref{sec:calib}) attached to it---quantities not read off lead geometry.
 
 % ---------------------------------------------------------------- residual (honest)
 \noindent\textbf{The non-dipolar residual (no independence claim on real data).}
