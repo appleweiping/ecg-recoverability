@@ -1,0 +1,175 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,graphicx,booktabs,bm,amsthm}
+\usepackage{cite}
+\usepackage[hidelinks]{hyperref}
+
+% result macros (auto-generated from results/*.json by paper/emit_baseline_table.py)
+\input{auto/fair_baselines_macros}
+
+\title{\textbf{Target-Specific Recoverability Maps for Reduced-Lead ECG
+Reconstruction}\\[2pt]\large A graded per-lead identifiability + conditioning certificate with
+calibrated intervals, and an honest account of a retracted fabrication claim}
+\author{Weiping Yan\\ University of Minnesota, Twin Cities}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Reconstructing missing electrocardiogram (ECG) leads from a reduced set is ill-posed, and a
+scalar reconstruction error says nothing about \emph{which} named feature, on \emph{which}
+lead, a clinician can trust. We give a \emph{target-specific recoverability map}: for a
+waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead $\ell$, two
+closed-form numbers from one truncated SVD of the segment's empirical rank-3 spatial
+sub-matrix---a graded \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the target's low-rank
+component is recoverable from $S$) and a \emph{conditioning} $\kappa_{s,\ell}(S)$. The per-lead
+criterion is the classical estimability condition specialized to ECG; the contribution is its
+use as a graded, \emph{empirically-estimated} map (the estimated subspace differs
+$43$--$55^\circ$ from the textbook inverse-Dower dipole), the distribution-free calibrated
+intervals we attach to it, and a reconstructor-\emph{invariant} safety certificate. On PTB-XL
+the map ranks target leads on a continuum---from limb leads, anterior precordial ST (V1--V4) is
+unidentifiable while lateral V5/V6 are near-identifiable---and the total ST-threshold error
+floor is near-invariant across reconstructors ($\TotWrongLo$--$\TotWrongHi\%$) while the
+false-positive/false-negative split is a design choice. The certificate transfers across PTB-XL
+and Chapman for QRS (aligned subspaces, reproduced $\kappa$ ordering) but not in the ST/T third
+direction. Finally, we document in full a claim this project retracted---that a diffusion
+reconstructor proves ``fabrication is a property of the objective''---which a leakage-corrected,
+multi-seed re-analysis reduced to a marginal ($\approx1.3\sigma$) effect with no supporting
+realism trend. This long version accompanies a four-page conference paper and contains the full
+proofs, ablations, cross-dataset study, and the negative result.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+Wearable and reduced-lead ECG acquisition makes lead \emph{reconstruction} ubiquitous: recover
+the standard 12 leads from one, three, or six observed leads
+\cite{gradowski2025reveals,cardoso2024bayesian}. A low aggregate error certifies nothing about
+\emph{which} morphological features are trustworthy: a cardiologist reads the P wave, the QRS
+complex, the ST segment and the T wave, each on specific leads, and a reconstruction that gets
+the mean right but invents an ST deviation invents a finding.
+
+We ask a sharper, reconstructor-independent question: \emph{for a given observed lead set,
+which target lead's low-rank morphology is even identifiable, and how well-conditioned is its
+recovery?} Each waveform segment's instantaneous potential is approximately low rank across
+leads; we estimate a per-segment rank-3 spatial basis $\bm M_s$ (top-3 singular vectors of the
+population lead covariance). We stress that $\bm M_s$ is a \emph{population-estimated (PCA)}
+object: on real PTB-XL it shares two directions with the classical vectorcardiographic
+(inverse-Dower) dipole but its third direction differs materially, so we call it an empirical
+rank-3 subspace rather than a physical dipole (Sec.~\ref{sec:exp}).
+
+This document is the extended version of a four-page conference submission. It adds: the full
+statement and proof of the certificate (Sec.~\ref{sec:cert}, App.~\ref{app:proof}); the
+cross-dataset transfer study (Sec.~\ref{sec:cross}); and a complete account of a claim we
+retracted during pre-submission review (Sec.~\ref{sec:generative}). We report the retraction in
+detail on purpose: hiding the earlier, more exciting numbers would be precisely the selective
+reporting our certificate is designed to expose.
+
+\section{Related Work}
+\label{sec:related}
+\textbf{Lead reconstruction and VCG synthesis.} Fixed linear transforms synthesize the
+vectorcardiogram or missing leads from a standard set (inverse-Dower \cite{edenbrandt1988dower},
+Kors regression \cite{kors1990vcg}), and reduced-lead reconstruction has a long clinical
+literature \cite{nelwan2004reduced}; recent deep models push reconstruction accuracy
+\cite{gradowski2025reveals,cardoso2024bayesian}. These target the reconstruction; we target the
+\emph{prior} question of what a given configuration can support, independent of the
+reconstructor. \textbf{Identifiability and lead selection.} Whether a linear functional is
+recoverable from a sub-observation is the classical estimability question
+\cite{scheffe1959anova}; choosing which leads to observe is optimal sensor selection
+\cite{joshi2009sensor}. Our per-lead $\eta$ is estimability specialized to the ECG dipolar
+functional; the novelty is not the identity but the graded, empirically-estimated,
+per-target-lead map with calibrated per-record error attached. \textbf{Uncertainty for inverse
+problems.} Conformal prediction \cite{romano2019cqr,angelopoulos2023gentle} gives
+distribution-free intervals under exchangeability; we apply Mondrian CQR per $(S,s,\ell)$ group.
+
+\section{The Recoverability Certificate}
+\label{sec:cert}
+\input{theorem_corrected}
+
+\section{Distribution-Free Calibration}
+\label{sec:calib}
+\input{results_v2_calib}
+
+\section{Experiments}
+\label{sec:exp}
+\textbf{Data.} PTB-XL \cite{wagner2020ptbxl} (21{,}799 twelve-lead records, 100/500\,Hz,
+10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}; the map is
+evaluated on records disjoint from the folds used to estimate $\bm\mu_s,\bm M_s$. All table
+numbers regenerate from result JSON via \texttt{paper/emit\_baseline\_table.py}.
+\input{results_v2_maps}
+\input{results_v2_baseline}
+
+\input{results_long_crossdata}
+
+\input{results_long_generative}
+
+\section{Limitations}
+\label{sec:limits}
+The subspace $\bm M_s$ is estimated, so $\eta/\kappa$ inherit its estimation error (reported via
+record-bootstrap CIs) and its cohort dependence (Sec.~\ref{sec:cross}); the ST/T third
+direction is cohort-specific. Identifiability is stated for the low-rank (dipolar) coordinate:
+a reconstructor may still recover predictable non-dipolar structure (Sec.~\ref{sec:exp}), so
+$\eta{>}0$ bounds the dipolar component, not every waveform detail. Conformal coverage is
+within-$(S,s,\ell)$-group marginal under exchangeability, not conditional on diagnosis; rare
+diagnostic subgroups are under-covered (Sec.~\ref{sec:calib}). Delineation uses NeuroKit2 and
+inherits its errors. The certificate is a pre-reconstruction screen, not a substitute for
+clinical validation.
+
+\section{Conclusion}
+Reduced-lead ECG reconstruction has a known low-rank structure per segment. Exploiting it gives
+a graded, per-target-lead recoverability map---what is identifiable, how well-conditioned, and
+(via calibration) what interval the predictable residual admits---before and independent of any
+reconstructor, plus a reconstructor-invariant error floor. It converts ``trust the
+reconstruction'' into a per-feature, per-lead, calibrated statement, and it told us honestly
+when one of our own earlier claims was not supported.
+
+\appendix
+\section{Proof of Proposition~\ref{thm:perlead}}
+\label{app:proof}
+Write $\bm M_{s,S}=\bm{\mathrm{Sel}}_S\bm M_s$ with truncated SVD
+$\bm M_{s,S}=\bm U\bm\Sigma\bm V^{\top}$ at tolerance $\varrho$, so
+$\bm M_{s,S}^{+}=\bm V\bm\Sigma^{-1}\bm U^{\top}$ and
+$\bm P_{\mathrm{obs}}=\bm M_{s,S}^{+}\bm M_{s,S}=\bm V\bm V^{\top}$ is the orthogonal projector
+onto $\operatorname{row}(\bm M_{s,S})=\operatorname{span}(\bm V)$.
+
+\textbf{(i) Identifiability.} The dipolar part of lead $\ell$ is the linear functional
+$f_\ell(\bm d)=\bm e_\ell^{\top}\bm M_s\bm d$. From $S$ we observe
+$\bm{\mathrm{Sel}}_S\bm M_s\bm d=\bm M_{s,S}\bm d$, i.e.\ the coordinates $\bm V^{\top}\bm d$
+(the components of $\bm d$ in $\operatorname{row}(\bm M_{s,S})$) up to noise; the orthogonal
+complement $(\bm I-\bm P_{\mathrm{obs}})\bm d$ is unobserved. Decompose
+$\bm e_\ell^{\top}\bm M_s=\bm e_\ell^{\top}\bm M_s\bm P_{\mathrm{obs}}
++\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})$. If
+$\eta_{s,\ell}(S)=\|\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})\|_2=0$ then
+$f_\ell(\bm d)=\bm e_\ell^{\top}\bm M_s\bm P_{\mathrm{obs}}\bm d$ depends on $\bm d$ only through
+the observed coordinates $\bm P_{\mathrm{obs}}\bm d$, hence is determined by $\bm M_{s,S}\bm d$:
+lead $\ell$'s dipolar component is identifiable. Conversely if $\eta_{s,\ell}(S)>0$ there is a
+unit $\bm\delta\in\ker\bm M_{s,S}$ (an unobserved dipole direction, so $\bm M_{s,S}\bm\delta=0$)
+with $\bm e_\ell^{\top}\bm M_s\bm\delta\neq0$; the two dipoles $\bm d$ and $\bm d+t\bm\delta$
+produce identical observations for all $t$ but change $f_\ell$ by $t\,\bm e_\ell^{\top}\bm
+M_s\bm\delta$, so no estimator recovers $f_\ell$ at any SNR. This is the estimability criterion
+\cite{scheffe1959anova} for $f_\ell$.
+
+\textbf{(ii) Conditioning.} The mean-centred estimate is
+$\widehat{\bm L}_s-\bm\mu_s=\bm M_s\bm M_{s,S}^{+}(\bm y_S-\bm\mu_{s,S})$ with
+$\bm y_S-\bm\mu_{s,S}=\bm M_{s,S}\bm d+\bm{\mathrm{Sel}}_S\bm r_s+\bm n$. On the identifiable
+part its lead-$\ell$ error from the observed non-dipolar residual and noise is
+$\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}(\bm{\mathrm{Sel}}_S\bm r_s+\bm n)$, and by
+Cauchy--Schwarz
+$|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}(\bm{\mathrm{Sel}}_S\bm r_s+\bm n)|
+\le\|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}\|_2(\|\bm{\mathrm{Sel}}_S\bm r_s\|+\|\bm n\|)
+=\kappa_{s,\ell}(S)(\|\bm{\mathrm{Sel}}_S\bm r_s\|+\|\bm n\|)$. Taking the max over $\ell$ gives
+$\kappa_s(S)=\|\bm M_s\bm M_{s,S}^{+}\|_2$. \hfill$\square$
+
+\section{Reproducibility}
+\label{app:repro}
+Code, fixed seeds, an exact environment lock (\texttt{env.lock.txt}), and a one-command
+pipeline (\texttt{experiments/run\_all.py}) are released; every table number is regenerated
+from result JSON (\texttt{paper/emit\_baseline\_table.py}), and a CI workflow runs the test
+suite on every push. The neural baseline is a 24$\to$12-channel 1-D U-Net (base width 64,
+residual GroupNorm blocks, 60 epochs, Adam $2{\times}10^{-4}$, MSE on masked leads, random-mask
+training); the residual predictor is a gradient-boosted quantile regressor (pinball loss) with
+strict fold discipline (folds 1--7 train, 9 calibrate, 10 test).
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+\end{document}

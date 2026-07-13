@@ -116,8 +116,19 @@ experiments/
   maps_figure.py                # the recoverability-map figure
 tests/                          # 28 checks incl. per-lead certificate, rcond sensitivity,
                                 #   diffusion leakage guards, Mondrian tuple groups
-paper/main_v2.tex               # ICASSP draft (target-specific recoverability)
+paper/main_v2.tex               # ICASSP 4-page draft (target-specific recoverability)
+paper/arxiv_long.tex            # extended version: full proofs, cross-dataset transfer,
+                                #   the retracted-claim negative result (8 pp)
+paper/emit_baseline_table.py    # regenerate all paper numbers from results/*.json
+env.lock.txt                    # exact environment used for results/*.json
 ```
+
+**Two paper versions.** `paper/main_v2.tex` is the four-page IEEE ICASSP submission (only the
+rigorously-supported core). `paper/arxiv_long.tex` is the extended preprint: full statement and
+proof of the certificate, the cross-dataset transfer study (QRS subspace transfers PTB-XL↔
+Chapman; ST/T third direction does not), and a complete account of the retracted
+"fabrication-objective" claim (§8). Both compile clean; every table number is auto-generated
+from result JSON (no hand-typed values).
 
 ## 7. Reproduce
 
