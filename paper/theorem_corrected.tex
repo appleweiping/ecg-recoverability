@@ -34,8 +34,10 @@ $\kappa_{s,\ell}(S)=\big\|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}\big\|_2$:
 $\big|\bm e_\ell^{\top}(\widehat{\bm L}_s-\bm\mu_s-\bm M_s\bm P_{\mathrm{obs}}\bm d)\big|
 \le \kappa_{s,\ell}(S)\,\big(\|\bm{\mathrm{Sel}}_S\bm r_s\|+\|\bm n\|\big).$
 \end{enumerate}
-The global $\kappa_s(S)=\|\bm M_s\bm M_{s,S}^{+}\|_2=\max_\ell\kappa_{s,\ell}(S)$ is a
-configuration-level worst case. Both $\eta_{s,\ell}$ and $\kappa_{s,\ell}$ depend on the
+The global $\kappa_s(S)=\|\bm M_s\bm M_{s,S}^{+}\|_2$ is a configuration-level (spectral)
+worst case: since a row norm never exceeds the spectral norm,
+$\kappa_{s,\ell}(S)\le\kappa_s(S)$ for every $\ell$, so $\kappa_s$ upper-bounds every per-lead
+conditioning (it is not their maximum). Both $\eta_{s,\ell}$ and $\kappa_{s,\ell}$ depend on the
 estimated $\bm M_s$ and on $\varrho$; near-rank-deficient $S$ are reported with an
 $\varrho$-sensitivity sweep and record-bootstrap confidence intervals.
 \end{theoremc}

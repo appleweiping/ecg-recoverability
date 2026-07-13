@@ -21,15 +21,16 @@ $\pm0.044$ at $w{=}6$ ($\approx1.3\sigma$). The previously reported ``$4.3\sigma
 reproduce.
 
 \textbf{(2) Realism does not improve with guidance---the causal premise is false.} The story
-required higher guidance to buy realism at the cost of fidelity. Instead both realism metrics
-\emph{worsen} monotonically with $w$: the target-lead PSD log-distance rises (V2:
-$1.95\!\to\!2.35$ from $w{=}1$ to $6$) and the amplitude-Wasserstein distance rises (V2:
-$0.29\!\to\!0.67$). High guidance simply degrades the model on every axis; there is no
+required higher guidance to buy realism at the cost of fidelity. Instead realism is \emph{no
+better} at high guidance: from $w{=}1$ to $w{=}6$ the target-lead PSD log-distance rises (V2:
+$1.95\!\to\!2.35$; a small dip at $w{=}2$ then a clear rise, so worsening but not monotone) and
+the amplitude-Wasserstein distance rises (V2: $0.29\!\to\!0.67$). The trend is toward worse
+realism on most axes (a few, e.g.\ V4 amplitude, are flat); there is no monotone
 realism/fidelity trade to exploit.
 
 \textbf{(3) What is true instead.} The predictable non-dipolar residual is real but modest:
 oracle correlations (\texttt{gpu\_oracle\_gate.json}) are $\rho\!\approx\!0.49$--$0.55$ for V2
-(QRS/ST) and $0.2$--$0.3$ for V4/V6---consistent with the calibrated Tier-II intervals of
+(QRS/ST) and $0.21$--$0.34$ for V4/V6---consistent with the calibrated Tier-II intervals of
 Sec.~\ref{sec:calib}. So the honest statement is a \emph{graded predictability} of the
 residual, calibrated per feature and lead, not a proof of fabrication. We removed the
 fabrication-objective claim and rebuilt the paper around the parts that withstand scrutiny.

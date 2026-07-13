@@ -127,10 +127,12 @@ when one of our own earlier claims was not supported.
 \section{Proof of Proposition~\ref{thm:perlead}}
 \label{app:proof}
 Write $\bm M_{s,S}=\bm{\mathrm{Sel}}_S\bm M_s$ with truncated SVD
-$\bm M_{s,S}=\bm U\bm\Sigma\bm V^{\top}$ at tolerance $\varrho$, so
-$\bm M_{s,S}^{+}=\bm V\bm\Sigma^{-1}\bm U^{\top}$ and
+$\bm M_{s,S}=\bm U\bm\Sigma\bm V^{\top}$ at tolerance $\varrho$, where $\bm U,\bm V$ have
+orthonormal columns, so $\bm M_{s,S}^{+}=\bm V\bm\Sigma^{-1}\bm U^{\top}$ and
 $\bm P_{\mathrm{obs}}=\bm M_{s,S}^{+}\bm M_{s,S}=\bm V\bm V^{\top}$ is the orthogonal projector
-onto $\operatorname{row}(\bm M_{s,S})=\operatorname{span}(\bm V)$.
+onto the retained row space $\operatorname{span}(\bm V)$ (the numerical row space of
+$\bm M_{s,S}$ at tolerance $\varrho$; the $\varrho$-sensitivity sweep in Sec.~\ref{sec:exp}
+reports where this truncation matters). Below $\eta,\kappa$ are understood at this $\varrho$.
 
 \textbf{(i) Identifiability.} The dipolar part of lead $\ell$ is the linear functional
 $f_\ell(\bm d)=\bm e_\ell^{\top}\bm M_s\bm d$. From $S$ we observe
@@ -156,9 +158,11 @@ part its lead-$\ell$ error from the observed non-dipolar residual and noise is
 $\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}(\bm{\mathrm{Sel}}_S\bm r_s+\bm n)$, and by
 Cauchy--Schwarz
 $|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}(\bm{\mathrm{Sel}}_S\bm r_s+\bm n)|
-\le\|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}\|_2(\|\bm{\mathrm{Sel}}_S\bm r_s\|+\|\bm n\|)
-=\kappa_{s,\ell}(S)(\|\bm{\mathrm{Sel}}_S\bm r_s\|+\|\bm n\|)$. Taking the max over $\ell$ gives
-$\kappa_s(S)=\|\bm M_s\bm M_{s,S}^{+}\|_2$. \hfill$\square$
+\le\|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}\|_2(\|\bm{\mathrm{Sel}}_S\bm r_s\|_2+\|\bm n\|_2)
+=\kappa_{s,\ell}(S)(\|\bm{\mathrm{Sel}}_S\bm r_s\|_2+\|\bm n\|_2)$, using Cauchy--Schwarz and the
+triangle inequality. Each per-lead conditioning is a row norm of $\bm A=\bm M_s\bm M_{s,S}^{+}$,
+so $\kappa_{s,\ell}(S)=\|\bm e_\ell^{\top}\bm A\|_2\le\|\bm A\|_2=\kappa_s(S)$; the global
+$\kappa_s$ upper-bounds every per-lead value but is not their maximum. \hfill$\square$
 
 \section{Reproducibility}
 \label{app:repro}
