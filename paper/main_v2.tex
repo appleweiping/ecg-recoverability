@@ -84,11 +84,11 @@ distribution-free under an arbitrary shift.
 
 \section{Experiments}
 \label{sec:exp}
-% \input{results_v2_maps}     % per-lead eta/kappa map + rcond sensitivity + CI (Fig)
-% \input{results_v2_calib}    % Tier-II coverage table
-% \input{results_v2_baseline} % baselines + physics-vs-PCA + ST-safety certificate
-\emph{[Results sections wired from results/recoverability\_maps.json,
-tier2\_conformal.json, baselines\_physics.json, st\_safety.json.]}
+\textbf{Data.} PTB-XL \cite{wagner2020ptbxl} (21{,}799 twelve-lead records, 100/500\,Hz,
+10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}.
+\input{results_v2_maps}
+\input{results_v2_calib}
+\input{results_v2_baseline}
 
 \section{Conclusion}
 Reduced-lead ECG reconstruction has a \emph{known low-rank structure per segment}. Exploiting

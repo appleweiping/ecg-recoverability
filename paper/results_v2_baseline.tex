@@ -1,0 +1,33 @@
+\subsection{Baselines and what the map predicts}
+Table~\ref{tab:base} reports reconstruction RMSE (mV) of the unobserved leads for classical
+baselines ($3{,}000$ train / $1{,}500$ test, record-bootstrap CIs). On a dipole-spanning
+set the learned linear ridge/OLS (dipolar plus predictable residual) beats the pure dipolar
+recovery, which beats inverse-Dower and the prior mean---there is recoverable non-dipolar
+content, exactly the calibrated Tier~II layer. On limb-6 \emph{every} reconstructor barely
+beats the prior mean (QRS $0.117$ vs $0.135$; ST $0.055$ vs $0.060$\,mV) and inverse-Dower
+is \emph{worse} than the prior mean ($0.30$): the map's $\eta{>}0$ warning is borne out---
+limb$\to$precordial is near-unrecoverable, so a low reconstruction error there would be
+spurious.
+
+\begin{table}[t]
+\centering\small
+\caption{Reconstruction RMSE (mV), target leads (QRS). ``dip'' = Tier-I dipolar; ``ridge''
+= per-segment ridge (Tier I+II).}
+\label{tab:base}
+\begin{tabular}{lcccc}
+\toprule
+config & prior-mean & inv-Dower & dip & ridge \\
+\midrule
+$\{$I,II,V1,V3,V5$\}$ & 0.111 & 0.063 & 0.053 & \textbf{0.039} \\
+limb-6                & 0.135 & 0.302 & 0.117 & \textbf{0.117} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Empirical, not physical, dipole.} On real PTB-XL the estimated $\bm M_s$ shares two
+directions with the classical inverse-Dower vectorcardiographic space (principal angles
+$2$--$6^\circ$) but its third direction differs materially (max angle $43$--$55^\circ$,
+bootstrap CIs excluding small angles). We therefore treat $\bm M_s$ as an \emph{empirical
+rank-3 spatial subspace}, not a physical cardiac dipole; the earlier synthetic
+``matches inverse-Dower'' check used inverse-Dower to generate the data and is not evidence
+on real ECG. All certificate quantities are stated with respect to this estimated subspace.

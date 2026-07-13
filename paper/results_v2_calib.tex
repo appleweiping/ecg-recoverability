@@ -1,0 +1,12 @@
+\subsection{Calibrated intervals for the predictable residual}
+For the empirically predictable residual we train a gradient-boosted quantile regressor of
+each target lead's off-dipole residual on the observed leads and apply Mondrian CQR per
+$(S,s,\ell)$ group, with strict fold discipline (basis and model on folds 1--7,
+calibration on fold~9, a single evaluation on fold~10; nominal $1{-}\alpha{=}0.90$). Across
+the pre-registered groups of $\{$I,II,V1,V3,V5$\}$ and $\{$I,II,V2$\}$, fold-10
+within-group coverage clusters near nominal ($0.88$--$0.95$; e.g.\ $\{$I,II,V1,V3,V5$\}$
+QRS/V2 $0.92$, record-bootstrap CI $[0.89,0.95]$, mean width $0.165$\,mV), with a few
+groups slightly below---the expected finite-sample behaviour of within-group marginal
+coverage. This certifies \emph{what interval} the predictable residual admits, per feature
+and lead, without any distribution-free claim beyond exchangeability with the calibration
+fold.

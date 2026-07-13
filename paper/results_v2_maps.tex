@@ -1,0 +1,27 @@
+\subsection{The recoverability map on PTB-XL}
+We estimate $\bm M_s$ (rank 3) per segment on the training folds and evaluate the map on
+$1{,}200$ NORM records (per-lead $\eta,\kappa$ with $200$-sample bootstrap CIs, truncation
+tolerance $\varrho{=}10^{-2}$; Fig.~\ref{fig:map}). The map is per target lead: a single
+observed lead (e.g.\ Lead~I) leaves \emph{every} other lead's dipolar component
+unidentifiable ($\eta{>}0$; rank~1); a dipole-spanning triplet $\{$I,II,V2$\}$ or the
+five-lead $\{$I,II,V1,V3,V5$\}$ makes all targets identifiable ($\eta{\approx}0$). For the
+six limb leads, \emph{all} precordial leads V1--V6 are unidentifiable for QRS/ST/T: the
+transverse dipole is unobserved, so precordial ST cannot be read from limb leads---a
+warning available before any reconstruction.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../results/recoverability_map.png}
+  \caption{Per-lead identifiability $\eta_{s,\ell}(S)$ across configurations and segments
+  (green: identifiable, red: unidentifiable; grey hatched: observed). limb-6 leaves all
+  precordial leads unidentifiable.}
+  \label{fig:map}
+\end{figure}
+
+\textbf{Truncation-tolerance sensitivity.} Rank/$\kappa$ of well-posed configurations are
+stable across $\varrho\!\in\!\{10^{-4},\dots,10^{-1}\}$ (e.g.\ $\{$I,II,V1,V3,V5$\}$ is
+rank~3 throughout), while near-rank-deficient sets are sensitive: on synthetic data
+$\{$V1,V2,V3$\}$ is rank~2 at $\varrho{=}10^{-2}$ but rank~3 with $\kappa{\sim}200$ at
+$\varrho{=}10^{-4}$. We therefore report a single $\kappa$ only for well-conditioned
+configurations and give the $\varrho$-sweep and bootstrap CIs otherwise; a single $10^{4}$
+or $10^{5}$ figure for a degenerate set is not meaningful.
