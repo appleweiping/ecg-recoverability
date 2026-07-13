@@ -1,29 +1,35 @@
 \section{Cross-Dataset Transfer of the Certificate}
 \label{sec:cross}
 The certificate is a function of the estimated subspace $\bm M_s$ and the selection $S$; a
-fair question is whether it is an artifact of one cohort. We re-estimate $\bm M_s$ and the
-per-configuration conditioning on the independent Chapman-Shaoxing 12-lead database
-\cite{zheng2020chapman} (different country, devices, and sampling) and compare to PTB-XL
-(\texttt{results/cross\_dataset.json}); the re-estimation uses $349$ Chapman records
-($\sim$13.8k segments per segment type). We deliberately do \emph{not} claim ``population
-independence''; we report what actually transfers.
+fair question is whether it is an artifact of one cohort. We re-estimate $\bm M_s$ under the
+\emph{same} unified truncated-SVD numerics ($\varrho{=}10^{-2}$) on the independent
+Chapman-Shaoxing-Ningbo 12-lead database \cite{zheng2020chapman} (different country, devices,
+sampling; $\CrossNchap$ records) and compare to PTB-XL by principal angles and by the
+per-configuration recoverability (rank + global $\kappa$ + per-lead $\eta$). We deliberately do
+\emph{not} claim ``population independence''; we report what transfers.
 
 \textbf{QRS subspace is transfer-stable.} For QRS the two datasets' rank-3 subspaces are nearly
-aligned (principal angles $20.3^\circ/9.1^\circ/1.6^\circ$; explained-variance ratios
-$0.56/0.27/0.08$ vs.\ $0.55/0.27/0.06$). The per-configuration conditioning transfers for the well-posed sets: $\kappa$
-for $\{$I,II,V2$\}$ is $3.1$ (PTB-XL) vs.\ $4.1$ (Chapman) and for $\{$I,II,V1,V3,V5$\}$ $2.5$
-vs.\ $2.3$, and the limb-6 ill-conditioning is reproduced on both
-($\kappa\!\sim\!2\times10^{5}$). The near-rank-deficient $\{$V1,V2,V3$\}$ transfers less
-cleanly ($3.9$ vs.\ $6.7$, a $\sim$70\% increase), as expected for an ill-conditioned set.
-So the qualitative identifiable/unidentifiable verdict and the $\kappa$ ordering are stable for
-well-posed configurations, with larger cohort variation on the near-degenerate ones.
+aligned (max principal angle $\CrossQRSangMax^\circ$). The per-configuration conditioning
+transfers for the well-posed sets: $\kappa$ for $\{$I,II,V2$\}$ is $\CrossKapTriplePtb$ (PTB-XL)
+vs.\ $\CrossKapTripleChap$ (Chapman) and for $\{$I,II,V1,V3,V5$\}$ $\CrossKapSpanPtb$ vs.\
+$\CrossKapSpanChap$; the near-rank-deficient $\{$V1,V2,V3$\}$ transfers less cleanly
+($\CrossKapVvvPtb$ vs.\ $\CrossKapVvvChap$), as expected for an ill-conditioned set.
 
-\textbf{ST/T third direction does not transfer.} For the low-amplitude segments (P, ST, T)
-two of three subspace directions align but the third differs sharply between datasets
-(max principal angle $88$--$89^\circ$; P $88.4^\circ$, ST $88.3^\circ$, T $89.2^\circ$). We therefore restrict the transfer claim: the QRS map
-and the limb-6 conditioning verdict are cohort-stable; the ST/T \emph{third} spatial direction
-is cohort-specific and its map should be re-estimated per dataset. This is the honest scope of
-transfer, not a blanket invariance.
+\textbf{limb-6 is effective rank $\CrossLimbRankPtb$ on both cohorts.} Under the unified
+truncation the six limb leads span the frontal plane, so $\bm M_{s,S}$ is rank
+$\CrossLimbRankPtb$ (the transverse singular value is truncated) on both PTB-XL and Chapman---we
+do \emph{not} invert a near-zero singular value into a spurious $10^{5}$-scale $\kappa$.
+Precordial unrecoverability is instead flagged, consistently across cohorts, by $\eta{>}0$
+(e.g.\ V2 $\eta{=}\CrossLimbEtaVtwoPtb$ on PTB-XL vs.\ $\CrossLimbEtaVtwoChap$ on Chapman). So
+the qualitative identifiable/unidentifiable verdict and the well-posed $\kappa$ ordering are
+cohort-stable.
+
+\textbf{ST/T third direction does not transfer.} For the low-amplitude segments the third
+subspace direction differs sharply between datasets (max principal angle
+$\CrossSTang^\circ$ for ST, $\CrossTang^\circ$ for T). We therefore restrict the transfer
+claim: the QRS map and the limb-6 verdict are cohort-stable; the ST/T third spatial direction is
+cohort-specific and its map should be re-estimated per dataset---the honest scope of transfer,
+not a blanket invariance.
 
 \textbf{Sensitivity to duplicated limb leads (\texttt{results/lead\_weighting.json}).} The six
 limb leads are exact combinations of I and II, so a 12-lead PCA up-weights frontal-plane content.
@@ -32,7 +38,7 @@ transform $\bm T$, the \emph{identifiability verdict is robust}: for the spannin
 per-lead $\eta$ is unchanged (max $|\Delta\eta|{=}0$; all targets remain exactly identifiable),
 and limb-6 precordial leads stay unidentifiable under both fits. The \emph{magnitudes} of the
 low-amplitude ST/T subspace are, however, sensitive: the 12-lead and 8-lead ST/T subspaces
-differ by large principal angles ($75^\circ$/$82^\circ$) and $\kappa$ can shift several-fold
-(e.g.\ ST $\{$I,II,V2$\}$: $3.8\!\to\!38$). We therefore read the QRS map quantitatively and the
+differ by large principal angles ($\LWSTang^\circ$/$\LWTang^\circ$) and $\kappa$ can shift
+several-fold (e.g.\ ST $\{$I,II,V2$\}$: $\LWKapTwelve\!\to\!\LWKapEight$). We therefore read the QRS map quantitatively and the
 ST/T \emph{graded} values qualitatively---the binary identifiable/unidentifiable verdict is
 robust; the exact ST/T $\eta$/$\kappa$/ambiguity magnitudes are weighting-dependent.

@@ -13,14 +13,20 @@ ROOT = Path(__file__).resolve().parent.parent
 MACROS = ROOT / "paper" / "auto" / "fair_baselines_macros.tex"
 
 
-def _macros():
-    if not MACROS.exists():
-        pytest.skip("macros not generated")
-    txt = MACROS.read_text()
+LONG_MACROS = ROOT / "paper" / "auto" / "long_results_macros.tex"
+
+
+def _parse_macros(path):
+    if not path.exists():
+        pytest.skip(f"{path.name} not generated")
     d = {}
-    for m in re.finditer(r"\\newcommand\{\\([A-Za-z]+)\}\{([^}]*)\}", txt):
+    for m in re.finditer(r"\\newcommand\{\\([A-Za-z]+)\}\{([^}]*)\}", path.read_text()):
         d[m.group(1)] = m.group(2)
     return d
+
+
+def _macros():
+    return _parse_macros(MACROS)
 
 
 def _json(name):
@@ -81,3 +87,47 @@ def test_total_wrong_range_consistent():
             for r in s["reconstructors"].values()]
     assert float(d["TotWrongLo"]) <= min(tots) + 0.1
     assert float(d["TotWrongHi"]) >= max(tots) - 0.1
+
+
+# ---- arXiv-only (long version) consistency (task-3) ----
+ARXIV_JSONS = ("cross_dataset.json", "gpu_deficit_ci.json", "realism_metrics.json",
+               "gpu_oracle_gate.json")
+
+
+def test_arxiv_jsons_have_lineage():
+    """Every arXiv-cited result JSON must carry a lineage block with a real commit."""
+    for name in ARXIV_JSONS:
+        p = ROOT / "results" / name
+        if not p.exists():
+            continue
+        lin = json.loads(p.read_text()).get("lineage")
+        assert lin and lin.get("commit") and lin["commit"] != "unknown", \
+            f"{name} missing lineage.commit"
+
+
+def test_arxiv_jsons_share_dataset():
+    """All present arXiv JSONs must be on the SAME dataset (commits may span a session)."""
+    datasets = {}
+    for name in ARXIV_JSONS:
+        p = ROOT / "results" / name
+        if p.exists():
+            lin = json.loads(p.read_text()).get("lineage") or {}
+            ds = (lin.get("dataset") or {}).get("ids_sha256")
+            if ds:
+                datasets[name] = ds
+    if len(datasets) >= 2:
+        assert len(set(datasets.values())) == 1, f"arXiv JSON dataset mismatch: {datasets}"
+
+
+def test_long_macros_match_json():
+    """Long-version macros equal their JSON sources (negative result + realism)."""
+    d = _parse_macros(LONG_MACROS)
+    neg = _json("gpu_deficit_ci.json")
+    hi = str(neg["guidances"][-1])
+    if "NegDrhosix" in d:
+        assert abs(float(d["NegDrhosix"]) - neg["mean"][hi]) < 0.001
+        assert abs(float(d["NegStdsix"]) - neg["std"][hi]) < 0.001
+    real = _json("realism_metrics.json")
+    if "RealPSDVtwoHi" in d:
+        gh = str(real["guidances"][-1])
+        assert abs(float(d["RealPSDVtwoHi"]) - real["per_w"][gh]["psd_logdist"]["V2"]) < 0.01

@@ -1,37 +1,45 @@
 {
   "n_chapman_records": 349,
-  "processing": "100Hz, lead-II dwt, top-3 spatial eig",
+  "deploy_rcond": 0.01,
+  "rconds": [
+    0.0001,
+    0.001,
+    0.01,
+    0.03,
+    0.1
+  ],
+  "processing": "100Hz, lead-II dwt, top-3 spatial eig; unified truncated-SVD recoverability",
   "segments": {
     "P": {
       "principal_angles_deg": [
-        88.38,
-        31.83,
-        6.1
+        79.11,
+        66.89,
+        7.0
       ],
-      "max_angle_deg": 88.38,
+      "max_angle_deg": 79.11,
       "ptbxl_evr3": [
-        0.238,
-        0.175,
-        0.127
+        0.251,
+        0.176,
+        0.137
       ],
       "chapman_evr3": [
         0.315,
         0.231,
         0.151
       ],
-      "n_ptb": 59940,
+      "n_ptb": 59933,
       "n_chap": 13781
     },
     "QRS": {
       "principal_angles_deg": [
-        20.28,
-        9.06,
-        1.61
+        21.08,
+        9.03,
+        1.56
       ],
-      "max_angle_deg": 20.28,
+      "max_angle_deg": 21.08,
       "ptbxl_evr3": [
-        0.558,
-        0.273,
+        0.559,
+        0.274,
         0.076
       ],
       "chapman_evr3": [
@@ -44,69 +52,553 @@
     },
     "ST": {
       "principal_angles_deg": [
-        88.34,
-        12.97,
-        10.61
+        88.82,
+        12.23,
+        10.38
       ],
-      "max_angle_deg": 88.34,
+      "max_angle_deg": 88.82,
       "ptbxl_evr3": [
-        0.382,
-        0.237,
-        0.098
+        0.393,
+        0.235,
+        0.099
       ],
       "chapman_evr3": [
         0.417,
         0.246,
         0.1
       ],
-      "n_ptb": 59913,
+      "n_ptb": 59914,
       "n_chap": 13867
     },
     "T": {
       "principal_angles_deg": [
-        89.15,
-        22.39,
-        6.75
+        89.46,
+        22.83,
+        6.71
       ],
-      "max_angle_deg": 89.15,
+      "max_angle_deg": 89.46,
       "ptbxl_evr3": [
-        0.513,
-        0.143,
-        0.085
+        0.534,
+        0.141,
+        0.083
       ],
       "chapman_evr3": [
         0.518,
         0.147,
         0.094
       ],
-      "n_ptb": 59945,
+      "n_ptb": 59937,
       "n_chap": 13782
     }
   },
-  "kappa_QRS": {
+  "recoverability_QRS": {
     "{I,II,V2}": {
-      "ptbxl": 3.14,
-      "chapman": 4.11,
-      "rank_ptb": 3,
-      "rank_chap": 3
+      "ptbxl": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 3,
+            "kappa_global": 3.219
+          },
+          "0.001": {
+            "rank": 3,
+            "kappa_global": 3.219
+          },
+          "0.01": {
+            "rank": 3,
+            "kappa_global": 3.219
+          },
+          "0.03": {
+            "rank": 3,
+            "kappa_global": 3.219
+          },
+          "0.1": {
+            "rank": 3,
+            "kappa_global": 3.219
+          }
+        },
+        "rank_deploy": 3,
+        "leads": {
+          "III": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVR": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVL": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVF": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V1": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V3": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V4": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V5": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V6": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          }
+        }
+      },
+      "chapman": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 3,
+            "kappa_global": 4.114
+          },
+          "0.001": {
+            "rank": 3,
+            "kappa_global": 4.114
+          },
+          "0.01": {
+            "rank": 3,
+            "kappa_global": 4.114
+          },
+          "0.03": {
+            "rank": 3,
+            "kappa_global": 4.114
+          },
+          "0.1": {
+            "rank": 3,
+            "kappa_global": 4.114
+          }
+        },
+        "rank_deploy": 3,
+        "leads": {
+          "III": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVR": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVL": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVF": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V1": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V3": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V4": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V5": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V6": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          }
+        }
+      }
     },
     "{I,II,V1,V3,V5}": {
-      "ptbxl": 2.54,
-      "chapman": 2.26,
-      "rank_ptb": 3,
-      "rank_chap": 3
+      "ptbxl": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 3,
+            "kappa_global": 2.541
+          },
+          "0.001": {
+            "rank": 3,
+            "kappa_global": 2.541
+          },
+          "0.01": {
+            "rank": 3,
+            "kappa_global": 2.541
+          },
+          "0.03": {
+            "rank": 3,
+            "kappa_global": 2.541
+          },
+          "0.1": {
+            "rank": 3,
+            "kappa_global": 2.541
+          }
+        },
+        "rank_deploy": 3,
+        "leads": {
+          "III": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVR": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVL": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVF": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V2": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V4": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V6": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          }
+        }
+      },
+      "chapman": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 3,
+            "kappa_global": 2.26
+          },
+          "0.001": {
+            "rank": 3,
+            "kappa_global": 2.26
+          },
+          "0.01": {
+            "rank": 3,
+            "kappa_global": 2.26
+          },
+          "0.03": {
+            "rank": 3,
+            "kappa_global": 2.26
+          },
+          "0.1": {
+            "rank": 3,
+            "kappa_global": 2.26
+          }
+        },
+        "rank_deploy": 3,
+        "leads": {
+          "III": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVR": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVL": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVF": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V2": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V4": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V6": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          }
+        }
+      }
     },
     "{V1,V2,V3}": {
-      "ptbxl": 3.94,
-      "chapman": 6.74,
-      "rank_ptb": 3,
-      "rank_chap": 3
+      "ptbxl": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 3,
+            "kappa_global": 3.908
+          },
+          "0.001": {
+            "rank": 3,
+            "kappa_global": 3.908
+          },
+          "0.01": {
+            "rank": 3,
+            "kappa_global": 3.908
+          },
+          "0.03": {
+            "rank": 3,
+            "kappa_global": 3.908
+          },
+          "0.1": {
+            "rank": 3,
+            "kappa_global": 3.908
+          }
+        },
+        "rank_deploy": 3,
+        "leads": {
+          "I": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "II": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "III": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVR": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVL": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVF": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V4": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V5": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V6": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          }
+        }
+      },
+      "chapman": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 3,
+            "kappa_global": 6.739
+          },
+          "0.001": {
+            "rank": 3,
+            "kappa_global": 6.739
+          },
+          "0.01": {
+            "rank": 3,
+            "kappa_global": 6.739
+          },
+          "0.03": {
+            "rank": 3,
+            "kappa_global": 6.739
+          },
+          "0.1": {
+            "rank": 3,
+            "kappa_global": 6.739
+          }
+        },
+        "rank_deploy": 3,
+        "leads": {
+          "I": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "II": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "III": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVR": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVL": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "aVF": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V4": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V5": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          },
+          "V6": {
+            "eta": 0.0,
+            "eta_normalized": 0.0
+          }
+        }
+      }
     },
     "limb-6": {
-      "ptbxl": 206991.81,
-      "chapman": 184162.7,
-      "rank_ptb": 3,
-      "rank_chap": 3
+      "ptbxl": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 2,
+            "kappa_global": 1.973
+          },
+          "0.001": {
+            "rank": 2,
+            "kappa_global": 1.973
+          },
+          "0.01": {
+            "rank": 2,
+            "kappa_global": 1.973
+          },
+          "0.03": {
+            "rank": 2,
+            "kappa_global": 1.973
+          },
+          "0.1": {
+            "rank": 2,
+            "kappa_global": 1.973
+          }
+        },
+        "rank_deploy": 2,
+        "leads": {
+          "V1": {
+            "eta": 0.2949,
+            "eta_normalized": 0.6695
+          },
+          "V2": {
+            "eta": 0.6583,
+            "eta_normalized": 0.8923
+          },
+          "V3": {
+            "eta": 0.6025,
+            "eta_normalized": 0.9643
+          },
+          "V4": {
+            "eta": 0.3246,
+            "eta_normalized": 0.594
+          },
+          "V5": {
+            "eta": 0.1047,
+            "eta_normalized": 0.216
+          },
+          "V6": {
+            "eta": 0.016,
+            "eta_normalized": 0.0386
+          }
+        }
+      },
+      "chapman": {
+        "rcond_sweep": {
+          "0.0001": {
+            "rank": 2,
+            "kappa_global": 2.807
+          },
+          "0.001": {
+            "rank": 2,
+            "kappa_global": 2.807
+          },
+          "0.01": {
+            "rank": 2,
+            "kappa_global": 2.807
+          },
+          "0.03": {
+            "rank": 2,
+            "kappa_global": 2.807
+          },
+          "0.1": {
+            "rank": 2,
+            "kappa_global": 2.807
+          }
+        },
+        "rank_deploy": 2,
+        "leads": {
+          "V1": {
+            "eta": 0.3081,
+            "eta_normalized": 0.7162
+          },
+          "V2": {
+            "eta": 0.6344,
+            "eta_normalized": 0.9262
+          },
+          "V3": {
+            "eta": 0.6055,
+            "eta_normalized": 0.9923
+          },
+          "V4": {
+            "eta": 0.3513,
+            "eta_normalized": 0.62
+          },
+          "V5": {
+            "eta": 0.106,
+            "eta_normalized": 0.1811
+          },
+          "V6": {
+            "eta": 0.0357,
+            "eta_normalized": 0.0782
+          }
+        }
+      }
     }
+  },
+  "lineage": {
+    "commit": "44091359597ebcec91996933a1a8a44677152526",
+    "protocol": "recoverability-v2-2026-07",
+    "seed": 0,
+    "targets": [
+      "I",
+      "II",
+      "III",
+      "aVR",
+      "aVL",
+      "aVF",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd"
+    },
+    "n_train": 1500,
+    "n_test": null,
+    "train_ids_sha256": "af7cf2f6ce6d27ca",
+    "test_ids_sha256": null,
+    "datasets": [
+      "PTB-XL (folds 1-7 NORM)",
+      "Chapman-Shaoxing-Ningbo (PhysioNet ecg-arrhythmia 1.0.0)"
+    ],
+    "chapman_n_records": 349,
+    "chapman_specs_sha256": "f7f864dd5b1fcc26"
   }
 }

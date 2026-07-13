@@ -75,5 +75,28 @@
       "qrs_width_wasserstein": 0.0,
       "gen_qrs_delineation_rate": 10.846666666666666
     }
+  },
+  "lineage": {
+    "commit": "44091359597ebcec91996933a1a8a44677152526",
+    "protocol": "recoverability-v2-2026-07",
+    "seed": 0,
+    "targets": [
+      "V2",
+      "V4",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "per-lead 95th-pct |amp| (train)",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd"
+    },
+    "n_train": null,
+    "n_test": 300,
+    "train_ids_sha256": null,
+    "test_ids_sha256": "c7e45c2c072e9f22",
+    "experiment": "diffusion realism vs guidance (retracted-claim negative result)",
+    "checkpoint": "results/gpu_ddpm.pt"
   }
 }

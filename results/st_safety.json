@@ -6,32 +6,32 @@
     "V1": {
       "eta": 0.3302,
       "eta_normalized": 0.7402,
-      "expected_ambiguity_mV": 0.0961
+      "expected_ambiguity_mV": 0.0928
     },
     "V2": {
       "eta": 0.7115,
       "eta_normalized": 0.9598,
-      "expected_ambiguity_mV": 0.2071
+      "expected_ambiguity_mV": 0.2
     },
     "V3": {
       "eta": 0.5526,
       "eta_normalized": 0.9548,
-      "expected_ambiguity_mV": 0.1609
+      "expected_ambiguity_mV": 0.1553
     },
     "V4": {
       "eta": 0.2675,
       "eta_normalized": 0.534,
-      "expected_ambiguity_mV": 0.0779
+      "expected_ambiguity_mV": 0.0752
     },
     "V5": {
       "eta": 0.0843,
       "eta_normalized": 0.1701,
-      "expected_ambiguity_mV": 0.0245
+      "expected_ambiguity_mV": 0.0237
     },
     "V6": {
       "eta": 0.0268,
       "eta_normalized": 0.0573,
-      "expected_ambiguity_mV": 0.0078
+      "expected_ambiguity_mV": 0.0075
     }
   },
   "n_test": 1500,
@@ -85,7 +85,7 @@
     }
   },
   "lineage": {
-    "commit": "27f22c0d3ed0388e116d276bb5e7c3f652078b4b",
+    "commit": "44091359597ebcec91996933a1a8a44677152526",
     "protocol": "recoverability-v2-2026-07",
     "seed": 0,
     "targets": [

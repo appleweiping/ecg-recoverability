@@ -87,7 +87,11 @@ def run(n_train=3000, n_test=1500, seed=0):
     tr = _collect(db, norm_tr); te = _collect(db, test)
 
     Dcols = lead_transform_T() @ inverse_dower_matrix()      # (12,3) inverse-Dower dipole map
-    out = {"n_train": int(len(norm_tr)), "part_A_baselines": {}, "part_B_physics_vs_pca": {}}
+    from ecgcert import lineage
+    out = {"n_train": int(len(norm_tr)), "part_A_baselines": {}, "part_B_physics_vs_pca": {},
+           "lineage": lineage.make(db, seed=seed, targets=["V2", "V4", "V6"], normalization="raw mV",
+                                   train_ids=norm_tr, test_ids=test,
+                                   extra={"experiment": "classical baselines + physics-vs-PCA subspace angles"})}
 
     for s in SEGMENTS:
         Xtr, Xte, scte = tr[s]["X"], te[s]["X"], te[s]["sc"]
