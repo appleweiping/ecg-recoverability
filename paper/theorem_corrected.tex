@@ -7,7 +7,7 @@
 \newtheorem{propc}{Proposition}
 
 % ---------------------------------------------------------------- setup
-\paragraph{Model.} Within segment $s$ write the population 12-lead vector as
+\noindent\textbf{Model.} Within segment $s$ write the population 12-lead vector as
 $\bm L_s = \bm\mu_s + \bm M_s\bm d + \bm r_s$, where $\bm M_s\in\mathbb R^{12\times3}$
 is the (population-estimated, PCA) dipolar basis, $\bm d$ the dipole coordinates, and
 $\bm r_s$ the non-dipolar residual. Observing $S$ gives $\bm y_S=\bm{\mathrm{Sel}}_S\bm L_s
@@ -42,7 +42,7 @@ $\varrho$-sensitivity sweep and record-bootstrap confidence intervals.
 \end{theoremc}
 
 % ---------------------------------------------------------------- residual (honest)
-\paragraph{The non-dipolar residual (no independence claim on real data).}
+\noindent\textbf{The non-dipolar residual (no independence claim on real data).}
 Let $\bm m_s(\bm y_S)=\mathbb E[\bm r_s\mid\bm y_S]$ and
 $\bm u_s=\bm r_s-\bm m_s(\bm y_S)$, so $\mathbb E[\bm u_s\mid\bm y_S]=\bm 0$. We do
 \emph{not} assume $\bm u_s\perp\bm y_S$. The Bayes-optimal reconstruction error of the

@@ -1,0 +1,102 @@
+\documentclass{article}
+\usepackage{spconf,amsmath,amssymb,graphicx,booktabs,bm}
+\usepackage{multirow}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
+
+% ---- result macros (generated from results/*.json by scripts/paper_numbers.py) ----
+% target-specific certificate + calibration + baselines; NO fabrication/hallucination.
+
+\title{Target-Specific Recoverability Maps for Reduced-Lead ECG Reconstruction}
+\name{Weiping Yan}
+\address{University of Minnesota, Twin Cities}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Reconstructing missing electrocardiogram (ECG) leads from a reduced set is ill-posed, and
+a scalar reconstruction error says nothing about \emph{which} named feature, on \emph{which}
+lead, a clinician can trust. We give a \emph{target-specific recoverability map}: for a
+waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead $\ell$, two
+closed-form numbers derived from one truncated SVD of the segment's empirical rank-3 spatial
+(``dipolar'') sub-matrix---an \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the
+target's low-rank component is recoverable from $S$) and a \emph{conditioning}
+$\kappa_{s,\ell}(S)$ (its noise/observed-residual gain). On PTB-XL the map is stable to the
+truncation tolerance for the well-posed configurations and rank-sensitive (with reported
+sensitivity) for the ill-posed ones; e.g.\ it proves \emph{a priori} that precordial ST is
+not identifiable from limb leads. We add distribution-free calibrated intervals for the
+empirically predictable residual (conformalized quantile regression with strict train/
+calibrate/test fold discipline; within-group coverage near nominal), and contextualize with
+reconstruction baselines. The map is reconstructor-agnostic and turns ``trust the
+reconstruction'' into a per-feature, per-lead, calibrated statement.
+\end{abstract}
+
+\begin{keywords}
+electrocardiography, inverse problems, identifiability, conformal prediction,
+trustworthy machine learning
+\end{keywords}
+
+\section{Introduction}
+\label{sec:intro}
+Wearable and reduced-lead ECG acquisition makes lead \emph{reconstruction} ubiquitous:
+recover the standard 12 leads from one, three, or six observed leads
+\cite{gradowski2025reveals,cardoso2024bayesian}. A low aggregate error certifies nothing
+about \emph{which} morphological features are trustworthy: a cardiologist reads the P wave,
+the QRS complex, the ST segment and the T wave, each on specific leads.
+
+We ask a sharper, reconstructor-independent question: \emph{for a given observed lead set,
+which target lead's dipolar morphology is even identifiable, and how well-conditioned is its
+recovery?} Each waveform segment's instantaneous potential is approximately low rank across
+leads; we estimate a per-segment rank-3 spatial basis $\bm M_s$ (top-3 singular vectors of
+the population lead covariance). We stress that $\bm M_s$ is a \emph{population-estimated
+(PCA)} object: on real PTB-XL it shares two directions with the classical
+vectorcardiographic (inverse-Dower) dipole but its third direction differs materially, so we
+call it an empirical rank-3 subspace rather than a physical dipole (Sec.~\ref{sec:exp}).
+
+\noindent\textbf{Contributions.} (1) A \emph{target-specific} recoverability map: closed-form
+per-lead identifiability $\eta_{s,\ell}(S)$ and conditioning $\kappa_{s,\ell}(S)$ from a
+single truncated SVD, replacing coarse ``global rank$<$3'' rules, with a truncation-tolerance
+sensitivity analysis and record-bootstrap confidence intervals (Sec.~\ref{sec:cert}). (2) A
+distribution-free calibration layer for the empirically predictable residual, with strict
+fold discipline and honestly stated within-group marginal coverage (Sec.~\ref{sec:calib}).
+(3) Evidence on PTB-XL: reconstruction baselines that quantify what each configuration can
+recover, and a certificate-level safety statement---precordial ST is not identifiable from
+limb leads---available before any reconstruction (Sec.~\ref{sec:exp}).
+
+\input{theorem_corrected}
+
+\section{Distribution-Free Calibration}
+\label{sec:calib}
+\textbf{Predictable-residual intervals.} For each pre-registered group $g=(S,s,\ell)$ we
+train a quantile regressor of the target lead's off-dipole residual on the observed leads
+(gradient-boosted pinball loss) and apply conformalized quantile regression
+\cite{romano2019cqr} with a Mondrian (per-group) correction. Fold discipline is strict and
+leakage-free: basis and quantile model on folds 1--7, conformal calibration on fold 9, a
+single evaluation on fold 10. We report \emph{within-group marginal} coverage under
+exchangeability (not per-example conditional coverage), interval width, and group sizes.
+
+\textbf{Off-dipole flag.} We threshold the off-dipole energy at the one-sided $(1-\alpha)$
+conformal quantile over faithful reconstructions; the false-flag rate is $\le\alpha$ for a
+fresh reconstruction \emph{exchangeable with the calibration distribution}---not
+distribution-free under an arbitrary shift.
+
+\section{Experiments}
+\label{sec:exp}
+% \input{results_v2_maps}     % per-lead eta/kappa map + rcond sensitivity + CI (Fig)
+% \input{results_v2_calib}    % Tier-II coverage table
+% \input{results_v2_baseline} % baselines + physics-vs-PCA + ST-safety certificate
+\emph{[Results sections wired from results/recoverability\_maps.json,
+tier2\_conformal.json, baselines\_physics.json, st\_safety.json.]}
+
+\section{Conclusion}
+Reduced-lead ECG reconstruction has a \emph{known low-rank structure per segment}. Exploiting
+it gives a per-target-lead recoverability map---what is identifiable, how well-conditioned,
+and (via calibration) what interval the predictable residual admits---before and independent
+of any reconstructor. It tells a clinician which lead configuration can support a decision,
+e.g.\ that precordial ST cannot be read from limb leads.
+
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
+\end{document}
