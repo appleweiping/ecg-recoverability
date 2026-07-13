@@ -1,0 +1,20 @@
+name: tests
+on:
+  push:
+    branches: [main, presubmission-rebuild]
+  pull_request:
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (CPU, no GPU/data needed for the test suite)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install "torch>=2.0" --index-url https://download.pytorch.org/whl/cpu
+      - name: Run tests
+        run: python -m pytest -q

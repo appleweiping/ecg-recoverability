@@ -1,7 +1,7 @@
 [project]
 name = "ecg-recoverability"
 version = "0.1.0"
-description = "Certified Reduced-Lead ECG Reconstruction: a per-feature recoverability certificate with distribution-free calibration"
+description = "Target-Specific Recoverability Maps for Reduced-Lead ECG Reconstruction: per-lead identifiability/conditioning with calibrated intervals"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 license = { text = "MIT" }
