@@ -1,16 +1,23 @@
-"""Cross-dataset validation of the recoverability certificate's physical core.
+"""Cross-dataset transfer of the recoverability certificate (honest scope).
 
-Claim: the certificate's only data-estimated object, the per-segment dipolar subspace
-M_s (and hence the closed-form conditioning kappa_s(S)), is DATASET-INDEPENDENT. We fit
-M_s with IDENTICAL processing on two geographically independent hospital populations:
-  - PTB-XL (German, Physikalisch-Technische Bundesanstalt)      [local]
-  - Chapman-Shaoxing-Ningbo (Chinese, PhysioNet ecg-arrhythmia 1.0.0)  [streamed]
-and compare the subspaces by PRINCIPAL ANGLES; we also recompute kappa on both.
+We fit the per-segment dipolar subspace M_s with IDENTICAL processing on two independent
+hospital populations -- PTB-XL (German) and Chapman-Shaoxing-Ningbo (Chinese, PhysioNet
+ecg-arrhythmia 1.0.0) -- and compare (a) the subspaces by PRINCIPAL ANGLES and (b) the
+per-configuration recoverability under the UNIFIED truncated-SVD numerics (rcond=1e-2):
+rank + global kappa across an rcond sweep, and per-lead eta / normalized eta_tilde at the
+deployment tolerance. We do NOT claim M_s is dataset-independent; we report what transfers
+(QRS subspace + conditioning) and what does not (ST/T third direction). For the degenerate
+limb-6 configuration we report its effective rank (2) and per-lead eta/eta_tilde rather than
+inverting a near-zero singular value into a spurious 1e5-scale kappa (consistent with the
+main map's rule for degenerate sets).
 
 Runs on the GPU box (PTB-XL local + PhysioNet reachable). CPU only.
+
+Output: results/cross_dataset.json
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -19,14 +26,27 @@ from scipy.linalg import subspace_angles
 from scipy.signal import resample_poly
 
 import wfdb
+from ecgcert import lineage
 from ecgcert.data import PTBXL
-from ecgcert.physics.dipolar_subspace import kappa
+from ecgcert.physics import (LEAD_INDEX, LEADS, kappa, eta_per_lead, eta_normalized_per_lead)
+
+RESULTS = Path(__file__).resolve().parent.parent / "results"
+PN = "ecg-arrhythmia/1.0.0"
+SEGS = ("P", "QRS", "ST", "T")
+RCONDS = (1e-4, 1e-3, 1e-2, 3e-2, 1e-1)
+DEPLOY_RCOND = 1e-2
+CONFIGS = {
+    "{I,II,V2}": ["I", "II", "V2"],
+    "{I,II,V1,V3,V5}": ["I", "II", "V1", "V3", "V5"],
+    "{V1,V2,V3}": ["V1", "V2", "V3"],
+    "limb-6": ["I", "II", "III", "aVR", "aVL", "aVF"],
+}
 
 
 def fit_M(samples, rank=3, clip_mV=10.0):
     """Robust per-segment dipolar basis via eigendecomposition of the 12x12 covariance
-    (eigh always converges, unlike LAPACK gesdd SVD on extreme-amplitude rows). Drops
-    non-finite and outlier (|x|>clip_mV) rows. Returns {seg: (M(12,3), mu(12,), evr)}."""
+    (eigh always converges, unlike SVD on extreme-amplitude Chapman rows). Returns
+    {seg: (M(12,3), mu(12,), evr, n)}."""
     out = {}
     for s, X in samples.items():
         if X.size == 0:
@@ -36,30 +56,18 @@ def fit_M(samples, rank=3, clip_mV=10.0):
         if X.shape[0] < 200:
             continue
         mu = X.mean(0)
-        C = np.cov((X - mu).T)                       # (12,12) symmetric PSD
-        w, V = np.linalg.eigh(C)                      # ascending eigenvalues
+        C = np.cov((X - mu).T)
+        w, V = np.linalg.eigh(C)
         order = np.argsort(w)[::-1]
         w, V = w[order], V[:, order]
-        M = V[:, :rank]                              # top-3 spatial directions
+        M = V[:, :rank]
         evr = w[:rank] / max(w.sum(), 1e-12)
         out[s] = (M, mu, evr, int(X.shape[0]))
     return out
 
-RESULTS = Path(__file__).resolve().parent.parent / "results"
-PN = "ecg-arrhythmia/1.0.0"
-SEGS = ("P", "QRS", "ST", "T")
-CONFIGS = {
-    "{I,II,V2}": ["I", "II", "V2"],
-    "{I,II,V1,V3,V5}": ["I", "II", "V1", "V3", "V5"],
-    "{V1,V2,V3}": ["V1", "V2", "V3"],
-    "limb-6": ["I", "II", "III", "aVR", "aVL", "aVF"],
-}
 
-
-def chapman_record_specs(folder_stride=5, per_folder=12, cap=1000):
-    """Return [(pn_subdir, record_name)] spread across the nested leaf folders
-    (WFDBRecords/XX/XXX/), which span the 3 source hospitals."""
-    folders = wfdb.get_record_list(PN)[::folder_stride]      # ~90 of 452 leaf folders
+def chapman_record_specs(folder_stride=8, per_folder=8, cap=350):
+    folders = wfdb.get_record_list(PN)[::folder_stride]
     specs = []
     for fol in folders:
         fol = fol.strip("/")
@@ -74,21 +82,19 @@ def chapman_record_specs(folder_stride=5, per_folder=12, cap=1000):
     return specs
 
 
-def collect_chapman(specs, max_per_record=40, max_ok=1000, seed=0):
+def collect_chapman(specs, max_per_record=40, max_ok=350, seed=0):
     rng = np.random.default_rng(seed)
     rows = {s: [] for s in SEGS}
     ok = 0
     for fol, name in specs:
         try:
             r = wfdb.rdrecord(name, pn_dir=f"{PN}/{fol}")
-            sig = r.p_signal.astype(float)                    # (5000,12) @500Hz, standard order
+            sig = r.p_signal.astype(float)
         except Exception:
             continue
-        if sig.shape[1] != 12 or sig.shape[0] < 2500:
+        if sig.shape[1] != 12 or sig.shape[0] < 2500 or not np.all(np.isfinite(sig)):
             continue
-        if not np.all(np.isfinite(sig)):                      # some Chapman records carry NaN leads
-            continue
-        sig = resample_poly(sig, 1, 5, axis=0)                # -> ~100Hz, matches PTB-XL processing
+        sig = resample_poly(sig, 1, 5, axis=0)
         if not np.all(np.isfinite(sig)):
             continue
         segs = PTBXL.segment_indices(sig, fs=100)
@@ -107,30 +113,51 @@ def collect_chapman(specs, max_per_record=40, max_ok=1000, seed=0):
     return {s: (np.vstack(v) if v else np.zeros((0, 12))) for s, v in rows.items()}, ok
 
 
+def _recover(M, obs):
+    """Unified-numerics recoverability of config `obs` under basis M: rcond sweep (rank +
+    global kappa) and per-lead eta / eta_tilde at deploy rcond."""
+    sweep = {}
+    for rc in RCONDS:
+        k, r = kappa(M, obs, rcond=rc)
+        sweep[f"{rc:g}"] = {"rank": int(r), "kappa_global": round(float(k), 3)}
+    eta = eta_per_lead(M, obs, rcond=DEPLOY_RCOND)
+    etn = eta_normalized_per_lead(M, obs, rcond=DEPLOY_RCOND)
+    tgt = [l for l in LEADS if l not in set(obs)]
+    per_lead = {l: {"eta": round(float(eta[LEAD_INDEX[l]]), 4),
+                    "eta_normalized": (None if not np.isfinite(etn[LEAD_INDEX[l]])
+                                       else round(float(etn[LEAD_INDEX[l]]), 4))} for l in tgt}
+    return {"rcond_sweep": sweep, "rank_deploy": sweep[f"{DEPLOY_RCOND:g}"]["rank"], "leads": per_lead}
+
+
 def main():
-    print("[cross] fitting PTB-XL M_s (NORM, 100Hz, lead-II dwt) ...", flush=True)
     db = PTBXL()
-    norm = db.ids_with_superclass("NORM", exclusive=False, folds=range(1, 9))
+    print("[cross] fitting PTB-XL M_s (NORM, 100Hz, lead-II dwt) ...", flush=True)
+    norm = db.ids_with_superclass("NORM", exclusive=False, folds=range(1, 8))
     ptb_samples = db.collect_all_segments(norm, rate=100, max_per_record=40, max_records=1500, seed=0)
     ptb_models = fit_M(ptb_samples)
 
     print("[cross] streaming Chapman-Shaoxing-Ningbo subset ...", flush=True)
-    # ~350 records spread across leaf folders is ample for a stable 12x3 subspace
-    # (each contributes ~40 samples/segment); PhysioNet streaming is the bottleneck.
     specs = chapman_record_specs(folder_stride=8, per_folder=8, cap=350)
     print(f"[cross] {len(specs)} record specs across leaf folders", flush=True)
     chap_samples, n_chap = collect_chapman(specs, max_ok=350)
     chap_models = fit_M(chap_samples)
     print(f"[cross] chapman usable records: {n_chap}", flush=True)
 
-    out = {"n_chapman_records": n_chap, "processing": "100Hz, lead-II dwt, top-3 spatial eig",
-           "segments": {}, "kappa_QRS": {}}
+    specs_sha = hashlib.sha256(("|".join(f"{a}/{b}" for a, b in specs)).encode()).hexdigest()[:16]
+    out = {"n_chapman_records": n_chap, "deploy_rcond": DEPLOY_RCOND, "rconds": list(RCONDS),
+           "processing": "100Hz, lead-II dwt, top-3 spatial eig; unified truncated-SVD recoverability",
+           "segments": {}, "recoverability_QRS": {},
+           "lineage": lineage.make(db, seed=0, targets=list(LEADS), normalization="raw mV",
+                                   train_ids=norm[:1500],
+                                   extra={"datasets": ["PTB-XL (folds 1-7 NORM)",
+                                                       "Chapman-Shaoxing-Ningbo (PhysioNet ecg-arrhythmia 1.0.0)"],
+                                          "chapman_n_records": n_chap, "chapman_specs_sha256": specs_sha})}
     for s in SEGS:
         if s not in ptb_models or s not in chap_models:
             continue
         (Mp, _, evp, np_) = ptb_models[s]
         (Mc, _, evc, nc_) = chap_models[s]
-        ang = np.degrees(subspace_angles(Mp, Mc))            # 3 principal angles (deg), ascending
+        ang = np.degrees(subspace_angles(Mp, Mc))
         out["segments"][s] = {
             "principal_angles_deg": [round(float(a), 2) for a in ang],
             "max_angle_deg": round(float(np.max(ang)), 2),
@@ -138,56 +165,27 @@ def main():
             "chapman_evr3": [round(float(x), 3) for x in np.asarray(evc)[:3]],
             "n_ptb": np_, "n_chap": nc_,
         }
+    # unified-numerics recoverability on the transfer-stable QRS subspace
     for name, leads in CONFIGS.items():
-        kp, rp = kappa(ptb_models["QRS"][0], leads)
-        kc, rc = kappa(chap_models["QRS"][0], leads)
-        out["kappa_QRS"][name] = {"ptbxl": round(float(kp), 2), "chapman": round(float(kc), 2),
-                                  "rank_ptb": int(rp), "rank_chap": int(rc)}
+        out["recoverability_QRS"][name] = {
+            "ptbxl": _recover(ptb_models["QRS"][0], leads),
+            "chapman": _recover(chap_models["QRS"][0], leads),
+        }
 
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "cross_dataset.json").write_text(json.dumps(out, indent=2))
-    print("\n=== PRINCIPAL ANGLES (deg) between PTB-XL and Chapman M_s ===")
+    print("\n=== PRINCIPAL ANGLES (deg) PTB-XL vs Chapman ===")
     for s in ("QRS", "ST", "T", "P"):
         if s in out["segments"]:
             d = out["segments"][s]
-            print(f"  {s:3s}: angles={d['principal_angles_deg']}  max={d['max_angle_deg']}  "
-                  f"evr(ptb)={d['ptbxl_evr3']} evr(chap)={d['chapman_evr3']}")
-    print("\n=== kappa_QRS (config conditioning) PTB-XL vs Chapman ===")
-    for name, k in out["kappa_QRS"].items():
-        print(f"  {name:18s}: ptb={k['ptbxl']:>10} (rank {k['rank_ptb']})  "
-              f"chap={k['chapman']:>10} (rank {k['rank_chap']})")
+            print(f"  {s:3s}: angles={d['principal_angles_deg']} max={d['max_angle_deg']}")
+    print("\n=== QRS recoverability (rank@1e-2, kappa@1e-2) PTB-XL vs Chapman ===")
+    for name, r in out["recoverability_QRS"].items():
+        pp = r["ptbxl"]["rcond_sweep"][f"{DEPLOY_RCOND:g}"]; cc = r["chapman"]["rcond_sweep"][f"{DEPLOY_RCOND:g}"]
+        print(f"  {name:18s}: ptb rank{pp['rank']} k={pp['kappa_global']:.2f} | "
+              f"chap rank{cc['rank']} k={cc['kappa_global']:.2f}")
     print("\n[json] results/cross_dataset.json")
 
 
-def emit_macros():
-    """Write paper/_cross_macros.tex from results/cross_dataset.json (no box needed)."""
-    paper = Path(__file__).resolve().parent.parent / "paper"
-    d = json.loads((RESULTS / "cross_dataset.json").read_text())
-    import math
-    qrs = d["segments"]["QRS"]
-    def dip(seg): return sum(d["segments"][seg]["ptbxl_evr3"]), sum(d["segments"][seg]["chapman_evr3"])
-    dQ = dip("QRS"); dS = dip("ST"); dT = dip("T")
-    spanS = d["kappa_QRS"].get("{I,II,V1,V3,V5}", {})   # the diffusion exhibit's config
-    lines = [
-        "% auto-generated by experiments/cross_dataset.py --emit-macros",
-        f"\\newcommand{{\\crossN}}{{{d['n_chapman_records']}}}",
-        f"\\newcommand{{\\crossQRSang}}{{{math.ceil(qrs['max_angle_deg'])}}}",   # QRS dominant dirs align (ceil)
-        f"\\newcommand{{\\crossDipPtb}}{{{dQ[0]:.2f}}}",                         # QRS dipolarity PTB-XL
-        f"\\newcommand{{\\crossDipChap}}{{{dQ[1]:.2f}}}",                        # QRS dipolarity Chapman
-        f"\\newcommand{{\\crossDipSTptb}}{{{dS[0]:.2f}}}",
-        f"\\newcommand{{\\crossDipSTchap}}{{{dS[1]:.2f}}}",
-        f"\\newcommand{{\\crossDipTptb}}{{{dT[0]:.2f}}}",
-        f"\\newcommand{{\\crossDipTchap}}{{{dT[1]:.2f}}}",
-        f"\\newcommand{{\\crossKapSpanPtb}}{{{spanS.get('ptbxl', float('nan')):.1f}}}",
-        f"\\newcommand{{\\crossKapSpanChap}}{{{spanS.get('chapman', float('nan')):.1f}}}",
-    ]
-    (paper / "_cross_macros.tex").write_text("\n".join(lines) + "\n")
-    print("[tex] paper/_cross_macros.tex\n" + "\n".join(lines))
-
-
 if __name__ == "__main__":
-    import sys
-    if "--emit-macros" in sys.argv:
-        emit_macros()
-    else:
-        main()
+    main()

@@ -49,7 +49,9 @@ unidentifiable; a dipole-spanning triplet `{I,II,V2}` or `{I,II,V1,V3,V5}` makes
 **exactly** identifiable (η=0). The map is **graded**, not binary. Since absolute η conflates
 lead amplitude with observation geometry, we grade the shortfall by **normalized identifiability**
 `η̃ = η/‖eₗᵀ Mₛ‖` (the *fraction* of a lead's dipolar content that is unobservable) and by the
-**expected unobserved ambiguity in mV** under the fitted dipole-coordinate prior. For limb-6 no
+**prior-conditional expected ambiguity in mV** — the residual a Bayes reconstructor still
+incurs after conditioning the unobserved dipole coordinate on the observed one through the
+fitted Gaussian dipole prior (a marginal footprint would ignore that correlation). For limb-6 no
 precordial lead is exactly identifiable; both measures fall from strongly unrecoverable anterior
 leads (V1–V4) to much-less-ambiguous lateral V5/V6. So the honest a-priori statement is:
 **anterior precordial ST (V1–V4) is far from identifiable from limb leads**, while lateral V5/V6

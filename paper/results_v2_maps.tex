@@ -13,8 +13,11 @@ $\eta_{s,\ell}(S){=}0$. For limb-6, \emph{no} precordial lead is exactly identif
 ($\eta_{\mathrm{ST},\ell}{>}0$ for all), so we grade the shortfall with two scale-aware
 quantities rather than raw $\eta$: the \emph{normalized} identifiability
 $\tilde\eta_{s,\ell}=\eta_{s,\ell}/\|\bm e_\ell^\top\bm M_s\|_2\in[0,1]$ (the fraction of the
-lead's dipolar content that is unobservable) and the \emph{expected unobserved ambiguity} in mV
-under the fitted dipole-coordinate prior. Both fall from strongly unrecoverable anterior leads
+lead's dipolar content that is unobservable) and the \emph{prior-conditional expected
+ambiguity} in mV---the residual a Bayes reconstructor still incurs on the dipolar component
+after conditioning the unobserved dipole coordinate on the observed one through the fitted
+(Gaussian) dipole prior, $\sqrt{\bm e_\ell^\top\bm M_s\,\Sigma_{Q\mid P}\,\bm M_s^\top\bm e_\ell}$
+with $\Sigma_{Q\mid P}$ the posterior covariance of the unobserved coordinate. Both fall from strongly unrecoverable anterior leads
 (V2 $\tilde\eta{=}\EtaNormVtwo$, ambiguity $\AmbVtwo$\,mV; V3, V1, V4) to less-ambiguous lateral
 leads (V5 $\tilde\eta{=}\EtaNormVfive$, $\AmbVfive$\,mV; V6 $\tilde\eta{=}\EtaNormVsix$,
 $\AmbVsix$\,mV). We therefore say \textbf{anterior precordial ST (V1--V4) is far from

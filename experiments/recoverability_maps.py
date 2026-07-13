@@ -7,8 +7,9 @@ NORM records:
   * eta_{s,ell}(S)      -- absolute identifiability (0 => dipolar component recoverable);
   * eta_tilde_{s,ell}   -- NORMALIZED identifiability eta / ||e_ell^T M_s|| in [0,1] (the
                            FRACTION of the lead's dipolar content that is unobservable);
-  * amb_{s,ell}(S)      -- EXPECTED unobserved ambiguity in mV under the fitted dipole-
-                           coordinate prior Sigma_d;
+  * amb_{s,ell}(S)      -- prior-CONDITIONAL expected ambiguity in mV (the residual a Bayes
+                           reconstructor still incurs, unobserved coord conditioned on the
+                           observed one via the fitted Gaussian dipole prior Sigma_d);
   * kappa_{s,ell}(S)    -- conditioning of the identifiable part;
 
 with (a) a truncation-tolerance (rcond) sweep for rank/global-kappa, and (b) RECORD-LEVEL

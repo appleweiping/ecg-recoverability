@@ -6,7 +6,7 @@ import pytest
 
 from ecgcert.physics import (
     fit_dipolar_subspace, eta_per_lead, eta_normalized_per_lead, lead_dipolar_norm,
-    dipole_coord_cov, expected_ambiguity_per_lead,
+    dipole_coord_cov, expected_ambiguity_per_lead, unobserved_footprint_per_lead,
 )
 from ecgcert import lineage
 from ecgcert import clinical
@@ -43,7 +43,11 @@ def test_expected_ambiguity_nonneg_and_zero_when_identifiable():
     assert np.max(amb_span) < 1e-6
     # a single observed lead is rank-deficient for ANY M -> positive ambiguity elsewhere
     amb_one = expected_ambiguity_per_lead(M, ["V2"], Sd)
+    foot_one = unobserved_footprint_per_lead(M, ["V2"], Sd)
     assert np.max(amb_one) > 1e-3
+    # Bayes-conditional ambiguity never exceeds the marginal footprint (upper bound;
+    # 1e-6 mV slack absorbs Schur-complement round-off at ~0 observed-lead entries)
+    assert np.all(amb_one <= foot_one + 1e-6)
 
 
 def test_st_threshold_is_absolute():

@@ -73,7 +73,12 @@ def oracle_gate(n_train=2000, n_test=800, rate=100, seed=0):
     te_samples = db.collect_all_segments(test_ids, rate=rate, max_per_record=60,
                                          max_records=n_test, seed=seed + 1)
 
-    out = {"n_train": n_train, "n_test": n_test, "configs": {}}
+    from ecgcert import lineage
+    out = {"n_train": n_train, "n_test": n_test, "configs": {},
+           "lineage": lineage.make(db, seed=seed, targets=["V2", "V4", "V6"],
+                                   normalization="raw mV segment samples",
+                                   train_ids=train_ids[:n_train], test_ids=test_ids[:n_test],
+                                   extra={"experiment": "ridge oracle predictability of off-dipole residual"})}
     for cname, cfg in CONFIGS.items():
         obs_idx = [LEAD_INDEX[l] for l in cfg["obs"]]
         out["configs"][cname] = {}

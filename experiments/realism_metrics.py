@@ -96,8 +96,13 @@ def run(n_test=300, seed=0, n_boot=200):
     model, scale, T = _load_model()
     yn = np.stack([(s.T / scale[:, None]) for s in sigs])          # (N,12,1000)
 
+    from ecgcert import lineage
     out = {"n_test": len(sigs), "guidances": list(GUIDANCES), "obs": OBS, "targets": TARGETS,
-           "per_w": {}}
+           "per_w": {},
+           "lineage": lineage.make(db, seed=seed, targets=list(TARGETS),
+                                   normalization="per-lead 95th-pct |amp| (train)", test_ids=test_ids,
+                                   extra={"experiment": "diffusion realism vs guidance (retracted-claim negative result)",
+                                          "checkpoint": "results/gpu_ddpm.pt"})}
     # real distributions (once)
     real_pp = {l: np.array([np.ptp(s[:, LEAD_INDEX[l]]) for s in sigs]) for l in TARGETS}
     real_qrsw = []

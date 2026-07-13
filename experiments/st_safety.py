@@ -5,9 +5,10 @@ Two separate objects, deliberately kept distinct:
 1. CERTIFICATE (reconstructor-agnostic): for the ST segment under limb-6, the per-lead
    identifiability eta_{ST,ell}(S) > 0 for precordial leads (a dipole direction is
    unobserved). We report absolute eta, NORMALIZED eta_tilde = eta/||e_ell^T M_ST|| (the
-   fraction of the lead's dipolar content that is unobservable), and the EXPECTED unobserved
-   ambiguity in mV under the fitted dipole-coordinate prior -- so "graded" identifiability is
-   stated on scale-free / physical quantities, not absolute eta alone.
+   fraction of the lead's dipolar content that is unobservable), and the prior-CONDITIONAL
+   expected ambiguity in mV (residual a Bayes reconstructor still incurs under the fitted
+   Gaussian dipole prior) -- so "graded" identifiability is stated on scale-free / physical
+   quantities, not absolute eta alone.
 
 2. DOWNSTREAM COST (reconstructor-specific): using REAL continuous linear reconstructors we
    reconstruct the FULL 10-second waveform (no constant-mean gap fill), keep observed leads

@@ -288,20 +288,49 @@ def dipole_coord_cov(M_s: np.ndarray, mu_s: np.ndarray, X_seg: np.ndarray) -> np
     return np.cov(d.T)
 
 
-def expected_ambiguity_per_lead(M_s: np.ndarray, observed_leads, Sigma_d: np.ndarray,
-                                rcond: float = RECON_RCOND) -> np.ndarray:
-    """Expected unobserved ambiguity in mV per lead under the dipole-coordinate prior.
+def unobserved_footprint_per_lead(M_s: np.ndarray, observed_leads, Sigma_d: np.ndarray,
+                                  rcond: float = RECON_RCOND) -> np.ndarray:
+    """MARGINAL RMS footprint (mV) of the unobserved dipole coordinate on each lead.
 
-    For a dipole ``d ~ (0, Sigma_d)``, the part of ``d`` in directions unobserved by ``S``
-    is irrecoverable; its footprint on lead ``ell`` has std
-    ``sqrt( e_ell^T M_s (I-P_obs) Sigma_d (I-P_obs) M_s^T e_ell )``. This puts the graded
-    identifiability in millivolts (an expected error a perfect reconstructor still incurs on
-    the dipolar component). Returns a (12,) array.
+    ``sqrt( e_ell^T M_s (I-P_obs) Sigma_d (I-P_obs) M_s^T e_ell )`` -- the prior RMS amplitude
+    of the component of the dipole in directions unobserved by ``S``. This is an UPPER BOUND
+    on the Bayes-irreducible ambiguity (:func:`expected_ambiguity_per_lead`): it ignores that
+    the unobserved coordinate may be predictable from the observed one via the prior
+    correlation. Returns a (12,) array.
     """
     M_s = np.asarray(M_s, float)
     od = observed_dipole(M_s, observed_leads, rcond=rcond)
     A = M_s @ (np.eye(3) - od.P_obs)                               # (12, 3)
     cov = A @ np.asarray(Sigma_d, float) @ A.T                     # (12, 12)
+    return np.sqrt(np.clip(np.diag(cov), 0.0, None))
+
+
+def expected_ambiguity_per_lead(M_s: np.ndarray, observed_leads, Sigma_d: np.ndarray,
+                                rcond: float = RECON_RCOND) -> np.ndarray:
+    """Prior-conditional expected ambiguity in mV per lead: the residual error a Bayes
+    reconstructor still incurs on the dipolar component under a Gaussian dipole prior.
+
+    Observing ``S`` fixes the observed dipole coordinate ``P d`` (``P=P_obs``); the unobserved
+    ``Q d`` (``Q=I-P``) is only irreducible AFTER conditioning on ``P d`` through the prior
+    ``d ~ (0, Sigma_d)``. The Gaussian posterior covariance of ``d`` given ``P d`` is the Schur
+    complement
+    ``Sigma_{Q|P} = Q Sigma_d Q - Q Sigma_d P (P Sigma_d P)^+ P Sigma_d Q``,
+    and the lead-``ell`` ambiguity is
+    ``a_ell = sqrt( e_ell^T M_s Sigma_{Q|P} M_s^T e_ell )``. For a dipole-spanning ``S`` (``Q=0``)
+    this is 0; it is <= the marginal :func:`unobserved_footprint_per_lead`. Returns a (12,)
+    array. NOTE: this uses the fitted (Gaussian) prior; it is not distribution-free.
+    """
+    M_s = np.asarray(M_s, float)
+    Sd = np.asarray(Sigma_d, float)
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    P = od.P_obs                                                  # (3,3) projector onto observed dirs
+    Q = np.eye(3) - P
+    QSdQ = Q @ Sd @ Q
+    QSdP = Q @ Sd @ P
+    PSdP = P @ Sd @ P
+    Sig_cond = QSdQ - QSdP @ np.linalg.pinv(PSdP, rcond=1e-10) @ QSdP.T
+    Sig_cond = 0.5 * (Sig_cond + Sig_cond.T)                      # symmetrize
+    cov = M_s @ Sig_cond @ M_s.T                                  # (12,12)
     return np.sqrt(np.clip(np.diag(cov), 0.0, None))
 
 

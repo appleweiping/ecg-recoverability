@@ -267,10 +267,16 @@ def main_ci(n_train, n_test, epochs, T, guidances, K, n_seeds, seed, chunk):
         torch.cuda.empty_cache()
 
     oracle_agg = _oracle_agg({"oracle_rho": oracle_rho})
+    from ecgcert import lineage
     out = {"n_seeds": n_seeds, "n_test": len(sigs), "epochs": epochs, "guidances": guidances,
            "oracle_agg": oracle_agg, "per_seed_delta_rho": per_seed,
            "mean": {g: float(np.mean(v)) for g, v in per_seed.items()},
-           "std": {g: float(np.std(v)) for g, v in per_seed.items()}}
+           "std": {g: float(np.std(v)) for g, v in per_seed.items()},
+           "lineage": lineage.make(db, seed=seed, targets=list(cfg.get("targets", ["V2", "V4", "V6"])),
+                                   normalization="per-lead 95th-pct |amp| (train)",
+                                   train_ids=norm_train[:n_train], test_ids=test_ids,
+                                   extra={"experiment": "achievability-gap (retracted-claim negative result)",
+                                          "per_seed_model_seeds": [100 + ms for ms in range(n_seeds)]})}
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "gpu_deficit_ci.json").write_text(json.dumps(out, indent=2))
     print("[json] results/gpu_deficit_ci.json")
