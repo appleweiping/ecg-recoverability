@@ -1,332 +1,146 @@
 # ecg-recoverability
 
-**Certified Reduced-Lead ECG Reconstruction — a per-feature recoverability certificate with distribution-free calibration.**
+**Target-Specific Recoverability Maps for Reduced-Lead ECG Reconstruction** — a per-lead,
+per-feature *identifiability + conditioning* certificate, with distribution-free calibrated
+intervals for the predictable residual. Targeting **IEEE ICASSP** (Biomedical Signal
+Processing). Real public data (PTB-XL); every theorem is cross-checked by simulation.
 
-Targeting the **IEEE ICASSP** *Biomedical Signal Processing* track. The certificate and
-every theory-validation experiment are **CPU-only and fully reproducible** on real public
-data (PTB-XL); the single generative-fabrication exhibit trains a conditional diffusion
-model and needs a **GPU** (`experiments/gpu_diffusion_clean.py`). Every theorem in the
-paper is cross-checked against Monte-Carlo simulation by the test suite before it is
-allowed into the manuscript.
-
-> **TL;DR** — Reconstructing missing ECG leads from a reduced set is an ill-posed
-> inverse problem, and a **scalar reconstruction error says nothing about *which*
-> features a clinician can trust**. We output, **per waveform feature (P/QRS/ST/T) and
-> per lead, a certificate** of what is *provably recoverable* (with a closed-form
-> conditioning κ that warns, before any reconstruction, which lead configurations can
-> support a feature), what is *statistically recoverable* (distribution-free calibrated
-> interval), and what is *provably unrecoverable* (flagged, held-out false-flag ≤ α).
-> The engine is a fact the ECG has and generic inverse-problem theory does not: **each
-> waveform segment is an approximately rank-3 cardiac dipole plus a non-dipolar
-> residual.** A real conditional **diffusion model**, scored against a held-out
-> recoverability oracle, shows **fabrication is a choice of *objective***, not an accident
-> of the network: raising the realism knob injects a *growing recoverability deficit* that
-> the certificate localizes and a scalar RMSE cannot see.
+> **What this is (and an honest note on what it is not).** Reconstructing missing ECG leads
+> from a reduced set is ill-posed, and a scalar error says nothing about *which* named
+> feature, on *which* lead, a clinician can trust. We give, per waveform segment (P/QRS/ST/T),
+> observed lead set `S`, and **target lead `ℓ`**, two closed-form numbers from one truncated
+> SVD of the segment's empirical rank-3 spatial basis `M_s`: an **identifiability**
+> `η_{s,ℓ}(S)` (zero ⇔ the target's low-rank component is recoverable from `S`) and a
+> **conditioning** `κ_{s,ℓ}(S)`. Plus a calibrated interval for the empirically predictable
+> residual. This project began with a stronger "certified hallucination / fabrication is the
+> objective" claim; **rigorous re-analysis (see [Honest history](#8-honest-history)) showed
+> that claim did not survive**, and the paper was rebuilt around the parts that do.
 
 ---
 
-## Table of contents
-1. [The problem in plain language](#1-the-problem-in-plain-language)
-2. [The idea: three tiers of recoverability](#2-the-idea-three-tiers-of-recoverability)
-3. [The theorem (and what is *not* ours)](#3-the-theorem-and-what-is-not-ours)
-4. [The certified estimator](#4-the-certified-estimator)
-5. [Results](#5-results)
-6. [Repository layout](#6-repository-layout)
-7. [Installation and full reproduction](#7-installation-and-full-reproduction)
-8. [Data access (important under GFW)](#8-data-access-important-under-gfw)
-9. [What each test proves](#9-what-each-test-proves)
-10. [Relation to prior work](#10-relation-to-prior-work)
-11. [Honest limitations](#11-honest-limitations)
-12. [中文速览](#12-中文速览)
-13. [Citation & license](#13-citation--license)
+## 1. The problem
 
----
+A 12-lead ECG is expensive; wearables record one, three, or six leads, and *lead
+reconstruction* fills in the rest. A low average error certifies nothing about which
+morphological features are trustworthy — a reconstruction that gets the mean right but
+invents an ST deviation invents a finding. We ask a reconstructor-independent question:
+**for a given observed lead set, which target lead's morphology is even identifiable, and
+how well-conditioned is its recovery?**
 
-## 1. The problem in plain language
+## 2. The certificate (per target lead)
 
-A 12-lead ECG is expensive to acquire; wearables and monitors often record only one,
-three, or six leads. **Lead reconstruction** fills in the rest. Dozens of recent
-methods — linear, U-Net, transformer, diffusion — report a low mean-squared error
-(MSE) and declare success.
+Each segment's instantaneous potential is approximately low rank across leads. We estimate a
+per-segment rank-3 spatial basis `M_s` (top-3 singular vectors of the population lead
+covariance). For observed leads `S` (sub-matrix `M_{s,S}`), from a **single** truncated SVD
+at relative tolerance `ϱ`:
 
-But a low average error certifies **nothing about which features are trustworthy**.
-A cardiologist does not read "average millivolts"; they read the P wave, the QRS
-complex, the ST segment, the T wave — each on specific leads. If a reconstruction
-gets the average right but *invents* an ST elevation on V2, it invents a heart attack.
+| quantity | meaning |
+|---|---|
+| `η_{s,ℓ}(S) = ‖eₗᵀ M_s (I − M_{s,S}⁺M_{s,S})‖` | **identifiability**: `η=0` ⇒ lead `ℓ`'s dipolar component is recoverable from `S`; `η>0` ⇒ an unobserved direction changes lead `ℓ` (unrecoverable at any SNR) |
+| `κ_{s,ℓ}(S) = ‖eₗᵀ M_s M_{s,S}⁺‖` | **conditioning**: noise / observed-residual gain into the identifiable part of lead `ℓ` |
 
-Generative models are especially dangerous here, and for a principled reason. To look
-realistic on an ill-posed problem you must **add content you cannot know** (the
-*perception-distortion tradeoff*). On an image that yields a plausible-but-wrong
-texture; on an ECG it yields a plausible-but-wrong **diagnosis**.
+The global `κ_s(S) = ‖M_s M_{s,S}⁺‖ = maxₗ κ_{s,ℓ}` is a *configuration-level worst case*,
+not a per-lead certificate. All quantities come from one truncated SVD (unified numerics),
+so a lead is either observed or not, everywhere.
 
-## 2. The idea: three tiers of recoverability
+**On real PTB-XL** (`results/recoverability_map.png`): a single lead leaves every other lead
+unidentifiable; a dipole-spanning triplet `{I,II,V2}` or `{I,II,V1,V3,V5}` makes all targets
+identifiable; **limb-6 leaves all precordial leads V1–V6 unidentifiable** — precordial ST
+cannot be read from limb leads, a warning available before any reconstruction.
 
-Write reduced-lead reconstruction as an inverse problem `y_S = A_S · L + noise`, where
-`L` is the full 12-lead signal and `A_S` selects the observed leads `S`. Because the
-standard 12 leads obey exact algebra (Einthoven / Goldberger: `III = II − I`,
-`aVR = −(I+II)/2`, …), the operator `A_S` is **known** — we never estimate it.
+**Truncation-tolerance sensitivity.** Rank/`κ` of well-posed configurations are stable across
+`ϱ∈{1e-4,…,1e-1}`; near-rank-deficient sets are `ϱ`-sensitive (synthetic `{V1,V2,V3}`: rank 2
+at `ϱ=1e-2` vs rank 3, `κ~200` at `ϱ=1e-4`). We report a single `κ` only for well-conditioned
+sets and give the `ϱ`-sweep + bootstrap CIs otherwise — a single `10⁴`/`10⁵` figure for a
+degenerate set is not meaningful.
 
-For each waveform segment `s ∈ {P, QRS, ST, T}` the instantaneous heart potential is,
-to good approximation, a **3-D cardiac dipole** `M_s·d` plus a **non-dipolar residual**
-`r_s`. We estimate the per-segment dipolar basis `M_s ∈ ℝ^{12×3}` from a population
-(the top-3 left singular vectors of the segment's lead covariance). This splits every
-reconstructed feature into three tiers:
+## 3. Calibrated intervals (predictable residual)
 
-| Tier | What it is | Guarantee |
-|------|------------|-----------|
-| **I — recoverable** | the dipolar component, when `S` spans the dipole | **exact** up to a closed-form noise gain `κ_s(S)` |
-| **II — statistical** | population-correlated non-dipolar content | **distribution-free calibrated interval** |
-| **III — unrecoverable** | non-dipolar content independent of `S` (local, e.g. a fractionated QRS under one precordial electrode) | any reconstruction of it is **fabrication → flagged** with false-flag rate ≤ α |
+For the empirically predictable non-dipolar residual we train a **real quantile regressor**
+(gradient-boosted pinball loss) of each target lead's off-dipole residual on the observed
+leads, and apply conformalized quantile regression per Mondrian group `(S,s,ℓ)` with **strict
+fold discipline** (basis+model on folds 1–7, conformal calibration on fold 9, a single
+evaluation on fold 10). We report **within-group marginal coverage under exchangeability**
+(not per-example conditional coverage): on PTB-XL, fold-10 coverage clusters near the nominal
+0.90 (e.g. `{I,II,V1,V3,V5}` QRS/V2: 0.92, bootstrap CI [0.89,0.95], width 0.165 mV).
 
-The number `κ_s(S) = ‖M_s M_{s,S}⁺‖₂` is the key object. It says **geometry beats lead
-count**: three *coplanar* limb leads see only 2 of the 3 dipole directions, and six
-frontal-plane limb leads recover the (transverse) dipole far worse than three
-well-chosen leads. Measured on PTB-XL QRS:
+## 4. Baselines and safety
 
-| configuration | `κ` | note |
-|---|---|---|
-| Lead-I | rank 1 | 2 of 3 dipole directions are Tier III |
-| `{I, II, V2}` (spread) | **3.1** | well-conditioned |
-| `{V1, V2, V3}` (adjacent) | 4.9 | spans, but worse |
-| `{I, II, III}` (coplanar) | **3.9×10⁵** | looks like 3 leads, is really 2 |
-| limb-6 | **6.7×10⁴** | 6 leads, all frontal-plane |
+**Baselines** (`results/baselines_physics.json`): on a spanning set, learned linear ridge/OLS
+beats pure dipolar beats inverse-Dower beats prior-mean (there is recoverable non-dipolar
+content). On **limb-6 every reconstructor barely beats the prior mean** and inverse-Dower is
+worse — limb→precordial is near-unrecoverable, exactly as `η>0` warns. A **strong neural
+baseline** (arbitrary-mask 1-D U-Net) is included.
 
-## 3. The theorem (and what is *not* ours)
+**Certificate-level ST safety** (`results/st_safety.json`): the `η>0` warning is actionable —
+reconstructing precordial ST from limb-6 with a real reconstructor yields 32.5% fabricated /
+17.6% masked *ST-threshold events* (|ST|>0.1 mV crossings; bootstrap CIs) at 0.076 mV ST
+error. We report ST-threshold events, not diagnoses.
 
-**Theorem (per-feature dipolar recoverability).** With `M_{s,S}` the observed rows of
-`M_s`: if `rank(M_{s,S}) = 3`, the population-dipolar projection of **every** lead is
-recovered by `L̂_s = M_s M_{s,S}⁺ y_S` with error `M_s M_{s,S}⁺ n`, so the error is
-`≤ κ_s(S)·‖n‖`. If `rank < 3`, the unobserved dipole directions are unrecoverable at
-any SNR. The residual splits into a `y_S`-predictable (Tier II) and a `y_S`-independent
-(Tier III) part.
+## 5. `M_s` is an *empirical* subspace, not the physical dipole
 
-This is a **positive** guarantee — *which* named feature, on *which* lead, is
-recoverable and with *what* noise gain — that a generic inverse-problem analysis cannot
-produce, because it has no `M`. That is what makes the work non-derivative rather than
-"apply known UQ to ECG."
-
-**What we do not claim.** The *negative* side — that Tier III content is unrecoverable
-and any estimator returns the prior mean with error ≥ `Var(u)` — is the standard
-non-identifiability limit, established in general form for inverse problems by
-[Iagaru & Gottschling et al., arXiv:2605.13146] and [Kim & Fridovich-Keil,
-arXiv:2510.10947]. We **credit and use** it; our contribution is the ECG-physical
-instantiation, the positive `κ_s(S)` certificate, and the clinical metering.
-
-## 4. The certified estimator
-
-- **Tier II — calibrated intervals.** Group-conditional (Mondrian) *conformalized
-  quantile regression* (CQR): a separate finite-sample conformal correction per group
-  `(segment, lead)`, so coverage holds *conditional on the feature and lead*, not just
-  marginally.
-- **Tier III — the flag.** The hallucination energy `h_{s,ℓ}` is the reconstruction's
-  energy in the certified-unrecoverable subspace. We threshold it at the one-sided
-  `(1−α)` conformal quantile of `h` over *faithful* reconstructions, so the false-flag
-  rate is `≤ α`, finite-sample and distribution-free. Conformal Risk Control sets `α`
-  against the clinical loss (a missed STEMI ≫ a false alarm).
-- **Device shift.** Under a genuine device shift (Schiller CS-family → AT-family within
-  PTB-XL), Tier I exactness and Tier III soundness are distribution-free by
-  construction; only Tier II *coverage level* is shift-sensitive, and it is restored by
-  weighted conformal + a small-slice recalibration.
-
-## 5. Results
-
-**Synthetic validation** (`results/synthetic_validation.png`) — all three claims hold
-exactly: Tier I error grows linearly with noise at slope `κ`; the Bayes-optimal
-reconstructor's Tier III error equals the `Var(u)` lower bound while a hallucinator
-doubles it; the flag's false-flag rate is 0.099 ≤ α=0.1 with power → 1.0; Mondrian-CQR
-attains 0.90 coverage.
-
-**PTB-XL — the certificate localises and explains.** Reconstructing from `{I, II, V2}`
-on the held-out fold, a scalar RMSE *ranks* three reconstructors (the generative model
-is worst) but does not say **which** feature is wrong or **why**. The certificate does:
-
-| segment | method | RMSE (mV) | `h` (mV) | ρ (oracle) |
-|---|---|---|---|---|
-| QRS | dipolar | 0.196 | 0.000 | +0.00 |
-| QRS | OLS (learned linear) | 0.196 | 0.030 | **+0.13** |
-| QRS | generative | 0.228 | 0.097 | **+0.00** |
-| ST | dipolar | 0.125 | 0.000 | +0.00 |
-| ST | OLS | 0.112 | 0.016 | **+0.28** |
-| ST | generative | 0.149 | 0.063 | **−0.00** |
-| T | dipolar | 0.140 | 0.000 | +0.00 |
-| T | OLS | 0.105 | 0.028 | **+0.44** |
-| T | generative | 0.163 | 0.067 | **−0.00** |
-
-`h` is the **deployable** hallucination energy (no ground truth); ρ is an **oracle**
-diagnostic (needs the true leads) used to *validate* that flagged energy is fabricated.
-The dipolar baseline never fabricates (`h=0`) but recovers only Tier I; OLS's
-non-dipolar energy is correlated with truth (it genuinely recovers Tier II); the
-generative model's is not. Honest caveat: `h` alone need not separate blur from
-fabrication when energies match — the dependable, deployable signal is the
-**configuration-level** certificate (κ, tiers) plus the held-out flag.
-
-**Fabrication is the objective, not the network — a real diffusion model, measured
-non-circularly** (`results/gpu_diffusion_frontier.png`). A subtlety makes the naive test
-circular: on the certified-unrecoverable subspace, correlation-with-truth ρ≈0 for *any*
-sampler (even Bayes-optimal), so ρ≈0 there measures the *definition*, not fabrication. We
-defeat this with a **held-out recoverability oracle** — a supervised ridge predictor whose
-out-of-sample correlation `ρ_oracle` is a *lower bound* on recoverability: `ρ_oracle>0`
-*proves* content is recoverable (a linear map attains it). For `S={I,II,V1,V3,V5}→{V2,V4,V6}`
-the QRS non-dipolar content is provably recoverable (`ρ_oracle=+0.33`). We then train a real
-conditional 1-D **DDPM** (classifier-free guidance + RePaint) on PTB-XL and score it with the
-certificate, comparing the diffusion **posterior mean** (variance-free) to a single deployed
-draw to avoid a mean-vs-sample confound. At the honest end (guidance `w=1`) the posterior
-mean *matches* the oracle (Δρ≈0 — the model is competent); as guidance pushes toward realism,
-the mean develops a **growing recoverability deficit** — monotone in the seed mean and in
-**3 of 4 independently trained models** (all 4 for `w≥2`), reaching **Δρ = +0.15 ± 0.03 at
-`w=6` (≈4.3σ over seeds)**. Through the operational regime (`w≤4`) RMSE stays **flat** (~0.21
-mV, posterior mean) and the model stays faithful on the recoverable dipole subspace
-(ρ_recoverable≈0.89) even though the deficit is already present, if marginal (+0.08 ± 0.04, ~1.9σ)
-— the fabrication is invisible to a scalar and localized only by the certificate. Only at
-extreme guidance (`w=6`) does the model visibly degrade on *every* metric (RMSE→0.32), by which
-point the certificate had flagged it all along. On the limb-6 control the linear reference is
-lower but nonzero; the diffusion matches or exceeds it (Δρ stays negative) — no false alarm. (A
-complementary `results/neural_perception_distortion.png` shows the same phenomenon in a CNN
-swept over an explicit distortion–perception weight.)
-
-**Safety case (honest).** Reconstructing precordial leads from limb-6 (κ=6.7×10⁴,
-effective rank 2 → precordial ST is Tier III) is *certified unsafe upfront*. Over 799
-records the danger is bidirectional and RMSE-invisible (~0.075 mV ST error all methods):
-the generative model **fabricates 263 phantom STEMIs**, OLS **masks 360 real ones**, and
-even the dipolar reconstructor fabricates 226 (inside the recoverable subspace, where
-`h` is blind — its flag correctly never fires). The null-space flag catches only a
-minority of fabrications (18/263, held-out threshold). The
-reliable safety signal is the **configuration-level κ warning**, not the per-record flag.
-
-**Device shift.** CS→AT device shift drops Tier II coverage 0.90→0.82; a 300-record
-recalibration restores it to 0.93 at modest width increase (0.15→0.24 mV). (Naive
-likelihood-ratio weighting over-widens to trivial 1.00 coverage — not a repair.) Only
-the Tier II *level* is shift-sensitive; Tier I exactness and Tier III soundness hold.
-
-**Cross-dataset (`results/cross_dataset.json`).** The certificate's only data-estimated
-object — the dipolar subspace `M_s`, hence the conditioning `κ_s(S)` — is
-population-independent. Refit on the geographically distinct **Chapman-Shaoxing-Ningbo**
-database (349 Chinese hospital records, identical processing), the per-segment dipolarity
-matches PTB-XL (QRS 0.88/0.91, ST 0.76/0.72, T 0.76/0.74), the dominant QRS dipole directions
-align (principal angles ≤21°), and the **well-conditioned** `κ_s(S)` agrees (the exhibit's
-`{I,II,V1,V3,V5}`: 2.3 vs 2.5). The lead-mixing operator `T` (Einthoven/Goldberger) is
-dataset-independent *by definition*; the fit confirms the *estimated* `M_s` is too — except
-the lowest-variance dipole direction of the less-dipolar ST/T segments, and limb-6, which is
-effectively rank-deficient in both cohorts (`κ≳10⁴`, magnitude numerically unstable). (`κ`
-is **not** pure algebra — it depends on the estimated `M_s`; only the lead operator `T` is.)
+On real PTB-XL the estimated `M_s` shares two directions with the classical inverse-Dower
+vectorcardiographic dipole (principal angles 2–6°) but its **third direction differs
+materially (max angle 43–55°, bootstrap CIs excluding small angles)**. We therefore call
+`M_s` an **empirical rank-3 spatial subspace**, not a physical cardiac dipole. (An earlier
+synthetic "matches inverse-Dower" check *generated* the data with inverse-Dower — self-
+consistency, not evidence on real ECG.)
 
 ## 6. Repository layout
 
 ```
 src/ecgcert/
-  physics/dipolar_subspace.py   # lead algebra, per-segment M_s, kappa_s(S) certificate
-  certify/tier_decomposition.py # Tier I/II/III projectors, hallucination energy h
-  conformal/mondrian_cqr.py     # Mondrian-CQR, conformal risk control, weighted conformal
-  estimators/reconstructors.py  # dipolar / Bayes / OLS / generative reconstructors
-  models.py                     # fit per-segment (M_s, mu_s, Sigma_r) from a population
-  clinical.py                   # ST-deviation measurement + STEMI flip counting
-  data/ptbxl.py                 # PTB-XL loader + NeuroKit2 P/QRS/ST/T delineation
-estimators/diffusion.py         # conditional 1-D DDPM (CFG + RePaint), GPU
+  physics/dipolar_subspace.py   # unified SVD: observed_dipole, kappa/kappa_per_lead, eta_per_lead
+  certify/tier_decomposition.py # off_dipole_projector/energy, per-lead tier_report (eta)
+  conformal/mondrian_cqr.py     # CQR, Mondrian (tuple-safe), conformal risk control
+  estimators/diffusion.py       # arbitrary-mask conditional DDPM (application study)
 experiments/
-  synthetic_dipole_injection.py # M3: validates all theorems (figures)
-  ptbxl_reduced_lead.py         # M4: 3 configs, baselines, hallucination quantification
-  ptbxl_stemi_safety.py         # M5: fabricated/masked STEMI + abstention (held-out flag)
-  cross_device.py               # M5b: CS->AT device-shift coverage + repair
-  neural_baselines.py           # M6: real CNN distortion->perception sweep (CPU)
-  gpu_fabrication.py            # M7: oracle gate (Band A/B) + diffusion scoring (GPU)
-  gpu_diffusion_clean.py        # M8: de-noised CRAFT exhibit + --ci error bars (GPU)
-  gpu_diffusion_figure.py       # M8: recoverability-deficit frontier figure (+CI bars)
-  cross_dataset.py              # M9: Chapman-Shaoxing-Ningbo M_s/kappa transfer check
-scripts/
-  download_data.py              # PTB-XL via HuggingFace mirror (GFW-friendly)
-  precheck_dipolarity.py        # risk-2 gate: per-segment dipolarity by diagnosis
-tests/                          # 19 theorem-vs-simulation checks
-paper/                          # ICASSP spconf LaTeX source
+  recoverability_maps.py        # per-lead eta/kappa maps + rcond sweep + bootstrap CI
+  tier2_conformal.py            # real quantile model + strict fold discipline
+  baselines_physics.py          # baselines + physics-vs-PCA (empirical subspace)
+  st_safety.py                  # certificate-driven ST-threshold-event safety
+  neural_baseline.py            # strong neural (U-Net) reconstruction baseline
+  maps_figure.py                # the recoverability-map figure
+tests/                          # 28 checks incl. per-lead certificate, rcond sensitivity,
+                                #   diffusion leakage guards, Mondrian tuple groups
+paper/main_v2.tex               # ICASSP draft (target-specific recoverability)
 ```
 
-## 7. Installation and full reproduction
+## 7. Reproduce
 
 ```bash
-# 1. environment (Python 3.11)
-uv venv --python 3.11 .venv
-uv pip install --python .venv/Scripts/python.exe -e .
-
-# 2. data (PTB-XL, ~1.8 GB, via HuggingFace mirror — see §8)
-.venv/Scripts/python.exe scripts/download_data.py --dataset ptbxl
-
-# 3. the risk-2 gate + all experiments
-.venv/Scripts/python.exe scripts/precheck_dipolarity.py
-.venv/Scripts/python.exe experiments/synthetic_dipole_injection.py
-.venv/Scripts/python.exe experiments/ptbxl_reduced_lead.py
-.venv/Scripts/python.exe experiments/ptbxl_stemi_safety.py
-.venv/Scripts/python.exe experiments/cross_device.py
-
-# 4. tests (all theorems cross-checked by simulation)
-.venv/Scripts/python.exe -m pytest -q
+uv venv --python 3.11 .venv && uv pip install --python .venv/Scripts/python.exe -e ".[dev,torch]"
+.venv/Scripts/python.exe -m pytest -q                         # 28 tests (CPU, no data needed)
+.venv/Scripts/python.exe scripts/download_data.py --dataset ptbxl   # PTB-XL via HF mirror
+.venv/Scripts/python.exe experiments/recoverability_maps.py   # the map (CPU)
+.venv/Scripts/python.exe experiments/tier2_conformal.py       # calibrated intervals (CPU)
+.venv/Scripts/python.exe experiments/baselines_physics.py     # baselines + physics (CPU)
+.venv/Scripts/python.exe experiments/st_safety.py             # ST safety (CPU)
+# GPU (server): experiments/neural_baseline.py, experiments/diffusion.py-based study
 ```
+CI (`.github/workflows/tests.yml`) runs the test suite on every push.
 
-The synthetic experiment and calibration run in seconds on a CPU; the PTB-XL
-experiments are dominated by NeuroKit2 delineation (a few minutes each).
+## 8. Honest history
 
-## 8. Data access (important under GFW)
+This project first claimed a diffusion model proves "fabrication is a property of the
+objective" (a "certified hallucination" flagged with a false-flag guarantee). A rigorous
+pre-submission rebuild found three things that did **not** survive scrutiny and removed them:
 
-PhysioNet's HTTPS endpoint is unreachable from some networks (direct connections are
-dropped; some proxies reset the TLS handshake to `physionet.org` specifically). The
-downloader therefore pulls PTB-XL from the byte-complete HuggingFace mirror
-[`longisland3/ptb-xl`](https://huggingface.co/datasets/longisland3/ptb-xl) via
-`hf-mirror.com` with `curl` (resumable). Raw data is **not** committed to git; run the
-downloader. If your network reaches PhysioNet directly, use `--source physionet`.
+1. **Configuration leakage** in the generative exhibit (one model, fixed observed set, was
+   reused to score a different configuration) inflated the effect. Fixed via an arbitrary-mask
+   model with explicit leakage tests.
+2. With leakage fixed and **5 training seeds**, the "achievability gap" is monotone but
+   **marginal** (+0.058 ± 0.044 at high guidance, ~1.3σ) — the old "4.3σ" was a leakage
+   artifact.
+3. **Realism did not improve with guidance** (PSD and amplitude distances *worsen*), so the
+   causal "realism → fabrication" premise is false; high guidance simply degrades the model
+   on every axis.
 
-## 9. What each test proves
+So the fabrication-objective story was **deleted**, and "physical cardiac dipole" was
+**downgraded** to "empirical rank-3 subspace" (§5). What remains is the honest core above.
 
-| test | claim |
-|---|---|
-| `test_physics::test_lead_algebra_rank8_and_relations` | the encoded 12-lead algebra is exact (rank 8, Einthoven/Goldberger) |
-| `test_physics::test_dipolar_subspace_matches_dower` | the data-estimated dipolar subspace equals the inverse-Dower column space |
-| `test_physics::test_tier1_exact_recovery_noiseless` | Tier I recovers all 12 leads exactly for a dipole-spanning set |
-| `test_physics::test_kappa_geometry_not_leadcount` | `κ` / rank distinguish spanning from coplanar/collinear configs |
-| `test_physics::test_tier1_noise_amplification_matches_kappa` | reconstruction error obeys `‖·‖ ≤ κ‖n‖` and attains it |
-| `test_certify::*` | Tier projectors, `h = 0` for faithful dipolar, `h` grows with injection, supported-reconstruction strips fabrication |
-| `test_conformal::*` | marginal + group-conditional coverage, false-flag control, weighted conformal recovers coverage under shift |
-| `test_synthetic_theory::*` | the paper's synthetic figures match their theorems (Tier I `κ` law, Tier III `Var(u)` bound, flag, coverage) |
+## 9. Citation & license
 
-## 10. Relation to prior work
-
-- **Reduced-lead reconstruction** (U-Net/GAN/diffusion, e.g. arXiv:2502.00559,
-  arXiv:2401.05388): reports aggregate MSE; qualitatively notes non-dipolar content is
-  hard. We turn that into a per-feature *certificate* with calibration and a flag.
-- **Hallucination in inverse problems** (arXiv:2605.13146, arXiv:2510.10947): general
-  theory of unrecoverability and distribution-free assessment. We **use** it and add
-  the ECG-physical positive certificate `κ_s(S)` and clinical metering.
-- **Vectorcardiography / inverse-Dower** (Edenbrandt & Pahlm 1988): the classical
-  whole-beat dipole map, which is our Tier I *baseline*, not our contribution — ours is
-  per-segment, per-configuration, and calibrated.
-- **Conformal prediction** (CQR, conformal risk control, weighted conformal): the
-  calibration layer; the novelty is the physics that tells conformal *what* to calibrate.
-
-## 11. Honest limitations
-
-- The dipolar approximation is *weakest* in some pathologies; we never assume exact
-  rank 3, and the conformal layer makes subspace approximation affect interval *width*,
-  not *validity* (decreasing dipolarity correctly *widens intervals and raises flags*).
-- Dipolarity is feature-**and-pathology** specific; we do **not** claim a monotone
-  "disease lowers dipolarity" (it does not — see `results/precheck_dipolarity.json`).
-- PTB-XL has no per-lead ST-elevation millivolt label; the STEMI safety case uses a
-  *measured* ST-deviation endpoint (J+60 ms, 0.1 mV), stated as such.
-- The deployable hallucination energy `h` detects fabrication **in the null space**; it
-  is blind to error **inside** the recoverable subspace (a contaminated dipole estimate),
-  which is instead warned by the conditioning κ. The dependable, deployable signal is the
-  **configuration-level** certificate (κ + tiers) plus the held-out flag; the
-  correlation ρ used in the results table is an **oracle** diagnostic (needs ground
-  truth) that only *validates* what `h` measures.
-- The sampled "generative" baseline is an idealised perceptual endpoint; the honest
-  fabrication evidence is the **real trained-CNN perception-distortion sweep**. The
-  certificate is reconstructor-agnostic and wraps any method.
-- Theorem 1 is honest about scope: recovery is *exact* only in the purely-dipolar limit;
-  otherwise the observed non-dipolar residual contaminates the estimate, amplified by the
-  same κ (which is why a large κ is a warning, not just a noise bound).
-
-## 12. 中文速览
-
-减少导联的 ECG 重建是病态逆问题。现有方法只报一个平均误差，而**生成式重建会编造有临床意义的形态**（伪造 ST 抬高等）。本项目按 **P/QRS/ST/T 逐特征、逐导联**给出可恢复性**证书**：Tier I（偶极分量，可证精确，噪声增益 `κ_s(S)` 闭式）、Tier II（人群相关非偶极内容，分布无关校准区间）、Tier III（与观测独立的局部内容，任何"重建"都是幻觉→有保证地标记，假标记率 ≤ α）。理论内核是通用逆问题理论没有的 ECG 物理结构：**每个波形段≈秩3心脏偶极+非偶极残差**。在 PTB-XL 上，RMSE 几乎相同的重建器被证书清晰区分：生成式在"已认证不可恢复子空间"放入大量能量却**与真值零相关**（自信地幻觉）。所有定理都由测试套件的蒙特卡洛仿真交叉验证（19 个测试）。
-
-## 13. Citation & license
-
-Preprint in preparation (target IEEE ICASSP). MIT License (see `LICENSE`). Built with
+Preprint in preparation (target IEEE ICASSP). MIT License. Built with
 [NeuroKit2](https://github.com/neuropsychology/NeuroKit) and
 [PTB-XL](https://physionet.org/content/ptb-xl/).
