@@ -118,15 +118,19 @@ src/ecgcert/
   certify/tier_decomposition.py # off_dipole_projector/energy, per-lead tier_report (eta)
   conformal/mondrian_cqr.py     # CQR, Mondrian (tuple-safe), conformal risk control
   estimators/diffusion.py       # arbitrary-mask conditional DDPM (application study)
+  lineage.py                    # result provenance (commit/dataset/id-hash) + assert_consistent
 experiments/
-  recoverability_maps.py        # per-lead eta/kappa maps + rcond sweep + bootstrap CI
-  tier2_conformal.py            # real quantile model + strict fold discipline
+  protocol.py                   # shared train/test split + loader (identical across methods)
+  recoverability_maps.py        # per-lead eta/eta_tilde/ambiguity + record-level bootstrap CI
+  tier2_conformal.py            # real quantile model + fold discipline (1-7 / tune 8 / cal 9 / test 10)
   baselines_physics.py          # baselines + physics-vs-PCA (empirical subspace)
-  st_safety.py                  # certificate-driven ST-threshold-event safety
-  neural_baseline.py            # strong neural (U-Net) reconstruction baseline
+  fair_baselines.py             # like-for-like per-timepoint baselines + PAIRED delta CIs
+  st_safety.py                  # continuous ST-threshold-event safety across reconstructors
+  neural_baseline.py            # representative neural (arbitrary-mask U-Net) baseline, 3 seeds
+  lead_weighting.py             # 8-independent-lead vs 12-lead fit sensitivity
   maps_figure.py                # the recoverability-map figure
-tests/                          # 28 checks incl. per-lead certificate, rcond sensitivity,
-                                #   diffusion leakage guards, Mondrian tuple groups
+tests/                          # 37 checks incl. per-lead certificate, rcond sensitivity,
+                                #   graded/lineage units, paper-number consistency
 paper/main_v2.tex               # ICASSP 4-page draft (target-specific recoverability)
 paper/arxiv_long.tex            # extended version: full proofs, cross-dataset transfer,
                                 #   the retracted-claim negative result (8 pp)
