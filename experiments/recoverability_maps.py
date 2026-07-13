@@ -100,7 +100,9 @@ def maps(n_records=1500, n_boot=200, seed=0):
             id2rows = {u: np.where(rid == u)[0] for u in uids}
             B_eta = np.zeros((n_boot, 12)); B_etn = np.zeros((n_boot, 12))
             B_amb = np.zeros((n_boot, 12)); B_kap = np.zeros((n_boot, 12))
-            brng = np.random.default_rng(seed + 1)
+            # deterministic but INDEPENDENT bootstrap draws per (config, segment) cell,
+            # so cross-cell CIs are not perfectly correlated (a shared seed would tie them)
+            brng = np.random.default_rng([seed + 1, list(CONFIGS).index(cname), SEGMENTS.index(s)])
             for b in range(n_boot):
                 draw = uids[brng.integers(0, uids.size, uids.size)]
                 rows = np.concatenate([id2rows[u] for u in draw])

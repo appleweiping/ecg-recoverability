@@ -16,7 +16,7 @@ Two separate objects, deliberately kept distinct:
    (absolute; elevation or depression). false_positive = crossing in reconstruction not truth;
    false_negative = crossing in truth not reconstruction. We report each reconstructor's
    false-positive / false-negative / total wrong-event rate and mean |ST| error, with
-   record-bootstrap 95% CIs. Language is "ST-threshold event", never STEMI / diagnosis.
+   record-bootstrap 95% CIs. We report ST-threshold events only, never a clinical diagnosis.
 
 We do NOT claim the total wrong-event rate is a certified minimax/Bayes floor; we report it as
 an empirically similar total error rate across the evaluated reconstructors.

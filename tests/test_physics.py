@@ -107,7 +107,8 @@ def test_per_lead_eta_and_kappa_certificate():
     eta_limb = eta_per_lead(M_s, ["I", "II", "III"])
     assert eta_limb[LEAD_INDEX["V3"]] > 1e-3
     assert eta_limb[LEAD_INDEX["I"]] < 1e-6
-    # Per-lead kappa is finite and the global kappa is its max over leads (worst case).
+    # Per-lead kappa is finite; the global spectral kappa upper-bounds every per-lead
+    # kappa (>= max_ell kappa_{s,ell}), it is NOT equal to their maximum in general.
     kpl = kappa_per_lead(M_s, ["I", "II", "V2"])
     kglob, _ = kappa(M_s, ["I", "II", "V2"])
     assert np.all(np.isfinite(kpl))

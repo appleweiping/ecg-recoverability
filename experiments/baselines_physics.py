@@ -11,7 +11,8 @@ A. RECONSTRUCTION BASELINES. For each config and target lead, reconstruct the se
      - ridge_perseg      : per-segment ridge from observed leads (Tier I+II);
      - ols_perseg        : per-segment least squares from observed leads;
      - ols_pooled        : one OLS over all segments (the weak pooled baseline).
-   (Strong neural baselines -- U-Net / masked Transformer -- are a separate GPU item.)
+   (A representative neural baseline -- arbitrary-mask U-Net -- is a separate GPU item;
+   see experiments/neural_baseline.py.)
 
 B. PHYSICS vs PCA. On REAL data, principal angles between the estimated per-segment
    dipolar subspace M_s and the classical inverse-Dower column space, with bootstrap CIs

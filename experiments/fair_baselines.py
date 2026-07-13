@@ -149,9 +149,11 @@ def run(n_train=4000, n_test=800, seed=0):    # match neural_baseline for shared
     neural = None
     if nb.exists():
         neural = json.loads(nb.read_text())
-        if "lineage" in neural and "lineage" in out:
-            lineage.assert_consistent(out["lineage"], neural["lineage"],
-                                      label_a="fair_baselines", label_b="neural_baseline")
+        if "lineage" not in neural:
+            raise ValueError("neural_baseline.json has no lineage block; refusing to merge "
+                             "un-provenanced results into the fair comparison.")
+        lineage.assert_consistent(out["lineage"], neural["lineage"],
+                                  label_a="fair_baselines", label_b="neural_baseline")
         for cname, segd in neural.get("configs", {}).items():
             out["configs"].setdefault(cname, {})["unet"] = {
                 s: {k: v for k, v in d.items() if k != "per_record"} for s, d in segd.items()}
