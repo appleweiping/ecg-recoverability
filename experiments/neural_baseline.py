@@ -1,13 +1,15 @@
-"""Strong neural reconstruction baseline: arbitrary-mask conditional 1-D U-Net (GPU).
+"""Representative neural reconstruction baseline: arbitrary-mask conditional 1-D U-Net (GPU).
 
 A direct supervised reconstructor (NOT diffusion): given the observed leads (unobserved
 zeroed) and the 12-channel binary mask, a 1-D U-Net regresses the full 12-lead window;
 trained with MSE under random lead masks so one model serves any configuration (no
-target-lead leakage). This is the "strong neural baseline" the reduced-lead literature
-uses (U-Net / masked reconstruction). At eval the observed leads are kept exact.
+target-lead leakage). We call this a REPRESENTATIVE masked-reconstruction baseline, not a
+claim of state of the art (no Transformer/ImputeECG-scale model is trained here).
 
-Reports RMSE (mV) of the target leads per (config, segment), to sit alongside the
-classical baselines in baselines_physics.json.
+Determinism + multi-seed (P0-7): torch/cuda seeds are set and cudnn is deterministic; we
+train N_SEEDS models and report mean +/- across-seed std of the aggregate RMSE, plus
+seed-averaged PER-RECORD RMSE (keyed by record id) so fair_baselines can pair it against the
+linear baselines. Uses the shared protocol split so train/test ids match every other method.
 
 Output: results/neural_baseline.json
 """
@@ -18,8 +20,10 @@ from pathlib import Path
 
 import numpy as np
 
+from ecgcert import lineage
 from ecgcert.data import PTBXL
 from ecgcert.physics import LEAD_INDEX
+from protocol import standard_split, load_windows, NORMALIZATION
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"
 SEGMENTS = ("QRS", "ST", "T")
@@ -69,24 +73,24 @@ def _sample_masks(rng, B, device):
     return mk
 
 
-def run(n_train=4000, n_test=800, epochs=60, seed=0):
+def _set_determinism(seed):
     import torch
-    from gpu_fabrication import _load_full
-    db = PTBXL()
-    rng = np.random.default_rng(seed)
-    tr = rng.permutation(db.ids_with_superclass("NORM", exclusive=False, folds=range(1, 9)))
-    f10 = db.meta[db.meta["strat_fold"] == 10].index.to_numpy()
-    norm10 = db.ids_with_superclass("NORM", exclusive=False, folds=[10])
-    test_ids = rng.permutation(np.intersect1d(f10, norm10))[:n_test]
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
-    X, _, scale = _load_full(db, tr, 100, max_records=n_train)
-    Xn = torch.tensor((X / scale[None, :, None]).astype(np.float32))
+
+def _train_one(Xn, epochs, seed):
+    import torch
+    _set_determinism(seed)
     net = _unet(24, 12, base=64).cuda()
     opt = torch.optim.Adam(net.parameters(), lr=2e-4)
     mrng = np.random.default_rng(seed)
     n = Xn.shape[0]
+    g = torch.Generator().manual_seed(seed)
     for ep in range(epochs):
-        perm = torch.randperm(n); tot = 0.0
+        perm = torch.randperm(n, generator=g); tot = 0.0
         for i in range(0, n, 64):
             x0 = Xn[perm[i:i + 64]].cuda(); Bn = x0.shape[0]
             mk = _sample_masks(mrng, Bn, "cuda")[:, :, None]
@@ -94,48 +98,81 @@ def run(n_train=4000, n_test=800, epochs=60, seed=0):
             pred = net(inp)
             loss = (((pred - x0) * (1 - mk)) ** 2).sum() / ((1 - mk).sum() * x0.shape[2] + 1e-6)
             opt.zero_grad(); loss.backward(); opt.step(); tot += loss.item() * Bn
-        if (ep + 1) % 15 == 0 or ep == 0:
-            print(f"  [unet] epoch {ep+1}/{epochs} loss={tot/n:.5f}", flush=True)
+        if (ep + 1) % 20 == 0 or ep == 0:
+            print(f"    [seed {seed} ep {ep+1}/{epochs}] loss={tot/n:.5f}", flush=True)
+    return net
 
-    # eval: per config, RMSE of target leads per segment
+
+def _per_record_rmse(net, X, scale, segidxs, oi, ti):
+    """Seed's per-record target-lead RMSE (mV) for one config/segment set. Returns
+    dict seg -> array aligned to X's record order (nan where segment absent)."""
+    import torch
     net.eval()
-    sigs, segidxs = [], []
-    for eid in test_ids:
-        try:
-            s = db.signal(int(eid), rate=100)[:1000]
-        except Exception:
-            continue
-        if s.shape[0] == 1000 and np.all(np.isfinite(s)):
-            sigs.append(s.astype(np.float32)); segidxs.append(db.segment_indices(s, fs=100))
-    yn = np.stack([(s.T / scale[:, None]) for s in sigs]).astype(np.float32)
-    out = {"n_train": n_train, "n_test": len(sigs), "epochs": epochs, "configs": {}}
+    yn = (X / scale[None, :, None]).astype(np.float32)
+    mk = np.zeros((1, 12, 1), np.float32); mk[0, oi, 0] = 1.0
+    rec = []
     with torch.no_grad():
-        for cname, obs in CONFIGS.items():
-            oi = [LEAD_INDEX[l] for l in obs]; tgt = [l for l in ("V2", "V4", "V6") if l not in obs] or ["V2", "V4", "V6"]
-            ti = [LEAD_INDEX[l] for l in tgt]
-            mk = np.zeros((1, 12, 1), np.float32); mk[0, oi, 0] = 1.0
-            rec = []
-            for i in range(0, len(sigs), 128):
-                yb = torch.tensor(yn[i:i + 128]).cuda(); B = yb.shape[0]
-                m = torch.tensor(mk).cuda().expand(B, 12, 1000)
-                inp = torch.cat([yb * m, m], 1)
-                p = net(inp)
-                p = p * (1 - m) + yb * m                           # keep observed leads exact
-                rec.extend([(p[j].cpu().numpy() * scale[:, None]) for j in range(B)])
-            per_seg = {}
-            for s in SEGMENTS:
-                errs = []
-                for sig, seg, Lhat in zip(sigs, segidxs, rec):
-                    idx = seg.get(s)
-                    if idx is None or idx.size < 8:
-                        continue
-                    errs.append(np.sqrt(np.mean((Lhat[ti][:, idx] - sig[:, ti].T[:, idx]) ** 2)))
-                if errs:
-                    e = np.array(errs); brng = np.random.default_rng(seed + 2)
-                    ci = [float(np.percentile([e[brng.integers(0, e.size, e.size)].mean() for _ in range(500)], q)) for q in (2.5, 97.5)]
-                    per_seg[s] = {"rmse_mV": round(float(e.mean()), 4), "rmse_ci": [round(ci[0], 4), round(ci[1], 4)]}
-            out["configs"][cname] = per_seg
-            print(f"  [{cname}] " + " ".join(f"{s}={v['rmse_mV']}" for s, v in per_seg.items()), flush=True)
+        for i in range(0, X.shape[0], 128):
+            yb = torch.tensor(yn[i:i + 128]).cuda(); Bn = yb.shape[0]
+            m = torch.tensor(mk).cuda().expand(Bn, 12, X.shape[2])
+            p = net(torch.cat([yb * m, m], 1))
+            p = p * (1 - m) + yb * m
+            rec.extend([(p[j].cpu().numpy() * scale[:, None]) for j in range(Bn)])
+    out = {s: np.full(X.shape[0], np.nan) for s in SEGMENTS}
+    for r, (Lhat, sg) in enumerate(zip(rec, segidxs)):
+        sig = X[r]                                            # (12, window) raw mV
+        for s in SEGMENTS:
+            idx = sg.get(s)
+            if idx is None or idx.size < 8:
+                continue
+            out[s][r] = np.sqrt(np.mean((Lhat[ti][:, idx] - sig[ti][:, idx]) ** 2))
+    return out
+
+
+def run(n_train=4000, n_test=800, epochs=60, seeds=(0, 1, 2)):
+    db = PTBXL()
+    tr_ids, te_ids = standard_split(db, n_train, n_test, seed=0)
+    Xtr, tr_kept, scale = load_windows(db, tr_ids)
+    Xte, te_kept, _ = load_windows(db, te_ids, scale=scale)
+    import torch
+    Xn = torch.tensor((Xtr / scale[None, :, None]).astype(np.float32))
+    segidxs = [db.segment_indices(Xte[i].T, fs=100) for i in range(Xte.shape[0])]
+
+    out = {"n_train": int(Xtr.shape[0]), "n_test": int(Xte.shape[0]), "epochs": epochs,
+           "seeds": list(seeds), "model": "arbitrary-mask 1-D U-Net (representative baseline)",
+           "configs": {},
+           "lineage": lineage.make(db, seed=0, targets=["V2", "V4", "V6"],
+                                   normalization=NORMALIZATION, train_ids=tr_kept, test_ids=te_kept,
+                                   extra={"torch_deterministic": True, "cudnn_deterministic": True})}
+    # train all seeds once, reuse across configs
+    nets = [_train_one(Xn, epochs, s) for s in seeds]
+
+    for cname, obs in CONFIGS.items():
+        oi = [LEAD_INDEX[l] for l in obs]
+        tgt = [l for l in ("V2", "V4", "V6") if l not in obs] or ["V2", "V4", "V6"]
+        ti = [LEAD_INDEX[l] for l in tgt]
+        # per-seed per-record RMSE, then average over seeds
+        seed_pr = [_per_record_rmse(net, Xte, scale, segidxs, oi, ti) for net in nets]
+        per_seg = {}
+        for s in SEGMENTS:
+            stack = np.vstack([sp[s] for sp in seed_pr])      # (n_seeds, n_rec)
+            pr = np.nanmean(stack, axis=0)                     # seed-averaged per-record
+            valid = np.isfinite(pr)
+            if valid.sum() < 5:
+                continue
+            e = pr[valid]; ids = te_kept[valid]
+            brng = np.random.default_rng(2)
+            ci = [float(np.percentile([e[brng.integers(0, e.size, e.size)].mean() for _ in range(500)], q))
+                  for q in (2.5, 97.5)]
+            # across-seed std of the aggregate (record-mean per seed)
+            seed_means = [np.nanmean(sp[s][valid]) for sp in seed_pr]
+            per_seg[s] = {"rmse_mV": round(float(e.mean()), 4), "rmse_ci": [round(ci[0], 4), round(ci[1], 4)],
+                          "across_seed_std_mV": round(float(np.std(seed_means)), 4),
+                          "per_record": {"ids": [int(x) for x in ids], "rmse": [round(float(x), 5) for x in e]}}
+        out["configs"][cname] = per_seg
+        print(f"  [{cname}] " + " ".join(
+            f"{s}={per_seg[s]['rmse_mV']}(+-{per_seg[s]['across_seed_std_mV']})" for s in per_seg), flush=True)
+
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "neural_baseline.json").write_text(json.dumps(out, indent=2))
     print("[json] results/neural_baseline.json", flush=True)
@@ -147,5 +184,6 @@ if __name__ == "__main__":
     ap.add_argument("--n-train", type=int, default=4000)
     ap.add_argument("--n-test", type=int, default=800)
     ap.add_argument("--epochs", type=int, default=60)
+    ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     args = ap.parse_args()
-    run(n_train=args.n_train, n_test=args.n_test, epochs=args.epochs)
+    run(n_train=args.n_train, n_test=args.n_test, epochs=args.epochs, seeds=tuple(args.seeds))

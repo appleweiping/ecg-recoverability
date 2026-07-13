@@ -6,9 +6,13 @@ off-dipole residual of lead ell from the observed leads, wrap it in conformalize
 quantile regression per Mondrian group (S, s, ell), and report WITHIN-GROUP MARGINAL
 coverage under exchangeability -- not per-example conditional coverage.
 
+The prediction target is the RECORD-LEVEL SEGMENT-MEAN off-dipole residual of the target lead
+(one scalar per record: the mean over the segment's samples), predicted from the observed
+leads' segment means.
+
 Fold discipline (PTB-XL strat_fold), no leakage:
   folds 1-7  : fit M_s AND train the quantile regressor;
-  fold  8    : hyperparameter selection (max_iter via a small grid);
+  fold  8    : hyperparameter selection -- max_iter chosen by pinball loss (ACTUALLY used);
   fold  9    : conformal calibration (CQR correction per Mondrian group);
   fold 10    : final test (evaluated once) -- coverage, width, group size, and a
                record-bootstrap 95% CI on coverage, plus per-superclass coverage.
@@ -59,10 +63,30 @@ def _collect(db, ids, rate=100, max_per_record=1):
     return {s: (np.array(rows[s]), np.array(scs[s])) for s in SEGMENTS}
 
 
-def _hist_quantile(q):
+MAXITER_GRID = (100, 200, 400)
+
+
+def _hist_quantile(q, max_iter=200):
     from sklearn.ensemble import HistGradientBoostingRegressor
-    return HistGradientBoostingRegressor(loss="quantile", quantile=q, max_iter=200,
+    return HistGradientBoostingRegressor(loss="quantile", quantile=q, max_iter=max_iter,
                                          max_depth=3, learning_rate=0.05, random_state=0)
+
+
+def _pinball(y, yhat, q):
+    d = y - yhat
+    return float(np.mean(np.maximum(q * d, (q - 1) * d)))
+
+
+def _select_max_iter(Ftr, ytr, F8, y8, q_lo, q_hi):
+    """Choose max_iter on fold 8 by summed lo+hi pinball loss (genuinely uses fold 8)."""
+    best, best_loss = MAXITER_GRID[0], np.inf
+    for mi in MAXITER_GRID:
+        lo = _hist_quantile(q_lo, mi).fit(Ftr, ytr)
+        hi = _hist_quantile(q_hi, mi).fit(Ftr, ytr)
+        loss = _pinball(y8, lo.predict(F8), q_lo) + _pinball(y8, hi.predict(F8), q_hi)
+        if loss < best_loss:
+            best_loss, best = loss, mi
+    return best
 
 
 def run(n_per_fold=500, seed=0, n_boot=500):
@@ -88,11 +112,19 @@ def run(n_per_fold=500, seed=0, n_boot=500):
     # record-level features/targets per fold group
     print("[tier2] collecting train/cal/test record-level segment means ...", flush=True)
     tr = _collect(db, train_ids)
+    f8 = _collect(db, fold_ids([8], cap=n_per_fold))
     cal = _collect(db, fold_ids([9], cap=n_per_fold))
     te = _collect(db, fold_ids([10], cap=n_per_fold * 2))
 
-    out = {"alpha": ALPHA, "fold_discipline": "train 1-7 / cal 9 / test 10",
-           "n_train": int(len(train_ids)), "configs": {}}
+    from ecgcert import lineage
+    out = {"alpha": ALPHA, "fold_discipline": "train 1-7 / tune 8 / cal 9 / test 10",
+           "target": "record-level segment-mean off-dipole residual of the target lead",
+           "maxiter_grid": list(MAXITER_GRID),
+           "n_train": int(len(train_ids)), "configs": {},
+           "lineage": lineage.make(db, seed=seed, targets=["V2", "V4", "V6"],
+                                   normalization="raw mV segment means",
+                                   train_ids=train_ids,
+                                   extra={"cal_fold": 9, "test_fold": 10, "tune_fold": 8})}
     # Mondrian over pre-registered (config, segment, lead) groups.
     for cname, obs in CONFIGS.items():
         obs_idx = [LEAD_INDEX[l] for l in obs]
@@ -110,14 +142,16 @@ def run(n_per_fold=500, seed=0, n_boot=500):
                 F = X[:, obs_idx]                            # observed-lead segment means
                 R = (X - m.mu) @ U.T                         # off-dipole residual, all leads
                 return F, R, sc
-            ft_tr, ft_cal, ft_te = feats_targets(tr), feats_targets(cal), feats_targets(te)
-            if not (ft_tr and ft_cal and ft_te):
+            ft_tr, ft_f8, ft_cal, ft_te = (feats_targets(tr), feats_targets(f8),
+                                           feats_targets(cal), feats_targets(te))
+            if not (ft_tr and ft_f8 and ft_cal and ft_te):
                 continue
-            Ftr, Rtr, _ = ft_tr; Fca, Rca, _ = ft_cal; Fte, Rte, scte = ft_te
+            Ftr, Rtr, _ = ft_tr; F8, R8, _ = ft_f8; Fca, Rca, _ = ft_cal; Fte, Rte, scte = ft_te
             for l in targets:
                 li = LEAD_INDEX[l]
-                lo_m = _hist_quantile(ALPHA / 2).fit(Ftr, Rtr[:, li])
-                hi_m = _hist_quantile(1 - ALPHA / 2).fit(Ftr, Rtr[:, li])
+                mi = _select_max_iter(Ftr, Rtr[:, li], F8, R8[:, li], ALPHA / 2, 1 - ALPHA / 2)
+                lo_m = _hist_quantile(ALPHA / 2, mi).fit(Ftr, Rtr[:, li])
+                hi_m = _hist_quantile(1 - ALPHA / 2, mi).fit(Ftr, Rtr[:, li])
                 # CQR correction on calibration fold (per this Mondrian group)
                 q_lo_c, q_hi_c = lo_m.predict(Fca), hi_m.predict(Fca)
                 mc = MondrianCQR(ALPHA).fit([(cname, s, l)] * len(Fca), Rca[:, li], q_lo_c, q_hi_c)
@@ -138,7 +172,7 @@ def run(n_per_fold=500, seed=0, n_boot=500):
                         sub[cls] = {"n": int(sel.sum()),
                                     "coverage": empirical_coverage(lo_t[sel], hi_t[sel], yte[sel])}
                 out["configs"][cname]["groups"][f"{s}/{l}"] = {
-                    "n_cal": int(len(Fca)), "n_test": int(len(Fte)),
+                    "n_cal": int(len(Fca)), "n_test": int(len(Fte)), "max_iter": int(mi),
                     "coverage": float(cov), "coverage_ci": [float(np.percentile(bc, 2.5)),
                                                             float(np.percentile(bc, 97.5))],
                     "mean_width_mV": width, "target_off_dipole_rms_mV": float(np.sqrt(np.mean(yte**2))),

@@ -155,6 +155,43 @@ class PTBXL:
                 rows[s].append(sig[idx])
         return {s: (np.vstack(v) if v else np.zeros((0, 12))) for s, v in rows.items()}
 
+    def collect_all_segments_with_ids(self, ecg_ids, rate: int = 100, max_per_record: int = 40,
+                                      max_records: int | None = None, seed: int = 0
+                                      ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+        """Like :meth:`collect_all_segments` but also returns the source record id per sample.
+
+        Returns ``{segment: (X (N,12), rec_ids (N,))}``. Needed for record-level bootstrap:
+        resample records (not pooled samples), then re-pool the segments of the chosen
+        records and refit -- pooled-sample bootstrap understates uncertainty because
+        multiple samples from one record are not exchangeable.
+        """
+        rng = np.random.default_rng(seed)
+        ids = list(ecg_ids)
+        if max_records is not None:
+            ids = ids[:max_records]
+        rows: dict[str, list] = {s: [] for s in ("P", "QRS", "ST", "T")}
+        rids: dict[str, list] = {s: [] for s in ("P", "QRS", "ST", "T")}
+        for eid in ids:
+            try:
+                sig = self.signal(int(eid), rate=rate)
+            except Exception:
+                continue
+            segs = self.segment_indices(sig, fs=rate)
+            for s, idx in segs.items():
+                if idx.size == 0:
+                    continue
+                if idx.size > max_per_record:
+                    idx = rng.choice(idx, max_per_record, replace=False)
+                rows[s].append(sig[idx])
+                rids[s].append(np.full(idx.size, int(eid), dtype=np.int64))
+        out = {}
+        for s in rows:
+            if rows[s]:
+                out[s] = (np.vstack(rows[s]), np.concatenate(rids[s]))
+            else:
+                out[s] = (np.zeros((0, 12)), np.zeros(0, dtype=np.int64))
+        return out
+
     def collect_segment_samples(self, ecg_ids, segment: str, rate: int = 100,
                                 max_per_record: int = 40, max_records: int | None = None,
                                 seed: int = 0) -> np.ndarray:

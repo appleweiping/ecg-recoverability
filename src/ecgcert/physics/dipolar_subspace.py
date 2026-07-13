@@ -252,6 +252,59 @@ def eta_per_lead(M_s: np.ndarray, observed_leads, rcond: float = RECON_RCOND) ->
     return np.linalg.norm(unobs, axis=1)
 
 
+def lead_dipolar_norm(M_s: np.ndarray) -> np.ndarray:
+    """Per-lead total dipolar gain ``||e_ell^T M_s||_2`` (12,).
+
+    The denominator for the *normalized* identifiability ``eta_tilde``: how much of
+    lead ``ell``'s signal lives in the dipolar subspace at all. A lead with tiny
+    dipolar norm (e.g. a low-amplitude precordial lead in a flat segment) can have a
+    small absolute ``eta`` yet a large *fraction* unobserved.
+    """
+    return np.linalg.norm(np.asarray(M_s, float), axis=1)
+
+
+def eta_normalized_per_lead(M_s: np.ndarray, observed_leads, rcond: float = RECON_RCOND,
+                            eps: float = 1e-9) -> np.ndarray:
+    """Normalized identifiability ``eta_tilde_{s,ell}(S) = eta_{s,ell} / ||e_ell^T M_s||_2``.
+
+    In ``[0, 1]``: the *fraction* of lead ``ell``'s dipolar content lying in dipole
+    directions unobserved by ``S``. ``eta_tilde ~ 0`` => the identifiable part is nearly
+    all of the lead's dipolar signal; ``eta_tilde ~ 1`` => almost none is identifiable.
+    This is the honest graded measure: absolute ``eta`` alone conflates ``S``-geometry with
+    lead amplitude. Returns a (12,) array (``nan`` where the dipolar norm is ~0).
+    """
+    eta = eta_per_lead(M_s, observed_leads, rcond=rcond)
+    denom = lead_dipolar_norm(M_s)
+    out = np.full(12, np.nan)
+    ok = denom > eps
+    out[ok] = eta[ok] / denom[ok]
+    return out
+
+
+def dipole_coord_cov(M_s: np.ndarray, mu_s: np.ndarray, X_seg: np.ndarray) -> np.ndarray:
+    """Covariance ``Sigma_d`` (3x3) of the dipole coordinates ``d = M_s^T (L - mu_s)``."""
+    X = np.asarray(X_seg, float)
+    d = (X - np.asarray(mu_s, float)) @ np.asarray(M_s, float)     # (N, 3)
+    return np.cov(d.T)
+
+
+def expected_ambiguity_per_lead(M_s: np.ndarray, observed_leads, Sigma_d: np.ndarray,
+                                rcond: float = RECON_RCOND) -> np.ndarray:
+    """Expected unobserved ambiguity in mV per lead under the dipole-coordinate prior.
+
+    For a dipole ``d ~ (0, Sigma_d)``, the part of ``d`` in directions unobserved by ``S``
+    is irrecoverable; its footprint on lead ``ell`` has std
+    ``sqrt( e_ell^T M_s (I-P_obs) Sigma_d (I-P_obs) M_s^T e_ell )``. This puts the graded
+    identifiability in millivolts (an expected error a perfect reconstructor still incurs on
+    the dipolar component). Returns a (12,) array.
+    """
+    M_s = np.asarray(M_s, float)
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    A = M_s @ (np.eye(3) - od.P_obs)                               # (12, 3)
+    cov = A @ np.asarray(Sigma_d, float) @ A.T                     # (12, 12)
+    return np.sqrt(np.clip(np.diag(cov), 0.0, None))
+
+
 def reconstruct_dipolar(M_s: np.ndarray, mu_s: np.ndarray, observed_leads, y_S: np.ndarray,
                         rcond: float = RECON_RCOND) -> np.ndarray:
     """Recover the population-dipolar projection of the full 12-lead from ``y_S``.
