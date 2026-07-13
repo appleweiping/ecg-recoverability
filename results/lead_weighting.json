@@ -127,7 +127,7 @@
     }
   },
   "lineage": {
-    "commit": "27f22c0d3ed0388e116d276bb5e7c3f652078b4b",
+    "commit": "1c054799a99385c6b2d6c3a46dede33abbe97f19",
     "protocol": "recoverability-v2-2026-07",
     "seed": 0,
     "targets": [
