@@ -1,0 +1,58 @@
+{
+  "config": "limb-6 -> precordial",
+  "certificate_eta_ST_precordial": {
+    "V1": 0.3302,
+    "V2": 0.7115,
+    "V3": 0.5526,
+    "V4": 0.2675,
+    "V5": 0.0843,
+    "V6": 0.0268
+  },
+  "n_test": 1500,
+  "n_valid_delineation": 1498,
+  "note": "eta_ST_precordial > 0 => precordial ST NOT identifiable from limb leads (certificate warning)",
+  "reconstructors": {
+    "dipolar": {
+      "n": 1498,
+      "fabricated_event_rate": 0.3251,
+      "fabricated_ci": [
+        0.2991,
+        0.3491
+      ],
+      "masked_event_rate": 0.1762,
+      "masked_ci": [
+        0.1575,
+        0.1969
+      ],
+      "mean_st_error_mv": 0.0758
+    },
+    "ridge": {
+      "n": 1498,
+      "fabricated_event_rate": 0.0534,
+      "fabricated_ci": [
+        0.0427,
+        0.0648
+      ],
+      "masked_event_rate": 0.4226,
+      "masked_ci": [
+        0.3992,
+        0.4486
+      ],
+      "mean_st_error_mv": 0.0592
+    },
+    "ols": {
+      "n": 1498,
+      "fabricated_event_rate": 0.0113,
+      "fabricated_ci": [
+        0.006,
+        0.0174
+      ],
+      "masked_event_rate": 0.4599,
+      "masked_ci": [
+        0.4372,
+        0.4853
+      ],
+      "mean_st_error_mv": 0.0805
+    }
+  }
+}

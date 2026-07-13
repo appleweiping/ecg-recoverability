@@ -18,6 +18,14 @@ warning available before any reconstruction.
   \label{fig:map}
 \end{figure}
 
+\textbf{Certificate-level safety.} The warning is actionable. On $1{,}498$ delineated
+fold-10 records, reconstructing precordial ST from limb-6 with a real dipolar reconstructor
+produces $32.5\%$ fabricated (CI $[29.9,34.9]$) and $17.6\%$ masked (CI $[15.8,19.7]$)
+ST-threshold events (a $|$ST$|{>}0.1$\,mV crossing present in the reconstruction but not the
+truth, or vice-versa), at a mean ST error of $0.076$\,mV---the cost of the certified
+unidentifiability ($\eta_{\mathrm{ST},\ell}{>}0$ for every precordial $\ell$). We report ST-
+threshold events, not diagnoses.
+
 \textbf{Truncation-tolerance sensitivity.} Rank/$\kappa$ of well-posed configurations are
 stable across $\varrho\!\in\!\{10^{-4},\dots,10^{-1}\}$ (e.g.\ $\{$I,II,V1,V3,V5$\}$ is
 rank~3 throughout), while near-rank-deficient sets are sensitive: on synthetic data
