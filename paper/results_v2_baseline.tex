@@ -1,27 +1,33 @@
 \subsection{Baselines and what the map predicts}
-Table~\ref{tab:base} reports reconstruction RMSE (mV) of the unobserved leads for classical
-baselines ($3{,}000$ train / $1{,}500$ test, record-bootstrap CIs). On a dipole-spanning
-set the learned linear ridge/OLS (dipolar plus predictable residual) beats the pure dipolar
-recovery, which beats inverse-Dower and the prior mean---there is recoverable non-dipolar
-content, exactly the calibrated Tier~II layer. On limb-6 \emph{every} reconstructor barely
-beats the prior mean (QRS $0.117$ vs $0.135$; ST $0.055$ vs $0.060$\,mV) and inverse-Dower
-is \emph{worse} than the prior mean ($0.30$): the map's $\eta{>}0$ warning is borne out---
-limb$\to$precordial is near-unrecoverable, so a low reconstruction error there would be
-spurious.
+Table~\ref{tab:base} reports reconstruction RMSE (mV) of the unobserved target leads under a
+\emph{single, identical protocol} for all methods: per-timepoint waveform RMSE on the same
+$\NTestFair$ held-out fold-10 records, same segment indices, record-bootstrap CIs. This is
+the fair comparison---an earlier draft scored the classical baselines on segment-mean vectors
+and the neural baseline on waveforms, which is not comparable. We include a \emph{strong
+neural baseline}: an arbitrary-mask conditional 1-D U-Net trained with random lead masks (so
+one model serves any configuration, no target-lead leakage), the masked-reconstruction
+architecture the reduced-lead literature uses \cite{gradowski2025reveals}.
+
+On a dipole-spanning set the methods form a monotone ladder---prior-mean $\to$ dipolar
+(Tier~I) $\to$ per-segment ridge (Tier~I+II) $\to$ U-Net---confirming there is recoverable
+non-dipolar content (the calibrated Tier~II layer), yet the strong neural model's margin over
+a simple ridge is small (QRS $\FairSpanUnetQRS$ vs.\ $\FairSpanRidgeQRS$\,mV on
+$\{$I,II,V1,V3,V5$\}$). The decisive result is on \textbf{limb-6}: \emph{every} reconstructor
+degrades sharply, and the U-Net---despite its capacity---reaches only QRS $\FairLimbUnetQRS$,
+$\FairUnetLimbSpanRatio\times$ its spanning-set error, still far above what it achieves when
+the target is identifiable. No amount of model capacity crosses the identifiability ceiling
+the map's $\eta{>}0$ warning marks out \emph{a priori}: limb$\to$precordial morphology is not
+recoverable, so a low reconstruction error there would be spurious.
 
 \begin{table}[t]
 \centering\small
-\caption{Reconstruction RMSE (mV), target leads (QRS). ``dip'' = Tier-I dipolar; ``ridge''
-= per-segment ridge (Tier I+II).}
+\caption{Reconstruction RMSE (mV) of target leads, QRS segment, under one identical
+per-timepoint protocol ($\NTestFair$ test records). ``dipolar'' = Tier~I; ``ridge'' =
+per-segment ridge (Tier~I+II); ``U-Net'' = strong arbitrary-mask neural baseline. Best in
+bold. On limb-6 even the neural baseline cannot recover precordial morphology, as $\eta{>}0$
+predicts. Numbers auto-generated from \texttt{results/fair\_baselines.json}.}
 \label{tab:base}
-\begin{tabular}{lcccc}
-\toprule
-config & prior-mean & inv-Dower & dip & ridge \\
-\midrule
-$\{$I,II,V1,V3,V5$\}$ & 0.111 & 0.063 & 0.053 & \textbf{0.039} \\
-limb-6                & 0.135 & 0.302 & 0.117 & \textbf{0.117} \\
-\bottomrule
-\end{tabular}
+\input{auto/fair_baselines_table}
 \end{table}
 
 \textbf{Empirical, not physical, dipole.} On real PTB-XL the estimated $\bm M_s$ shares two
