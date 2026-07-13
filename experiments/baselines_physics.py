@@ -101,11 +101,16 @@ def run(n_train=3000, n_test=1500, seed=0):
             Mb, _, _ = fit_dipolar_subspace(Xtr[brng.integers(0, Xtr.shape[0], Xtr.shape[0])], rank=3)
             bang.append(np.degrees(subspace_angles(Mb, Dcols)))
         bang = np.array(bang)
+        bmax = bang.max(axis=1)                            # per-bootstrap LARGEST angle
+        bmin = bang.min(axis=1)                            # per-bootstrap SMALLEST angle
         out["part_B_physics_vs_pca"][s] = {
-            "principal_angles_deg": [round(float(a), 2) for a in ang],
+            "principal_angles_deg": [round(float(a), 2) for a in np.sort(ang)[::-1]],
             "max_angle_deg": round(float(ang.max()), 2),
-            "max_angle_ci": [round(float(np.percentile(bang[:, -1], 2.5)), 2),
-                             round(float(np.percentile(bang[:, -1], 97.5)), 2)],
+            "max_angle_ci": [round(float(np.percentile(bmax, 2.5)), 2),
+                             round(float(np.percentile(bmax, 97.5)), 2)],
+            "min_angle_deg": round(float(ang.min()), 2),
+            "min_angle_ci": [round(float(np.percentile(bmin, 2.5)), 2),
+                             round(float(np.percentile(bmin, 97.5)), 2)],
             "dipolar_fraction": round(float(evr[:3].sum()), 3),
         }
         # ---- Part A: baselines ----
