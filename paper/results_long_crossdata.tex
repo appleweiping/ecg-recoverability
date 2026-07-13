@@ -24,3 +24,15 @@ two of three subspace directions align but the third differs sharply between dat
 and the limb-6 conditioning verdict are cohort-stable; the ST/T \emph{third} spatial direction
 is cohort-specific and its map should be re-estimated per dataset. This is the honest scope of
 transfer, not a blanket invariance.
+
+\textbf{Sensitivity to duplicated limb leads (\texttt{results/lead\_weighting.json}).} The six
+limb leads are exact combinations of I and II, so a 12-lead PCA up-weights frontal-plane content.
+Refitting $\bm M_s$ on the 8 algebraically-independent leads and lifting back via the fixed
+transform $\bm T$, the \emph{identifiability verdict is robust}: for the spanning sets the
+per-lead $\eta$ is unchanged (max $|\Delta\eta|{=}0$; all targets remain exactly identifiable),
+and limb-6 precordial leads stay unidentifiable under both fits. The \emph{magnitudes} of the
+low-amplitude ST/T subspace are, however, sensitive: the 12-lead and 8-lead ST/T subspaces
+differ by large principal angles ($75^\circ$/$82^\circ$) and $\kappa$ can shift several-fold
+(e.g.\ ST $\{$I,II,V2$\}$: $3.8\!\to\!38$). We therefore read the QRS map quantitatively and the
+ST/T \emph{graded} values qualitatively---the binary identifiable/unidentifiable verdict is
+robust; the exact ST/T $\eta$/$\kappa$/ambiguity magnitudes are weighting-dependent.

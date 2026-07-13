@@ -28,12 +28,13 @@ CPU_STEPS = [
     ("experiments/recoverability_maps.py", "per-lead eta/kappa map + rcond sweep + bootstrap CI"),
     ("experiments/tier2_conformal.py", "calibrated intervals (CQR, strict fold discipline)"),
     ("experiments/baselines_physics.py", "classical baselines + physics-vs-PCA subspace angles"),
-    ("experiments/st_safety.py", "certificate-driven ST-threshold-event safety"),
+    ("experiments/st_safety.py", "continuous ST-threshold-event safety across reconstructors"),
+    ("experiments/lead_weighting.py", "8-independent-lead vs 12-lead fit sensitivity"),
     ("experiments/maps_figure.py", "recoverability-map figure"),
 ]
 GPU_STEPS = [
-    ("experiments/neural_baseline.py", "strong neural baseline (arbitrary-mask 1-D U-Net) [GPU]"),
-    ("experiments/fair_baselines.py", "fair per-timepoint baseline table (merges U-Net) [server]"),
+    ("experiments/neural_baseline.py", "representative neural baseline (arbitrary-mask 1-D U-Net, 3 seeds) [GPU]"),
+    ("experiments/fair_baselines.py", "fair per-timepoint baselines + paired CIs (merges U-Net) [server]"),
 ]
 
 

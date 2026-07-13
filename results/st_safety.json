@@ -1,58 +1,114 @@
 {
   "config": "limb-6 -> precordial",
-  "certificate_eta_ST_precordial": {
-    "V1": 0.3302,
-    "V2": 0.7115,
-    "V3": 0.5526,
-    "V4": 0.2675,
-    "V5": 0.0843,
-    "V6": 0.0268
+  "st_threshold_mV": 0.1,
+  "st_rule": "|ST| >= 0.1 mV (absolute; elevation or depression)",
+  "certificate_ST_precordial": {
+    "V1": {
+      "eta": 0.3302,
+      "eta_normalized": 0.7402,
+      "expected_ambiguity_mV": 0.0961
+    },
+    "V2": {
+      "eta": 0.7115,
+      "eta_normalized": 0.9598,
+      "expected_ambiguity_mV": 0.2071
+    },
+    "V3": {
+      "eta": 0.5526,
+      "eta_normalized": 0.9548,
+      "expected_ambiguity_mV": 0.1609
+    },
+    "V4": {
+      "eta": 0.2675,
+      "eta_normalized": 0.534,
+      "expected_ambiguity_mV": 0.0779
+    },
+    "V5": {
+      "eta": 0.0843,
+      "eta_normalized": 0.1701,
+      "expected_ambiguity_mV": 0.0245
+    },
+    "V6": {
+      "eta": 0.0268,
+      "eta_normalized": 0.0573,
+      "expected_ambiguity_mV": 0.0078
+    }
   },
   "n_test": 1500,
   "n_valid_delineation": 1498,
-  "note": "eta_ST_precordial > 0 => precordial ST NOT identifiable from limb leads (certificate warning)",
+  "note": "eta_ST_precordial > 0 => precordial ST not identifiable from limb leads; graded by eta_normalized (fraction unobservable) and expected ambiguity (mV). The total wrong-event rate below is an empirically similar total error rate across the evaluated reconstructors, NOT a certified lower bound.",
   "reconstructors": {
     "dipolar": {
       "n": 1498,
-      "fabricated_event_rate": 0.3251,
-      "fabricated_ci": [
-        0.2991,
-        0.3491
+      "false_positive_rate": 0.1449,
+      "false_positive_ci": [
+        0.1268,
+        0.1615
       ],
-      "masked_event_rate": 0.1762,
-      "masked_ci": [
-        0.1575,
-        0.1969
+      "false_negative_rate": 0.3284,
+      "false_negative_ci": [
+        0.3057,
+        0.3531
       ],
-      "mean_st_error_mv": 0.0758
+      "total_wrong_rate": 0.4733,
+      "mean_st_error_mv": 0.0756
     },
     "ridge": {
       "n": 1498,
-      "fabricated_event_rate": 0.0534,
-      "fabricated_ci": [
-        0.0427,
-        0.0648
+      "false_positive_rate": 0.0688,
+      "false_positive_ci": [
+        0.0567,
+        0.0814
       ],
-      "masked_event_rate": 0.4226,
-      "masked_ci": [
-        0.3992,
-        0.4486
+      "false_negative_rate": 0.3892,
+      "false_negative_ci": [
+        0.3665,
+        0.4159
       ],
-      "mean_st_error_mv": 0.0592
+      "total_wrong_rate": 0.4579,
+      "mean_st_error_mv": 0.072
     },
     "ols": {
       "n": 1498,
-      "fabricated_event_rate": 0.0113,
-      "fabricated_ci": [
-        0.006,
-        0.0174
+      "false_positive_rate": 0.0621,
+      "false_positive_ci": [
+        0.0501,
+        0.0734
       ],
-      "masked_event_rate": 0.4599,
-      "masked_ci": [
-        0.4372,
-        0.4853
+      "false_negative_rate": 0.3965,
+      "false_negative_ci": [
+        0.3738,
+        0.4239
       ],
-      "mean_st_error_mv": 0.0805
+      "total_wrong_rate": 0.4586,
+      "mean_st_error_mv": 0.0734
     }
+  },
+  "lineage": {
+    "commit": "27f22c0d3ed0388e116d276bb5e7c3f652078b4b",
+    "protocol": "recoverability-v2-2026-07",
+    "seed": 0,
+    "targets": [
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV (no per-record scaling)",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd"
+    },
+    "n_train": 1500,
+    "n_test": 1500,
+    "train_ids_sha256": "51169e6559708dc6",
+    "test_ids_sha256": "d76864d1a15579c2",
+    "reconstruction": "continuous full-waveform, observed leads exact",
+    "st_offset_ms": 60.0,
+    "fiducials": "shared, observed Lead II"
   }
 }

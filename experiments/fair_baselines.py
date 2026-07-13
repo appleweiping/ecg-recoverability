@@ -107,7 +107,7 @@ def _paired_delta_ci(err_a, err_b, ids_a, ids_b, n=2000, seed=7):
             "significant": bool(lo > 0 or hi < 0)}
 
 
-def run(n_train=3000, n_test=800, seed=0):
+def run(n_train=4000, n_test=800, seed=0):    # match neural_baseline for shared train ids
     db = PTBXL()
     tr_ids, te_ids = standard_split(db, n_train, n_test, seed=seed)
     seg_tr = db.collect_all_segments(tr_ids, rate=100, max_per_record=40,
@@ -208,7 +208,7 @@ def _unet_pr(neural, cname, s):
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--n-train", type=int, default=3000)
+    ap.add_argument("--n-train", type=int, default=4000)   # match neural_baseline default
     ap.add_argument("--n-test", type=int, default=800)
     args = ap.parse_args()
     run(n_train=args.n_train, n_test=args.n_test)

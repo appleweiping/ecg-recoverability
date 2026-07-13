@@ -3,9 +3,8 @@
 PTB-XL has no per-lead ST-deviation millivolt annotation, so we use a *measured*
 physical endpoint: the ST deviation at the J point + 60 ms relative to the isoelectric
 PR baseline, with the classic 0.1 mV significance threshold, applied as an *absolute*
-deviation ``|ST| >= 0.1 mV`` (elevation or depression). We report ST-THRESHOLD EVENTS,
-never diagnoses: this module deliberately contains no "STEMI", "phantom", or "fabricated
-diagnosis" language.
+deviation ``|ST| >= 0.1 mV`` (elevation or depression). We report ST-threshold events only;
+no clinical diagnosis is asserted anywhere in this module.
 
 The safety experiment reconstructs precordial leads and asks whether a reconstruction
 produces a threshold crossing the truth does not have (a *false positive* ST-threshold

@@ -27,11 +27,13 @@ component is recoverable from $S$) and a \emph{conditioning} $\kappa_{s,\ell}(S)
 criterion is the classical estimability condition specialized to ECG; the contribution is its
 use as a graded, \emph{empirically-estimated} map (the estimated subspace differs
 $43$--$55^\circ$ from the textbook inverse-Dower dipole), the distribution-free calibrated
-intervals we attach to it, and a reconstructor-\emph{invariant} safety certificate. On PTB-XL
-the map ranks target leads on a continuum---from limb leads, anterior precordial ST (V1--V4) is
-unidentifiable while lateral V5/V6 are near-identifiable---and the total ST-threshold error
-floor is near-invariant across reconstructors ($\TotWrongLo$--$\TotWrongHi\%$) while the
-false-positive/false-negative split is a design choice. The certificate transfers across PTB-XL
+intervals we attach to it, and a graded ST-safety study. On PTB-XL the map ranks target leads
+on a continuum by normalized identifiability and expected mV ambiguity---from limb leads,
+anterior precordial ST (V1--V4) is far from identifiable while lateral V5/V6 are much less
+ambiguous (none exactly identifiable)---and the total ST-threshold error rate is empirically
+similar across the evaluated reconstructors ($\TotWrongLo$--$\TotWrongHi\%$; an empirical
+observation, not a certified bound) while the false-positive/false-negative split is a
+reconstructor choice. The certificate transfers across PTB-XL
 and Chapman for QRS (aligned subspaces, reproduced $\kappa$ ordering) but not in the ST/T third
 direction. Finally, we document in full a claim this project retracted---that a diffusion
 reconstructor proves ``fabrication is a property of the objective''---which a leakage-corrected,
@@ -70,10 +72,13 @@ reporting our certificate is designed to expose.
 \textbf{Lead reconstruction and VCG synthesis.} Fixed linear transforms synthesize the
 vectorcardiogram or missing leads from a standard set (inverse-Dower \cite{edenbrandt1988dower},
 Kors regression \cite{kors1990vcg}), and reduced-lead reconstruction has a long clinical
-literature \cite{nelwan2004reduced}; recent deep models push reconstruction accuracy
-\cite{gradowski2025reveals,cardoso2024bayesian}. These target the reconstruction; we target the
-\emph{prior} question of what a given configuration can support, independent of the
-reconstructor. \textbf{Identifiability and lead selection.} Whether a linear functional is
+literature \cite{nelwan2004reduced}; recent deep and arbitrary-mask waveform-completion models
+push reconstruction accuracy \cite{gradowski2025reveals,cardoso2024bayesian,lence2025ecgrecover,%
+fang2026imputeecg}. These target the reconstruction; we target the \emph{prior} question of what
+a given configuration can support, independent of the reconstructor. Accordingly our neural
+baseline is a \emph{representative} masked-completion U-Net of this family, included to show the
+certificate binds even a flexible learned reconstructor---not a claim to beat
+\cite{lence2025ecgrecover,fang2026imputeecg}. \textbf{Identifiability and lead selection.} Whether a linear functional is
 recoverable from a sub-observation is the classical estimability question
 \cite{scheffe1959anova}; choosing which leads to observe is optimal sensor selection
 \cite{joshi2009sensor}. Our per-lead $\eta$ is estimability specialized to the ECG dipolar
@@ -93,9 +98,10 @@ distribution-free intervals under exchangeability; we apply Mondrian CQR per $(S
 \section{Experiments}
 \label{sec:exp}
 \textbf{Data.} PTB-XL \cite{wagner2020ptbxl} (21{,}799 twelve-lead records, 100/500\,Hz,
-10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}; the map is
-evaluated on records disjoint from the folds used to estimate $\bm\mu_s,\bm M_s$. All table
-numbers regenerate from result JSON via \texttt{paper/emit\_baseline\_table.py}.
+10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}; the map is a
+deterministic function of the estimated $\bm\mu_s,\bm M_s$ (record-level bootstrap CIs), not a
+held-out evaluation. All table numbers regenerate from result JSON via
+\texttt{paper/emit\_baseline\_table.py}.
 \input{results_v2_maps}
 \input{results_v2_baseline}
 
@@ -119,7 +125,8 @@ clinical validation.
 Reduced-lead ECG reconstruction has a known low-rank structure per segment. Exploiting it gives
 a graded, per-target-lead recoverability map---what is identifiable, how well-conditioned, and
 (via calibration) what interval the predictable residual admits---before and independent of any
-reconstructor, plus a reconstructor-invariant error floor. It converts ``trust the
+reconstructor, plus a total ST-threshold error rate that is empirically similar across the
+evaluated reconstructors. It converts ``trust the
 reconstruction'' into a per-feature, per-lead, calibrated statement, and it told us honestly
 when one of our own earlier claims was not supported.
 
@@ -170,7 +177,7 @@ Code, fixed seeds, an exact environment lock (\texttt{env.lock.txt}), and a one-
 pipeline (\texttt{experiments/run\_all.py}) are released; every table number is regenerated
 from result JSON (\texttt{paper/emit\_baseline\_table.py}), and a CI workflow runs the test
 suite on every push. The neural baseline is a 24$\to$12-channel 1-D U-Net (base width 64,
-residual GroupNorm blocks, 60 epochs, Adam $2{\times}10^{-4}$, MSE on masked leads, random-mask
+residual GroupNorm blocks, 60 epochs, 3 deterministic seeds, Adam $2{\times}10^{-4}$, MSE on masked leads, random-mask
 training); the residual predictor is a gradient-boosted quantile regressor (pinball loss) with
 strict fold discipline (folds 1--7 train, 9 calibrate, 10 test).
 

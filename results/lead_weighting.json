@@ -1,0 +1,160 @@
+{
+  "n_records": 1500,
+  "segments": {
+    "P": {
+      "principal_angles_deg": [
+        36.546,
+        2.105,
+        0.565
+      ],
+      "max_angle_deg": 36.546,
+      "configs": {
+        "{I,II,V2}": {
+          "kappa_12lead": 9.858,
+          "kappa_8lead": 65.005,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "{I,II,V1,V3,V5}": {
+          "kappa_12lead": 2.441,
+          "kappa_8lead": 3.447,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "limb-6": {
+          "kappa_12lead": 4.714,
+          "kappa_8lead": 11.997,
+          "rank_12lead": 2,
+          "rank_8lead": 2,
+          "max_eta_diff": 0.2686
+        }
+      }
+    },
+    "QRS": {
+      "principal_angles_deg": [
+        43.051,
+        0.543,
+        0.024
+      ],
+      "max_angle_deg": 43.051,
+      "configs": {
+        "{I,II,V2}": {
+          "kappa_12lead": 3.02,
+          "kappa_8lead": 5.975,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "{I,II,V1,V3,V5}": {
+          "kappa_12lead": 2.391,
+          "kappa_8lead": 3.087,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "limb-6": {
+          "kappa_12lead": 1.954,
+          "kappa_8lead": 2.107,
+          "rank_12lead": 2,
+          "rank_8lead": 2,
+          "max_eta_diff": 0.0651
+        }
+      }
+    },
+    "ST": {
+      "principal_angles_deg": [
+        74.72,
+        2.709,
+        0.044
+      ],
+      "max_angle_deg": 74.72,
+      "configs": {
+        "{I,II,V2}": {
+          "kappa_12lead": 3.84,
+          "kappa_8lead": 38.236,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "{I,II,V1,V3,V5}": {
+          "kappa_12lead": 1.982,
+          "kappa_8lead": 15.737,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "limb-6": {
+          "kappa_12lead": 2.283,
+          "kappa_8lead": 11.839,
+          "rank_12lead": 2,
+          "rank_8lead": 2,
+          "max_eta_diff": 0.4759
+        }
+      }
+    },
+    "T": {
+      "principal_angles_deg": [
+        81.583,
+        3.724,
+        0.029
+      ],
+      "max_angle_deg": 81.583,
+      "configs": {
+        "{I,II,V2}": {
+          "kappa_12lead": 3.558,
+          "kappa_8lead": 34.164,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "{I,II,V1,V3,V5}": {
+          "kappa_12lead": 1.951,
+          "kappa_8lead": 3.594,
+          "rank_12lead": 3,
+          "rank_8lead": 3,
+          "max_eta_diff": 0.0
+        },
+        "limb-6": {
+          "kappa_12lead": 2.145,
+          "kappa_8lead": 6.542,
+          "rank_12lead": 2,
+          "rank_8lead": 2,
+          "max_eta_diff": 0.3216
+        }
+      }
+    }
+  },
+  "lineage": {
+    "commit": "27f22c0d3ed0388e116d276bb5e7c3f652078b4b",
+    "protocol": "recoverability-v2-2026-07",
+    "seed": 0,
+    "targets": [
+      "I",
+      "II",
+      "III",
+      "aVR",
+      "aVL",
+      "aVF",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd"
+    },
+    "n_train": 1500,
+    "n_test": null,
+    "train_ids_sha256": "4fd528172c55d714",
+    "test_ids_sha256": null,
+    "comparison": "12-lead PCA vs 8-independent-lead PCA"
+  }
+}
