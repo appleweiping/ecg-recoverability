@@ -10,7 +10,7 @@
 
 \title{\textbf{Target-Specific Recoverability Maps for Reduced-Lead ECG
 Reconstruction}\\[2pt]\large A graded per-lead identifiability + conditioning certificate with
-calibrated intervals, and an honest account of a retracted fabrication claim}
+calibrated intervals, and an honest account of an abandoned fabrication claim}
 \author{Weiping Yan\\ University of Minnesota, Twin Cities}
 \date{}
 
@@ -19,8 +19,9 @@ calibrated intervals, and an honest account of a retracted fabrication claim}
 
 \begin{abstract}
 Reconstructing missing electrocardiogram (ECG) leads from a reduced set is ill-posed, and a
-scalar reconstruction error says nothing about \emph{which} named feature, on \emph{which}
-lead, a clinician can trust. We give a \emph{target-specific recoverability map}: for a
+scalar reconstruction error says nothing about \emph{which} named feature's low-rank
+(dipolar) component, on \emph{which} lead, is even recoverable. We give a
+\emph{target-specific recoverability map}: for a
 waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead $\ell$, two
 closed-form numbers from one truncated SVD of the segment's empirical rank-3 spatial
 sub-matrix---a graded \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the target's low-rank
@@ -28,18 +29,19 @@ component is recoverable from $S$) and a \emph{conditioning} $\kappa_{s,\ell}(S)
 criterion is the classical estimability condition specialized to ECG; the contribution is its
 use as a graded, \emph{empirically-estimated} map (the estimated subspace differs
 $43$--$55^\circ$ from the textbook inverse-Dower dipole), the distribution-free calibrated
-intervals we attach to it, and a graded ST-safety study. On PTB-XL the map ranks target leads
-on a continuum by normalized identifiability and expected mV ambiguity---from limb leads,
-anterior precordial ST (V1--V4) is far from identifiable while lateral V5/V6 are much less
-ambiguous (none exactly identifiable)---and the total ST-threshold error rate is empirically
-similar across the evaluated reconstructors ($\TotWrongLo$--$\TotWrongHi\%$; an empirical
-observation, not a certified bound) while the false-positive/false-negative split is a
+intervals we attach to it, and a graded ST-safety study. On PTB-XL precordial ST is
+\emph{exactly} non-identifiable from limb leads (rank-2 frontal plane); the graded
+normalized-identifiability ordering is bootstrap-stable for QRS but sensitive to the limb-lead
+weighting for the low-amplitude ST/T segments (we report that sensitivity rather than an exact
+fine ordering). The total ST-threshold error rate is empirically similar across the evaluated
+reconstructors ($\TotWrongLo$--$\TotWrongHi\%$; an empirical observation, not a certified bound,
+dominated by missed crossings) while the false-positive/false-negative split is a
 reconstructor choice. The certificate transfers across PTB-XL
 and Chapman for QRS (aligned subspaces, reproduced $\kappa$ ordering) but not in the ST/T third
-direction. Finally, we document in full a claim this project retracted---that a diffusion
+direction. Finally, we document in full a claim this project abandoned---that a diffusion
 reconstructor proves ``fabrication is a property of the objective''---which a leakage-corrected,
-multi-seed re-analysis reduced to a marginal ($\approx1.3\sigma$) effect with no supporting
-realism trend. This long version accompanies a four-page conference paper and contains the full
+multi-seed re-analysis reduced to an effect whose seed-level 95\% CI includes zero, with no
+supporting realism trend. This long version accompanies a four-page conference paper and contains the full
 proofs, ablations, cross-dataset study, and the negative result.
 \end{abstract}
 
@@ -57,14 +59,16 @@ which target lead's low-rank morphology is even identifiable, and how well-condi
 recovery?} Each waveform segment's instantaneous potential is approximately low rank across
 leads; we estimate a per-segment rank-3 spatial basis $\bm M_s$ (top-3 singular vectors of the
 population lead covariance). We stress that $\bm M_s$ is a \emph{population-estimated (PCA)}
-object: on real PTB-XL it shares two directions with the classical vectorcardiographic
-(inverse-Dower) dipole but its third direction differs materially, so we call it an empirical
-rank-3 subspace rather than a physical dipole (Sec.~\ref{sec:exp}).
+object: on real PTB-XL its three principal angles to the classical vectorcardiographic
+(inverse-Dower) space are graded---one close ($\PhysMinAngLo$--$\PhysMinAngHi^\circ$), one
+moderate ($\PhysMidAngLo$--$\PhysMidAngHi^\circ$), and one substantially different
+($\PhysMaxAngLo$--$\PhysMaxAngHi^\circ$)---so we call it an empirical rank-3 subspace rather than
+a physical dipole (Sec.~\ref{sec:exp}).
 
 This document is the extended version of a four-page conference submission. It adds: the full
 statement and proof of the certificate (Sec.~\ref{sec:cert}, App.~\ref{app:proof}); the
 cross-dataset transfer study (Sec.~\ref{sec:cross}); and a complete account of a claim we
-retracted during pre-submission review (Sec.~\ref{sec:generative}). We report the retraction in
+abandoned during pre-submission review (Sec.~\ref{sec:generative}). We report the abandonment in
 detail on purpose: hiding the earlier, more exciting numbers would be precisely the selective
 reporting our certificate is designed to expose.
 

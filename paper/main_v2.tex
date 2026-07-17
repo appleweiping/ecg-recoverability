@@ -18,20 +18,21 @@
 
 \begin{abstract}
 Reconstructing missing electrocardiogram (ECG) leads from a reduced set is ill-posed, and
-a scalar reconstruction error says nothing about \emph{which} named feature, on \emph{which}
-lead, a clinician can trust. We give a \emph{target-specific recoverability map}: for a
+a scalar reconstruction error says nothing about \emph{which} named feature's low-rank
+(dipolar) component, on \emph{which} lead, is even recoverable. We give a
+\emph{target-specific recoverability map}: for a
 waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead $\ell$, two
 closed-form numbers derived from one truncated SVD of the segment's empirical rank-3 spatial
 (``dipolar'') sub-matrix---an \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the
 target's low-rank component is recoverable from $S$) and a \emph{conditioning}
 $\kappa_{s,\ell}(S)$ (its noise/observed-residual gain). The per-lead criterion is the
-classical estimability condition specialized to ECG, but made \emph{graded}: on PTB-XL the map
-ranks target leads on a continuum by \emph{normalized} identifiability and expected mV
-ambiguity---e.g.\ from limb leads, anterior precordial ST (V1--V4) is far from identifiable
-while lateral V5/V6 are much less ambiguous, though none is \emph{exactly} identifiable---a
-graded call a physiological precordial/limb split cannot make. It is stable to the truncation
-tolerance for well-posed configurations and rank-sensitive (with reported sensitivity) for
-ill-posed ones. We attach distribution-free calibrated intervals for the empirically
+classical estimability condition specialized to ECG (exact vs.\ a numerical
+$\varrho$-truncation, which we separate). The robust findings: precordial ST is \emph{exactly}
+non-identifiable from limb leads (the limb leads span the frontal plane, so $\bm M_{s,S}$ has
+exact rank 2), and the graded normalized-identifiability ordering is bootstrap-stable for QRS.
+For the low-amplitude ST/T segments the fine ordering is \emph{sensitive to the limb-lead
+weighting} (a duplicated-limb sensitivity analysis), so we report it with that caveat rather
+than as an exact graded claim. We attach distribution-free calibrated intervals for the empirically
 predictable residual (conformalized quantile regression, strict fold discipline, honestly
 stated within-group coverage), and observe that the total ST-threshold error rate is
 empirically similar across the evaluated reconstructors (not a certified bound) while the
@@ -57,9 +58,11 @@ which target lead's dipolar morphology is even identifiable, and how well-condit
 recovery?} Each waveform segment's instantaneous potential is approximately low rank across
 leads; we estimate a per-segment rank-3 spatial basis $\bm M_s$ (top-3 singular vectors of
 the population lead covariance). We stress that $\bm M_s$ is a \emph{population-estimated
-(PCA)} object: on real PTB-XL it shares two directions with the classical
-vectorcardiographic (inverse-Dower) dipole but its third direction differs materially, so we
-call it an empirical rank-3 subspace rather than a physical dipole (Sec.~\ref{sec:exp}).
+(PCA)} object: on real PTB-XL its three principal angles to the classical vectorcardiographic
+(inverse-Dower) space are graded---one close ($\PhysMinAngLo$--$\PhysMinAngHi^\circ$), one
+moderate ($\PhysMidAngLo$--$\PhysMidAngHi^\circ$), and one substantially different
+($\PhysMaxAngLo$--$\PhysMaxAngHi^\circ$)---so we call it an empirical rank-3 subspace rather than
+a physical dipole (Sec.~\ref{sec:exp}).
 
 \noindent\textbf{Related work and contributions.} Classical work reconstructs missing leads
 (regression / VCG synthesis \cite{edenbrandt1988dower,kors1990vcg,nelwan2004reduced}, deep and
@@ -98,7 +101,7 @@ false-positive/false-negative split that is a reconstructor choice (Sec.~\ref{se
 \textbf{Data.} PTB-XL \cite{wagner2020ptbxl} (21{,}799 twelve-lead records, 100/500\,Hz,
 10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}.
 
-\textbf{Reproducibility.} Code, fixed and deterministic seeds, an exact environment lock, result
+\textbf{Reproducibility.} Code, fixed and deterministic seeds, a pinned dependency manifest, result
 lineage (commit / dataset / split hashes in every JSON), and a one-command pipeline are
 released\footnote{Anonymized for review; released on acceptance.}; every number in the tables is
 regenerated from result JSON (no hand-typed values). The neural baseline is a 24$\to$12-channel
@@ -113,10 +116,10 @@ quantile regressor. The map is a deterministic function of the estimated $\bm\mu
 Reduced-lead ECG reconstruction has a \emph{known low-rank structure per segment}. Exploiting
 it gives a graded per-target-lead recoverability map---what is identifiable, how
 well-conditioned, and (via calibration) what interval the predictable residual admits---before
-and independent of any reconstructor. It tells a clinician which lead configuration can support
-a decision, e.g.\ that anterior precordial ST is far from readable from limb leads while lateral
-V5/V6 are much less ambiguous, and reports the empirically similar total ST-threshold error
-rate the evaluated reconstructors incur there.
+and independent of any reconstructor. It states which lead configurations support recovery of a
+feature's low-rank component, e.g.\ that precordial ST is exactly non-identifiable from limb
+leads, and reports the empirically similar total ST-threshold error rate the evaluated
+reconstructors incur there (dominated by missed, not fabricated, crossings).
 
 \bibliographystyle{IEEEbib}
 \bibliography{refs}

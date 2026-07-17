@@ -2,7 +2,7 @@
 \label{sec:generative}
 This project began with a stronger claim---that a diffusion reconstructor proves
 ``fabrication is a property of the objective,'' a certified hallucination. A pre-submission
-re-analysis retracted it. We document the retraction in full because the negative result is
+re-analysis abandoned it. We document the abandonment in full because the negative result is
 itself informative and because selective reporting of the earlier (favourable) numbers would
 be exactly the failure the certificate is meant to prevent.
 
@@ -18,8 +18,10 @@ reused one model trained on a fixed observed set to score a \emph{different} con
 With leakage removed (arbitrary-mask model $+$ leakage guards) and $\NegSeeds$ training seeds,
 the ``achievability gap'' $\Delta\rho=\rho_{\text{achievable}}-\rho_{\text{model}}$ is monotone
 in $w$ but \emph{marginal}: mean $\Delta\rho=\NegDrhoone,\NegDrhotwo,\NegDrhofour,\NegDrhosix$
-for $w=1,2,4,6$, with $\pm\NegStdsix$ at $w{=}6$ ($\approx\NegSigmaHi\sigma$). The previously
-reported ``$4.3\sigma$'' does not reproduce.
+for $w=1,2,4,6$ (mean over $\NegSeeds$ seeds), with SD $\pm\NegStdsix$ at $w{=}6$; the
+seed-level 95\% $t$-interval of the mean is $[\NegCIlo,\NegCIhi]$ and \emph{includes zero}, so
+the gap is not significant at the seed level. The previously reported large effect does not
+reproduce.
 
 \textbf{(2) Realism does not improve with guidance---the causal premise is false.} The story
 required higher guidance to buy realism at the cost of fidelity. Instead realism is \emph{no

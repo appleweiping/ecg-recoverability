@@ -19,8 +19,10 @@ Output: results/cross_dataset.json
 """
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +33,27 @@ import wfdb
 from ecgcert import lineage
 from ecgcert.data import PTBXL
 from ecgcert.physics import LEADS, LEAD_INDEX, kappa, eta_per_lead
+
+# PhysioNet wfdb pn_dir streaming is unusably slow on some hosts (>150 s/record); direct curl
+# of the .hea/.mat pair is ~8 s. We parallel-curl a cache, then rdrecord locally.
+CHAP_BASE = "https://physionet.org/files/ecg-arrhythmia/1.0.0"
+CHAP_CACHE = Path("/root/autodl-tmp/chapman_cache")
+
+
+def _curl_record(spec):
+    fol, nm = spec
+    d = CHAP_CACHE / fol
+    d.mkdir(parents=True, exist_ok=True)
+    ok = True
+    for ext in (".hea", ".mat"):
+        f = d / (nm + ext)
+        if f.exists() and f.stat().st_size > 0:
+            continue
+        r = subprocess.run(["curl", "-s", "--fail", "-m", "40", "-o", str(f),
+                            f"{CHAP_BASE}/{fol}/{nm}{ext}"], capture_output=True)
+        if r.returncode != 0 or not f.exists() or f.stat().st_size == 0:
+            ok = False
+    return (fol, nm, str(d / nm)) if ok else None
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"
 PN = "ecg-arrhythmia/1.0.0"
@@ -85,15 +108,26 @@ def _is_sinus(rec):
     return False
 
 
-def collect_chapman(n_target=350, max_per_record=40, seed=0):
-    """Per-record ST/QRS/... samples, channel-reordered + resampled with actual fs.
-    Returns {seg: (X, rid, is_norm)}, used_specs, counts."""
+def collect_chapman(n_target=350, max_per_record=40, seed=0, workers=16):
+    """Per-record ST/QRS/... samples, channel-reordered + resampled with actual fs. Records are
+    parallel-curled to a local cache then read with wfdb locally. Returns
+    {seg: (X, rid, is_norm)}, used_specs, counts."""
     rng = np.random.default_rng(seed + 7)
+    specs = _chapman_manifest(n_target, seed)
+    print(f"[cross] downloading {len(specs)} Chapman records ({workers} parallel curl) ...", flush=True)
+    downloaded = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+        for res in ex.map(_curl_record, specs):
+            if res is not None:
+                downloaded.append(res)
+            if len(downloaded) >= n_target * 2:      # enough survive QC
+                break
+    print(f"[cross] {len(downloaded)} records cached; loading ...", flush=True)
     rows = {s: [] for s in SEGS}; rids = {s: [] for s in SEGS}; norms = {s: [] for s in SEGS}
     used, n_norm, rid_ctr = [], 0, 0
-    for fol, nm in _chapman_manifest(n_target, seed):
+    for fol, nm, localpath in downloaded:
         try:
-            r = wfdb.rdrecord(nm, pn_dir=f"{PN}/{fol}")
+            r = wfdb.rdrecord(localpath)
         except Exception:
             continue
         name = [str(x).strip() for x in (r.sig_name or [])]

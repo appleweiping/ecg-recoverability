@@ -105,10 +105,10 @@ events, not diagnoses.
 
 ## 5. `M_s` is an *empirical* subspace, not the physical dipole
 
-On real PTB-XL the estimated `M_s` shares two directions with the classical inverse-Dower
-vectorcardiographic dipole (principal angles 2–6°) but its **third direction differs
-materially (max angle 43–55°, bootstrap CIs excluding small angles)**. We therefore call
-`M_s` an **empirical rank-3 spatial subspace**, not a physical cardiac dipole. (An earlier
+On real PTB-XL the estimated `M_s` has **three graded principal angles** to the classical
+inverse-Dower vectorcardiographic space: one **close** (≈2–6°), one **moderate**, and one
+**substantially different** (max ≈43–55°, bootstrap CIs excluding small angles). We therefore
+call `M_s` an **empirical rank-3 spatial subspace**, not a physical cardiac dipole. (An earlier
 synthetic "matches inverse-Dower" check *generated* the data with inverse-Dower — self-
 consistency, not evidence on real ECG.)
 
@@ -135,7 +135,7 @@ tests/                          # 37 checks incl. per-lead certificate, rcond se
                                 #   graded/lineage units, paper-number consistency
 paper/main_v2.tex               # ICASSP 4-page draft (target-specific recoverability)
 paper/arxiv_long.tex            # extended version: full proofs, cross-dataset transfer,
-                                #   the retracted-claim negative result (8 pp)
+                                #   the abandoned-hypothesis negative result (8 pp)
 paper/emit_baseline_table.py    # regenerate all paper numbers from results/*.json
 env.lock.txt                    # exact environment used for results/*.json
 ```
@@ -143,7 +143,7 @@ env.lock.txt                    # exact environment used for results/*.json
 **Two paper versions.** `paper/main_v2.tex` is the four-page IEEE ICASSP submission (only the
 rigorously-supported core). `paper/arxiv_long.tex` is the extended preprint: full statement and
 proof of the certificate, the cross-dataset transfer study (QRS subspace transfers PTB-XL↔
-Chapman; ST/T third direction does not), and a complete account of the retracted
+Chapman; ST/T third direction does not), and a complete account of the abandoned
 "fabrication-objective" claim (§8). Both compile clean; every table number is auto-generated
 from result JSON (no hand-typed values).
 

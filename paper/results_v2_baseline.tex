@@ -35,11 +35,11 @@ identifiable-set error. Numbers auto-generated from \texttt{results/fair\_baseli
 \input{auto/fair_baselines_table}
 \end{table}
 
-\textbf{Empirical, not physical, subspace.} On real PTB-XL the estimated $\bm M_s$ shares two
-directions with the classical inverse-Dower vectorcardiographic space
-\cite{edenbrandt1988dower,kors1990vcg} (principal angles $\PhysMinAngLo$--$\PhysMinAngHi^\circ$)
-but its third direction differs materially (max angle $\PhysMaxAngLo$--$\PhysMaxAngHi^\circ$,
-bootstrap CIs excluding small angles). We therefore treat $\bm M_s$ as an \emph{empirical rank-3 spatial subspace}
+\textbf{Empirical, not physical, subspace.} On real PTB-XL the estimated $\bm M_s$ has three
+graded principal angles to the classical inverse-Dower vectorcardiographic space
+\cite{edenbrandt1988dower,kors1990vcg}: one close ($\PhysMinAngLo$--$\PhysMinAngHi^\circ$), one
+moderate ($\PhysMidAngLo$--$\PhysMidAngHi^\circ$), and one substantially different
+($\PhysMaxAngLo$--$\PhysMaxAngHi^\circ$, bootstrap CIs excluding small angles). We therefore treat $\bm M_s$ as an \emph{empirical rank-3 spatial subspace}
 estimated from the data, not a physical cardiac dipole; all recoverability quantities are stated
 with respect to this estimated subspace. This empirical, data-driven subspace---rather than a
 fixed physiological transform---is what makes the map dataset-specific and, we verify, stable

@@ -1,59 +1,60 @@
 \subsection{The recoverability map on PTB-XL}
-We estimate $\bm M_s$ (rank 3) per segment on the training NORM records and report the map with
-RECORD-LEVEL bootstrap CIs (each resample draws whole records, re-pools their segment samples,
-and refits $\bm M_s$; truncation tolerance $\varrho{=}10^{-2}$; Fig.~\ref{fig:map}). The map is
-a deterministic function of the estimated $\bm M_s$ and the selection $S$; the CI quantifies its
-estimation uncertainty. A single observed lead leaves every other lead's dipolar component
-unidentifiable; a dipole-spanning triplet $\{$I,II,V2$\}$ or the five-lead $\{$I,II,V1,V3,V5$\}$
-makes all targets \emph{exactly} identifiable ($\eta{=}0$ to machine precision, since $S$ spans
-the rank-3 subspace).
+We estimate $\bm M_s$ (rank 3; the cardiac dipole is 3-D \emph{a priori}, and the cumulative
+explained variance confirms rank~3 captures the bulk---a rank-sensitivity sweep $r{=}2\dots5$ is
+reported in \texttt{results/recoverability\_maps.json}) per segment on the training NORM records,
+with RECORD-LEVEL bootstrap CIs (resample records, refit $\bm M_s$; $\varrho{=}10^{-2}$;
+Fig.~\ref{fig:map}). We plot the \emph{normalized} identifiability
+$\tilde\eta_{s,\ell}=\eta_{s,\ell}/\|\bm e_\ell^\top\bm M_s\|_2$---a dimensionless relative
+unobserved geometric gain (a ratio of $L_2$ norms, not a variance fraction). A single observed
+lead leaves every other lead unidentifiable; a dipole-spanning $\{$I,II,V2$\}$ or
+$\{$I,II,V1,V3,V5$\}$ makes all targets \emph{exactly} identifiable ($\eta{=}0$).
 
-\textbf{Exact vs.\ graded identifiability.} Exact identifiability is the binary test
-$\eta_{s,\ell}(S){=}0$. For limb-6, \emph{no} precordial lead is exactly identifiable
-($\eta_{\mathrm{ST},\ell}{>}0$ for all), so we grade the shortfall with two scale-aware
-quantities rather than raw $\eta$: the \emph{normalized} identifiability
-$\tilde\eta_{s,\ell}=\eta_{s,\ell}/\|\bm e_\ell^\top\bm M_s\|_2\in[0,1]$ (the fraction of the
-lead's dipolar content that is unobservable) and the \emph{prior-conditional expected
-ambiguity} in mV---the residual a Bayes reconstructor still incurs on the dipolar component
-after conditioning the unobserved dipole coordinate on the observed one through the fitted
-(Gaussian) dipole prior, $\sqrt{\bm e_\ell^\top\bm M_s\,\Sigma_{Q\mid P}\,\bm M_s^\top\bm e_\ell}$
-with $\Sigma_{Q\mid P}$ the posterior covariance of the unobserved coordinate. Both fall from strongly unrecoverable anterior leads
-(V2 $\tilde\eta{=}\EtaNormVtwo$, ambiguity $\AmbVtwo$\,mV; V3, V1, V4) to less-ambiguous lateral
-leads (V5 $\tilde\eta{=}\EtaNormVfive$, $\AmbVfive$\,mV; V6 $\tilde\eta{=}\EtaNormVsix$,
-$\AmbVsix$\,mV). We therefore say \textbf{anterior precordial ST (V1--V4) is far from
-identifiable from limb leads, while lateral V5/V6 are much less ambiguous---but none is exactly
-identifiable}. A physiological precordial/limb split cannot make this graded call; the empirical
-map does.
+\textbf{The robust flagship is exact.} The six limb leads are exact linear combinations of I and
+II, so $\bm M_{s,S}$ for limb-6 has \emph{exact} rank 2: precordial ST is \emph{exactly}
+non-identifiable from limb leads at any SNR, independent of $\varrho$ (Prop.~\ref{thm:perlead}).
+
+\textbf{Graded ordering: stable for QRS, weighting-sensitive for ST/T.} A duplicated-limb
+sensitivity analysis (\texttt{results/lead\_weighting.json}: refit on the 8 algebraically
+independent leads, on the \emph{same} records) shows the V1--V6 $\tilde\eta$ ordering is
+bootstrap-stable for QRS (Spearman $\LWspearQRS$, CI lower bound $\LWspearQRSlo$;
+anterior-before-lateral in $\LWantlatQRS$ of resamples) but \emph{not} robust for the
+low-amplitude ST/T segments (ST Spearman point $\LWspearST$ with a wide bootstrap CI;
+anterior-before-lateral in only $\LWantlatST$ of resamples). We therefore report the ST/T
+$\tilde\eta$/ambiguity magnitudes with this caveat and \emph{do not} claim a fine ST/T ordering;
+the binary limb$\to$precordial verdict above is the robust ST statement. The estimated subspace
+also depends on diagnosis (a NORM vs.\ MI principal-angle sensitivity is reported), so the map is
+a \emph{NORM-trained reference}.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{../results/recoverability_map.png}
-  \caption{Per-lead identifiability $\eta_{s,\ell}(S)$ across configurations and segments
-  (green: identifiable, red: unidentifiable; grey hatched: observed). For limb-6 the anterior
-  precordial leads are the most unidentifiable; lateral V5/V6 are less ambiguous.}
+  \caption{Recoverability map: normalized identifiability $\tilde\eta_{s,\ell}(S)$ (left,
+  dimensionless) and prior-conditional expected ambiguity in mV (right), colorblind-safe
+  \texttt{cividis}; grey hatched = observed. For limb-6 all precordial leads are unidentifiable
+  ($\eta{>}0$); the fine ST/T ordering is weighting-sensitive (text).}
   \label{fig:map}
 \end{figure}
 
 \textbf{Downstream ST cost across reconstructors.} We reconstruct the full 10-second waveform
-with three real continuous linear reconstructors (observed leads kept exact; ST measured at
-J$+$60\,ms vs.\ a PR baseline on fiducials located once on the observed Lead~II and shared
-between truth and reconstruction), and count ST-threshold events ($|$ST$|{\ge}0.1$\,mV, elevation
-or depression; false positive = crossing in reconstruction not truth, false negative = vice
-versa; Table~\ref{tab:safety}). The \emph{total} wrong-event rate is \emph{empirically similar}
-across the evaluated reconstructors ($\TotWrongLo$--$\TotWrongHi\%$); all three \emph{miss} more
-true crossings than they invent (FN$>$FP)---limb$\to$precordial reconstruction smooths ST toward
-the population and drops real deviations---and the FP/FN balance shifts with the reconstructor
-(the dipolar recovery has the largest false-positive share, OLS the smallest). We report the
-whole matrix; because we do not derive a minimax/Bayes lower bound, we
-describe the shared total as an empirically similar total error rate across these three
-reconstructors---\emph{not} a certified floor.
+with three real continuous linear reconstructors (observed leads exact; ST at J$+$60\,ms vs.\ the
+isoelectric PR-segment baseline [P offset\,--\,QRS onset], on fiducials from the observed Lead~II
+shared between truth and reconstruction; median over beats; baseline fallback fired in
+$\approx$9\% of records), and count ST-threshold events ($|$ST$|{\ge}0.1$\,mV; false positive =
+crossing in reconstruction not truth, false negative = vice versa; Table~\ref{tab:safety}). On
+$\SafetyN$ common records the \emph{total} wrong-event rate is empirically similar across
+reconstructors ($\TotWrongLo$--$\TotWrongHi\%$) and is \emph{dominated by false negatives}
+(missed true crossings: limb$\to$precordial recovery smooths ST toward the population), with the
+false-positive/false-negative split a reconstructor choice (paired record-bootstrap $\Delta$
+significant). We do not derive a minimax/Bayes bound, so we call the shared total an empirically
+similar total error rate, \emph{not} a certified floor; we report ST-threshold events, not
+diagnoses.
 
 \begin{table}[t]
 \centering\small
-\caption{Limb-6 $\to$ anterior-precordial ST reconstruction, $\SafetyN$ fold-10 records. FP =
-false-positive, FN = false-negative ST-threshold crossings (\%); total = FP+FN. The total is
-empirically similar across reconstructors; the split is a reconstructor choice. Auto-generated
-from \texttt{results/st\_safety.json}.}
+\caption{Limb-6 $\to$ precordial (all V1--V6) ST reconstruction, $\SafetyN$ common fold-10
+records. FP/FN = false-positive/false-negative ST-threshold crossings (\%); total = FP+FN. FN
+dominates (missed crossings); the split is a reconstructor choice. Auto-generated from
+\texttt{results/st\_safety.json}.}
 \label{tab:safety}
 \begin{tabular}{lcccc}
 \toprule
@@ -66,10 +67,8 @@ OLS     & \FpOls     & \FnOls     & \TotOls     & \ErrOls \\
 \end{tabular}
 \end{table}
 
-\textbf{Truncation-tolerance sensitivity.} Rank/$\kappa$ of well-posed configurations are
-stable across $\varrho\!\in\!\{10^{-4},\dots,10^{-1}\}$ (e.g.\ $\{$I,II,V1,V3,V5$\}$ is
-rank~3 throughout), while near-rank-deficient sets are sensitive: on synthetic data
-$\{$V1,V2,V3$\}$ is rank~2 at $\varrho{=}10^{-2}$ but rank~3 with $\kappa{\sim}200$ at
-$\varrho{=}10^{-4}$. We therefore report a single $\kappa$ only for well-conditioned
-configurations and give the $\varrho$-sweep and bootstrap CIs otherwise; a single $10^{4}$
-or $10^{5}$ figure for a degenerate set is not meaningful.
+\textbf{Truncation-tolerance sensitivity.} Well-posed configurations are $\varrho$-stable
+($\{$I,II,V1,V3,V5$\}$ is rank~3 across $\varrho\!\in\!\{10^{-4},\dots,10^{-1}\}$); near-rank
+-deficient sets are $\varrho$-sensitive and reported with the $\varrho$-sweep and bootstrap CIs.
+A tiny-but-nonzero singular value is exactly identifiable yet $\varrho$-unidentifiable, which is
+why we separate exact from $\varrho$-identifiability (Prop.~\ref{thm:perlead}).

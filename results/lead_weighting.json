@@ -1,142 +1,358 @@
 {
   "n_records": 1500,
+  "same_ids_as_map": true,
+  "record_ids_sha256": "51169e6559708dc6",
   "segments": {
     "P": {
       "principal_angles_deg": [
-        36.546,
-        2.105,
-        0.565
+        64.85,
+        1.85,
+        0.6
       ],
-      "max_angle_deg": 36.546,
-      "configs": {
-        "{I,II,V2}": {
-          "kappa_12lead": 9.858,
-          "kappa_8lead": 65.005,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+      "max_angle_deg": 64.85,
+      "per_lead": {
+        "V1": {
+          "eta12": 0.6925,
+          "eta_norm12": 0.955,
+          "amb12_mV": 0.0959,
+          "eta8": 0.0258,
+          "eta_norm8": 0.0294,
+          "amb8_mV": 0.0032
         },
-        "{I,II,V1,V3,V5}": {
-          "kappa_12lead": 2.441,
-          "kappa_8lead": 3.447,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+        "V2": {
+          "eta12": 0.4602,
+          "eta_norm12": 0.9698,
+          "amb12_mV": 0.0637,
+          "eta8": 0.1507,
+          "eta_norm8": 0.3139,
+          "amb8_mV": 0.019
         },
-        "limb-6": {
-          "kappa_12lead": 4.714,
-          "kappa_8lead": 11.997,
-          "rank_12lead": 2,
-          "rank_8lead": 2,
-          "max_eta_diff": 0.2686
+        "V3": {
+          "eta12": 0.3991,
+          "eta_norm12": 0.8393,
+          "amb12_mV": 0.0553,
+          "eta8": 0.2065,
+          "eta_norm8": 0.3834,
+          "amb8_mV": 0.026
+        },
+        "V4": {
+          "eta12": 0.2163,
+          "eta_norm12": 0.4898,
+          "amb12_mV": 0.0299,
+          "eta8": 0.0897,
+          "eta_norm8": 0.1681,
+          "amb8_mV": 0.0113
+        },
+        "V5": {
+          "eta12": 0.213,
+          "eta_norm12": 0.4681,
+          "amb12_mV": 0.0295,
+          "eta8": 0.0732,
+          "eta_norm8": 0.1342,
+          "amb8_mV": 0.0092
+        },
+        "V6": {
+          "eta12": 0.2394,
+          "eta_norm12": 0.3011,
+          "amb12_mV": 0.0332,
+          "eta8": 0.9595,
+          "eta_norm8": 0.9667,
+          "amb8_mV": 0.1208
         }
-      }
+      },
+      "kappa12": 5.119,
+      "kappa8": 17.163,
+      "order_12lead": [
+        "V2",
+        "V1",
+        "V3",
+        "V4",
+        "V5",
+        "V6"
+      ],
+      "order_8lead": [
+        "V6",
+        "V3",
+        "V2",
+        "V4",
+        "V5",
+        "V1"
+      ],
+      "spearman_12_vs_8": -0.314,
+      "spearman_ci": [
+        -0.829,
+        0.829
+      ],
+      "anterior_least_recoverable_12": true,
+      "anterior_least_recoverable_8": false,
+      "anterior_lateral_ordering_stable_frac": 0.005,
+      "ordering_stable": false
     },
     "QRS": {
       "principal_angles_deg": [
-        43.051,
-        0.543,
-        0.024
+        44.57,
+        0.47,
+        0.03
       ],
-      "max_angle_deg": 43.051,
-      "configs": {
-        "{I,II,V2}": {
-          "kappa_12lead": 3.02,
-          "kappa_8lead": 5.975,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+      "max_angle_deg": 44.57,
+      "per_lead": {
+        "V1": {
+          "eta12": 0.3026,
+          "eta_norm12": 0.6627,
+          "amb12_mV": 0.2142,
+          "eta8": 0.2766,
+          "eta_norm8": 0.671,
+          "amb8_mV": 0.1919
         },
-        "{I,II,V1,V3,V5}": {
-          "kappa_12lead": 2.391,
-          "kappa_8lead": 3.087,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+        "V2": {
+          "eta12": 0.6636,
+          "eta_norm12": 0.9107,
+          "amb12_mV": 0.4696,
+          "eta8": 0.6045,
+          "eta_norm8": 0.7122,
+          "amb8_mV": 0.4194
         },
-        "limb-6": {
-          "kappa_12lead": 1.954,
-          "kappa_8lead": 2.107,
-          "rank_12lead": 2,
-          "rank_8lead": 2,
-          "max_eta_diff": 0.0651
+        "V3": {
+          "eta12": 0.5906,
+          "eta_norm12": 0.971,
+          "amb12_mV": 0.418,
+          "eta8": 0.6415,
+          "eta_norm8": 0.8474,
+          "amb8_mV": 0.4451
+        },
+        "V4": {
+          "eta12": 0.3281,
+          "eta_norm12": 0.5986,
+          "amb12_mV": 0.2322,
+          "eta8": 0.3657,
+          "eta_norm8": 0.613,
+          "amb8_mV": 0.2537
+        },
+        "V5": {
+          "eta12": 0.1055,
+          "eta_norm12": 0.2188,
+          "amb12_mV": 0.0747,
+          "eta8": 0.1056,
+          "eta_norm8": 0.2069,
+          "amb8_mV": 0.0733
+        },
+        "V6": {
+          "eta12": 0.0213,
+          "eta_norm12": 0.0534,
+          "amb12_mV": 0.0151,
+          "eta8": 0.0409,
+          "eta_norm8": 0.0791,
+          "amb8_mV": 0.0284
         }
-      }
+      },
+      "kappa12": 1.97,
+      "kappa8": 2.122,
+      "order_12lead": [
+        "V3",
+        "V2",
+        "V1",
+        "V4",
+        "V5",
+        "V6"
+      ],
+      "order_8lead": [
+        "V3",
+        "V2",
+        "V1",
+        "V4",
+        "V5",
+        "V6"
+      ],
+      "spearman_12_vs_8": 1.0,
+      "spearman_ci": [
+        0.883,
+        1.0
+      ],
+      "anterior_least_recoverable_12": true,
+      "anterior_least_recoverable_8": true,
+      "anterior_lateral_ordering_stable_frac": 0.985,
+      "ordering_stable": true
     },
     "ST": {
       "principal_angles_deg": [
-        74.72,
-        2.709,
-        0.044
+        71.71,
+        2.34,
+        0.04
       ],
-      "max_angle_deg": 74.72,
-      "configs": {
-        "{I,II,V2}": {
-          "kappa_12lead": 3.84,
-          "kappa_8lead": 38.236,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+      "max_angle_deg": 71.71,
+      "per_lead": {
+        "V1": {
+          "eta12": 0.3302,
+          "eta_norm12": 0.7402,
+          "amb12_mV": 0.0928,
+          "eta8": 0.2855,
+          "eta_norm8": 0.5772,
+          "amb8_mV": 0.0717
         },
-        "{I,II,V1,V3,V5}": {
-          "kappa_12lead": 1.982,
-          "kappa_8lead": 15.737,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+        "V2": {
+          "eta12": 0.7115,
+          "eta_norm12": 0.9598,
+          "amb12_mV": 0.2,
+          "eta8": 0.6483,
+          "eta_norm8": 0.816,
+          "amb8_mV": 0.1629
         },
-        "limb-6": {
-          "kappa_12lead": 2.283,
-          "kappa_8lead": 11.839,
-          "rank_12lead": 2,
-          "rank_8lead": 2,
-          "max_eta_diff": 0.4759
+        "V3": {
+          "eta12": 0.5526,
+          "eta_norm12": 0.9548,
+          "amb12_mV": 0.1553,
+          "eta8": 0.6044,
+          "eta_norm8": 0.8822,
+          "amb8_mV": 0.1519
+        },
+        "V4": {
+          "eta12": 0.2675,
+          "eta_norm12": 0.534,
+          "amb12_mV": 0.0752,
+          "eta8": 0.2691,
+          "eta_norm8": 0.4901,
+          "amb8_mV": 0.0676
+        },
+        "V5": {
+          "eta12": 0.0843,
+          "eta_norm12": 0.1701,
+          "amb12_mV": 0.0237,
+          "eta8": 0.0423,
+          "eta_norm8": 0.0839,
+          "amb8_mV": 0.0106
+        },
+        "V6": {
+          "eta12": 0.0268,
+          "eta_norm12": 0.0573,
+          "amb12_mV": 0.0075,
+          "eta8": 0.2425,
+          "eta_norm8": 0.2643,
+          "amb8_mV": 0.0609
         }
-      }
+      },
+      "kappa12": 2.077,
+      "kappa8": 7.41,
+      "order_12lead": [
+        "V2",
+        "V3",
+        "V1",
+        "V4",
+        "V5",
+        "V6"
+      ],
+      "order_8lead": [
+        "V3",
+        "V2",
+        "V1",
+        "V4",
+        "V6",
+        "V5"
+      ],
+      "spearman_12_vs_8": 0.886,
+      "spearman_ci": [
+        -0.544,
+        1.0
+      ],
+      "anterior_least_recoverable_12": true,
+      "anterior_least_recoverable_8": true,
+      "anterior_lateral_ordering_stable_frac": 0.77,
+      "ordering_stable": false
     },
     "T": {
       "principal_angles_deg": [
-        81.583,
-        3.724,
-        0.029
+        79.26,
+        3.74,
+        0.05
       ],
-      "max_angle_deg": 81.583,
-      "configs": {
-        "{I,II,V2}": {
-          "kappa_12lead": 3.558,
-          "kappa_8lead": 34.164,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+      "max_angle_deg": 79.26,
+      "per_lead": {
+        "V1": {
+          "eta12": 0.3196,
+          "eta_norm12": 0.7359,
+          "amb12_mV": 0.0835,
+          "eta8": 0.2876,
+          "eta_norm8": 0.6493,
+          "amb8_mV": 0.0696
         },
-        "{I,II,V1,V3,V5}": {
-          "kappa_12lead": 1.951,
-          "kappa_8lead": 3.594,
-          "rank_12lead": 3,
-          "rank_8lead": 3,
-          "max_eta_diff": 0.0
+        "V2": {
+          "eta12": 0.7328,
+          "eta_norm12": 0.9867,
+          "amb12_mV": 0.1914,
+          "eta8": 0.6651,
+          "eta_norm8": 0.8112,
+          "amb8_mV": 0.161
         },
-        "limb-6": {
-          "kappa_12lead": 2.145,
-          "kappa_8lead": 6.542,
-          "rank_12lead": 2,
-          "rank_8lead": 2,
-          "max_eta_diff": 0.3216
+        "V3": {
+          "eta12": 0.5434,
+          "eta_norm12": 0.9416,
+          "amb12_mV": 0.1419,
+          "eta8": 0.5847,
+          "eta_norm8": 0.8857,
+          "amb8_mV": 0.1416
+        },
+        "V4": {
+          "eta12": 0.2456,
+          "eta_norm12": 0.5325,
+          "amb12_mV": 0.0641,
+          "eta8": 0.2685,
+          "eta_norm8": 0.509,
+          "amb8_mV": 0.065
+        },
+        "V5": {
+          "eta12": 0.0045,
+          "eta_norm12": 0.0087,
+          "amb12_mV": 0.0012,
+          "eta8": 0.0283,
+          "eta_norm8": 0.0476,
+          "amb8_mV": 0.0068
+        },
+        "V6": {
+          "eta12": 0.0728,
+          "eta_norm12": 0.1548,
+          "amb12_mV": 0.019,
+          "eta8": 0.2452,
+          "eta_norm8": 0.2678,
+          "amb8_mV": 0.0594
         }
-      }
+      },
+      "kappa12": 2.053,
+      "kappa8": 9.627,
+      "order_12lead": [
+        "V2",
+        "V3",
+        "V1",
+        "V4",
+        "V6",
+        "V5"
+      ],
+      "order_8lead": [
+        "V3",
+        "V2",
+        "V1",
+        "V4",
+        "V6",
+        "V5"
+      ],
+      "spearman_12_vs_8": 0.943,
+      "spearman_ci": [
+        -0.659,
+        1.0
+      ],
+      "anterior_least_recoverable_12": true,
+      "anterior_least_recoverable_8": true,
+      "anterior_lateral_ordering_stable_frac": 0.72,
+      "ordering_stable": false
     }
   },
   "lineage": {
-    "commit": "1c054799a99385c6b2d6c3a46dede33abbe97f19",
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": false,
     "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "lead_weighting.py",
+    "experiment_script_sha256": "3490df4bb49955dc",
     "seed": 0,
     "targets": [
-      "I",
-      "II",
-      "III",
-      "aVR",
-      "aVL",
-      "aVF",
       "V1",
       "V2",
       "V3",
@@ -149,12 +365,16 @@
     "dataset": {
       "name": "PTB-XL",
       "n_records": 21799,
-      "ids_sha256": "d01d605b52faa1dd"
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
     },
     "n_train": 1500,
     "n_test": null,
-    "train_ids_sha256": "4fd528172c55d714",
+    "train_ids_sha256": "51169e6559708dc6",
     "test_ids_sha256": null,
+    "checkpoint_sha256": null,
     "comparison": "12-lead PCA vs 8-independent-lead PCA"
-  }
+  },
+  "ST_T_ordering_stable": false,
+  "verdict": "ordering NOT stable: the 8-independent-lead fit should be the primary map; do not keep the exact graded ST/T claim"
 }

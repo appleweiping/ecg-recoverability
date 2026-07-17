@@ -43,8 +43,11 @@ def _run(rel, desc):
     t0 = time.time()
     try:
         runpy.run_path(str(ROOT / rel), run_name="__main__")
-    except SystemExit:
-        pass
+    except SystemExit as e:                       # fail closed: only a clean exit(0) is OK
+        code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+        if code != 0:
+            raise RuntimeError(f"[run_all] step FAILED (exit {code}): {rel}") from e
+    # any other exception propagates and aborts the pipeline
     print(f"[run_all] done in {time.time()-t0:.0f}s", flush=True)
 
 
