@@ -131,7 +131,7 @@ experiments/
   neural_baseline.py            # representative neural (arbitrary-mask U-Net) baseline, 3 seeds
   lead_weighting.py             # 8-independent-lead vs 12-lead fit sensitivity
   maps_figure.py                # the recoverability-map figure
-tests/                          # 37 checks incl. per-lead certificate, rcond sensitivity,
+tests/                          # 53 checks (10 files) incl. per-lead certificate, rcond sensitivity,
                                 #   graded/lineage units, paper-number consistency
 paper/main_v2.tex               # ICASSP 4-page draft (target-specific recoverability)
 paper/arxiv_long.tex            # extended version: full proofs, cross-dataset transfer,
@@ -151,7 +151,7 @@ from result JSON (no hand-typed values).
 
 ```bash
 uv venv --python 3.11 .venv && uv pip install --python .venv/Scripts/python.exe -e ".[dev,torch]"
-.venv/Scripts/python.exe -m pytest -q                         # 28 tests (CPU, no data needed)
+.venv/Scripts/python.exe -m pytest -q                         # 47 tests (CPU, no data); 53 with ECG_RELEASE=1
 .venv/Scripts/python.exe scripts/download_data.py --dataset ptbxl   # PTB-XL via HF mirror
 .venv/Scripts/python.exe experiments/recoverability_maps.py   # the map (CPU)
 .venv/Scripts/python.exe experiments/tier2_conformal.py       # calibrated intervals (CPU)
