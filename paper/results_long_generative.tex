@@ -16,12 +16,17 @@ auto-generated).
 \textbf{(1) The original effect was a configuration-leakage artifact.} The earlier exhibit
 reused one model trained on a fixed observed set to score a \emph{different} configuration.
 With leakage removed (arbitrary-mask model $+$ leakage guards) and $\NegSeeds$ training seeds,
-the ``achievability gap'' $\Delta\rho=\rho_{\text{achievable}}-\rho_{\text{model}}$ is monotone
-in $w$ but \emph{marginal}: mean $\Delta\rho=\NegDrhoone,\NegDrhotwo,\NegDrhofour,\NegDrhosix$
-for $w=1,2,4,6$ (mean over $\NegSeeds$ seeds), with SD $\pm\NegStdsix$ at $w{=}6$; the
-seed-level 95\% $t$-interval of the mean is $[\NegCIlo,\NegCIhi]$ and \emph{includes zero}, so
-the gap is not significant at the seed level. The previously reported large effect does not
-reproduce.
+the generative reconstructor does \emph{not} outperform a simple held-out ridge oracle. The
+deficit $\Delta\rho=\rho_{\text{achievable}}-\rho_{\text{model}}$---how far the model's
+target-lead correlation falls below the ridge oracle $\rho_{\text{achievable}}$---is
+\emph{monotone} in $w$: mean $\Delta\rho=\NegDrhoone,\NegDrhotwo,\NegDrhofour,\NegDrhosix$ for
+$w=1,2,4,6$ (mean over $\NegSeeds$ seeds; SD $\pm\NegStdsix$ at $w{=}6$). It is small and
+negative at $w{=}1$ (the model marginally beats the oracle) and grows to a modest but
+seed-\emph{significant} $\NegDrhosix$ at $w{=}6$ (95\% $t$-interval $[\NegCIlo,\NegCIhi]$,
+\emph{excludes zero}; the model now falls short of the oracle). Guidance thus moves the gap the
+\emph{wrong} way for the fabrication story: it does not buy achievability beyond a plain ridge,
+it erodes the model's small low-guidance edge and drives it significantly below the oracle. The
+previously reported large diffusion advantage does not reproduce.
 
 \textbf{(2) Realism does not improve with guidance---the causal premise is false.} The story
 required higher guidance to buy realism at the cost of fidelity. Instead realism is \emph{no

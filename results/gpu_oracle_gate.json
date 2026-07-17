@@ -5,261 +5,265 @@
     "precordial-interp": {
       "QRS": {
         "V2": {
-          "rho_oracle": 0.4917352760285518,
-          "true_nondip_rms_mV": 0.15041848197933294
+          "rho_oracle": 0.49173527602855077,
+          "true_nondip_rms_mV": 0.15041848197933297
         },
         "V4": {
-          "rho_oracle": 0.3072603814985092,
-          "true_nondip_rms_mV": 0.16530451314254316
+          "rho_oracle": 0.30726038149850965,
+          "true_nondip_rms_mV": 0.1653045131425431
         },
         "V6": {
-          "rho_oracle": 0.340744203225989,
-          "true_nondip_rms_mV": 0.18211632736560102
+          "rho_oracle": 0.3407442032259895,
+          "true_nondip_rms_mV": 0.18211632736560096
         }
       },
       "ST": {
         "V2": {
-          "rho_oracle": 0.5537673357195654,
-          "true_nondip_rms_mV": 0.0913813706173027
+          "rho_oracle": 0.553767335719567,
+          "true_nondip_rms_mV": 0.09138137061730275
         },
         "V4": {
-          "rho_oracle": 0.20752460971032197,
-          "true_nondip_rms_mV": 0.11612855523163612
+          "rho_oracle": 0.2075246097103234,
+          "true_nondip_rms_mV": 0.11612855523163614
         },
         "V6": {
-          "rho_oracle": 0.2638188675166657,
-          "true_nondip_rms_mV": 0.14478502562357942
+          "rho_oracle": 0.263818867516664,
+          "true_nondip_rms_mV": 0.14478502562357945
         }
       },
       "T": {
         "V2": {
-          "rho_oracle": 0.48620815427798314,
+          "rho_oracle": 0.4862081542779823,
           "true_nondip_rms_mV": 0.09353277102299112
         },
         "V4": {
-          "rho_oracle": 0.22250730451158005,
-          "true_nondip_rms_mV": 0.11803150334691795
+          "rho_oracle": 0.2225073045115798,
+          "true_nondip_rms_mV": 0.11803150334691796
         },
         "V6": {
-          "rho_oracle": 0.28224821199097494,
-          "true_nondip_rms_mV": 0.13233268764472086
+          "rho_oracle": 0.2822482119909772,
+          "true_nondip_rms_mV": 0.13233268764472084
         }
       },
       "P": {
         "V2": {
-          "rho_oracle": 0.26586797134309725,
-          "true_nondip_rms_mV": 0.09637378487383765
+          "rho_oracle": 0.2658679713430962,
+          "true_nondip_rms_mV": 0.09637378487383813
         },
         "V4": {
-          "rho_oracle": 0.1078060367264927,
-          "true_nondip_rms_mV": 0.08889502934653676
+          "rho_oracle": 0.10780603672649888,
+          "true_nondip_rms_mV": 0.08889502934653654
         },
         "V6": {
-          "rho_oracle": 0.822112407179459,
-          "true_nondip_rms_mV": 0.05804843271750606
+          "rho_oracle": 0.8221124071794641,
+          "true_nondip_rms_mV": 0.058048432717504816
         }
       }
     },
     "classic-3lead": {
       "QRS": {
         "V1": {
-          "rho_oracle": 0.1538532366193507,
+          "rho_oracle": 0.1538532366193509,
           "true_nondip_rms_mV": 0.15341474392045643
         },
         "V3": {
-          "rho_oracle": 0.08737022563516966,
+          "rho_oracle": 0.08737022563517204,
           "true_nondip_rms_mV": 0.18065753290202796
         },
         "V4": {
-          "rho_oracle": 0.1595319356475615,
-          "true_nondip_rms_mV": 0.16530451314254316
+          "rho_oracle": 0.15953193564756576,
+          "true_nondip_rms_mV": 0.1653045131425431
         },
         "V5": {
-          "rho_oracle": 0.0005921729220470874,
-          "true_nondip_rms_mV": 0.16483147538499693
+          "rho_oracle": 0.0005921729220440026,
+          "true_nondip_rms_mV": 0.164831475384997
         },
         "V6": {
-          "rho_oracle": 0.03625075776428059,
-          "true_nondip_rms_mV": 0.18211632736560102
+          "rho_oracle": 0.036250757764282424,
+          "true_nondip_rms_mV": 0.18211632736560096
         }
       },
       "ST": {
         "V1": {
-          "rho_oracle": 0.09831658711523025,
+          "rho_oracle": 0.0983165871152312,
           "true_nondip_rms_mV": 0.1101594930292943
         },
         "V3": {
-          "rho_oracle": -0.02251728096963423,
-          "true_nondip_rms_mV": 0.10379926212201347
+          "rho_oracle": -0.022517280969632902,
+          "true_nondip_rms_mV": 0.1037992621220134
         },
         "V4": {
-          "rho_oracle": 0.1408311655989732,
-          "true_nondip_rms_mV": 0.11612855523163611
+          "rho_oracle": 0.14083116559897502,
+          "true_nondip_rms_mV": 0.11612855523163612
         },
         "V5": {
-          "rho_oracle": 0.13063299278308538,
-          "true_nondip_rms_mV": 0.12337991170327844
+          "rho_oracle": 0.13063299278308774,
+          "true_nondip_rms_mV": 0.12337991170327832
         },
         "V6": {
-          "rho_oracle": 0.18515912243866023,
-          "true_nondip_rms_mV": 0.14478502562357942
+          "rho_oracle": 0.18515912243865756,
+          "true_nondip_rms_mV": 0.14478502562357948
         }
       },
       "T": {
         "V1": {
-          "rho_oracle": 0.12491418707622377,
-          "true_nondip_rms_mV": 0.10643707369581346
+          "rho_oracle": 0.1249141870762217,
+          "true_nondip_rms_mV": 0.10643707369581347
         },
         "V3": {
-          "rho_oracle": 0.10640904323151923,
+          "rho_oracle": 0.10640904323151705,
           "true_nondip_rms_mV": 0.10205939058338326
         },
         "V4": {
-          "rho_oracle": 0.12748321924213057,
-          "true_nondip_rms_mV": 0.11803150334691791
+          "rho_oracle": 0.12748321924212813,
+          "true_nondip_rms_mV": 0.11803150334691796
         },
         "V5": {
-          "rho_oracle": 0.19286757588203693,
-          "true_nondip_rms_mV": 0.12176765128227446
+          "rho_oracle": 0.19286757588203396,
+          "true_nondip_rms_mV": 0.12176765128227453
         },
         "V6": {
-          "rho_oracle": 0.23923179645025444,
-          "true_nondip_rms_mV": 0.1323326876447209
+          "rho_oracle": 0.23923179645025566,
+          "true_nondip_rms_mV": 0.13233268764472084
         }
       },
       "P": {
         "V1": {
-          "rho_oracle": 0.2545061439757032,
-          "true_nondip_rms_mV": 0.09612603339629323
+          "rho_oracle": 0.2545061439756972,
+          "true_nondip_rms_mV": 0.09612603339629351
         },
         "V3": {
-          "rho_oracle": 0.09900915168400462,
-          "true_nondip_rms_mV": 0.08870160542498386
+          "rho_oracle": 0.09900915168400111,
+          "true_nondip_rms_mV": 0.08870160542498394
         },
         "V4": {
-          "rho_oracle": 0.14542953758572805,
-          "true_nondip_rms_mV": 0.08889502934653676
+          "rho_oracle": 0.14542953758573401,
+          "true_nondip_rms_mV": 0.08889502934653652
         },
         "V5": {
-          "rho_oracle": 0.3227019878041492,
+          "rho_oracle": 0.322701987804155,
           "true_nondip_rms_mV": 0.11370658686667413
         },
         "V6": {
-          "rho_oracle": 0.5553732088654618,
-          "true_nondip_rms_mV": 0.05804843271750605
+          "rho_oracle": 0.5553732088654716,
+          "true_nondip_rms_mV": 0.058048432717504816
         }
       }
     },
     "limb6-negctrl": {
       "QRS": {
         "V1": {
-          "rho_oracle": 0.06913378827755026,
-          "true_nondip_rms_mV": 0.2876365802286895
+          "rho_oracle": 0.06913378827755215,
+          "true_nondip_rms_mV": 0.28763658022868943
         },
         "V2": {
-          "rho_oracle": 0.0854828942940213,
+          "rho_oracle": 0.0854828942940223,
           "true_nondip_rms_mV": 0.579860894412676
         },
         "V3": {
-          "rho_oracle": 0.028676540749323798,
+          "rho_oracle": 0.02867654074932363,
           "true_nondip_rms_mV": 0.5681097096899989
         },
         "V4": {
-          "rho_oracle": 0.007415916001379634,
-          "true_nondip_rms_mV": 0.341776501722509
+          "rho_oracle": 0.007415916001379698,
+          "true_nondip_rms_mV": 0.34177650172250906
         },
         "V5": {
-          "rho_oracle": -0.029498172822286763,
-          "true_nondip_rms_mV": 0.18481974540573942
+          "rho_oracle": -0.02949817282228524,
+          "true_nondip_rms_mV": 0.18481974540573962
         },
         "V6": {
-          "rho_oracle": 0.04277364772228754,
-          "true_nondip_rms_mV": 0.18401987102789513
+          "rho_oracle": 0.04277364772229019,
+          "true_nondip_rms_mV": 0.18401987102789508
         }
       },
       "ST": {
         "V1": {
-          "rho_oracle": -0.18583601403649105,
-          "true_nondip_rms_mV": 0.18285040387901108
+          "rho_oracle": -0.18583601403649058,
+          "true_nondip_rms_mV": 0.18285040387901105
         },
         "V2": {
-          "rho_oracle": -0.10396962215885847,
-          "true_nondip_rms_mV": 0.2988834079013164
+          "rho_oracle": -0.10396962215885767,
+          "true_nondip_rms_mV": 0.29888340790131634
         },
         "V3": {
-          "rho_oracle": -0.22340806491433313,
+          "rho_oracle": -0.22340806491433196,
           "true_nondip_rms_mV": 0.29314619194953984
         },
         "V4": {
-          "rho_oracle": -0.2707823209311877,
-          "true_nondip_rms_mV": 0.19101476640859666
+          "rho_oracle": -0.27078232093118937,
+          "true_nondip_rms_mV": 0.19101476640859683
         },
         "V5": {
-          "rho_oracle": 0.17419856480690937,
-          "true_nondip_rms_mV": 0.12942995967414164
+          "rho_oracle": 0.1741985648069119,
+          "true_nondip_rms_mV": 0.12942995967414153
         },
         "V6": {
-          "rho_oracle": 0.2111286350773436,
-          "true_nondip_rms_mV": 0.14568364267171946
+          "rho_oracle": 0.2111286350773418,
+          "true_nondip_rms_mV": 0.1456836426717195
         }
       },
       "T": {
         "V1": {
-          "rho_oracle": 0.23364111743086535,
-          "true_nondip_rms_mV": 0.16948414751052374
+          "rho_oracle": 0.2336411174308649,
+          "true_nondip_rms_mV": 0.1694841475105237
         },
         "V2": {
-          "rho_oracle": 0.3322367581468247,
-          "true_nondip_rms_mV": 0.2943821073608286
+          "rho_oracle": 0.3322367581468242,
+          "true_nondip_rms_mV": 0.29438210736082854
         },
         "V3": {
-          "rho_oracle": 0.2011324723213289,
+          "rho_oracle": 0.20113247232132908,
           "true_nondip_rms_mV": 0.2571354188883643
         },
         "V4": {
-          "rho_oracle": 0.13194383079868863,
-          "true_nondip_rms_mV": 0.16972779388247913
+          "rho_oracle": 0.13194383079868843,
+          "true_nondip_rms_mV": 0.16972779388247916
         },
         "V5": {
-          "rho_oracle": 0.1643582298813507,
-          "true_nondip_rms_mV": 0.12320414469196038
+          "rho_oracle": 0.16435822988134968,
+          "true_nondip_rms_mV": 0.12320414469196041
         },
         "V6": {
-          "rho_oracle": 0.26781006082173303,
-          "true_nondip_rms_mV": 0.13536164525993105
+          "rho_oracle": 0.2678100608217353,
+          "true_nondip_rms_mV": 0.13536164525993102
         }
       },
       "P": {
         "V1": {
-          "rho_oracle": 0.17434442639678394,
-          "true_nondip_rms_mV": 0.11896356217289408
+          "rho_oracle": 0.1743444263967866,
+          "true_nondip_rms_mV": 0.11896356217289387
         },
         "V2": {
-          "rho_oracle": 0.009262292633335575,
-          "true_nondip_rms_mV": 0.14070811544151945
+          "rho_oracle": 0.009262292633335896,
+          "true_nondip_rms_mV": 0.14070811544151904
         },
         "V3": {
-          "rho_oracle": -0.04283448983738695,
-          "true_nondip_rms_mV": 0.13285707097417354
+          "rho_oracle": -0.04283448983738825,
+          "true_nondip_rms_mV": 0.13285707097417312
         },
         "V4": {
-          "rho_oracle": -0.07576504522341714,
-          "true_nondip_rms_mV": 0.11000510437116283
+          "rho_oracle": -0.07576504522341601,
+          "true_nondip_rms_mV": 0.11000510437116257
         },
         "V5": {
-          "rho_oracle": 0.024190945026349588,
-          "true_nondip_rms_mV": 0.12272346347510371
+          "rho_oracle": 0.02419094502635099,
+          "true_nondip_rms_mV": 0.12272346347510377
         },
         "V6": {
-          "rho_oracle": 0.298208540772963,
-          "true_nondip_rms_mV": 0.0927084565551392
+          "rho_oracle": 0.298208540772959,
+          "true_nondip_rms_mV": 0.09270845655513969
         }
       }
     }
   },
   "lineage": {
-    "commit": "44091359597ebcec91996933a1a8a44677152526",
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": true,
     "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "gpu_fabrication.py",
+    "experiment_script_sha256": "1a9c0de1dd0c98d1",
     "seed": 0,
     "targets": [
       "V2",
@@ -271,12 +275,14 @@
     "dataset": {
       "name": "PTB-XL",
       "n_records": 21799,
-      "ids_sha256": "d01d605b52faa1dd"
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
     },
     "n_train": 2000,
     "n_test": 800,
     "train_ids_sha256": "f858010d6ffcf01a",
     "test_ids_sha256": "b75b2390ff2dd529",
+    "checkpoint_sha256": null,
     "experiment": "ridge oracle predictability of off-dipole residual"
   },
   "gate_pass": true

@@ -1,5 +1,4 @@
 {
-  "n_chapman_records": 349,
   "deploy_rcond": 0.01,
   "rconds": [
     0.0001,
@@ -8,566 +7,1497 @@
     0.03,
     0.1
   ],
-  "processing": "100Hz, lead-II dwt, top-3 spatial eig; unified truncated-SVD recoverability",
-  "segments": {
-    "P": {
-      "principal_angles_deg": [
-        79.11,
-        66.89,
-        7.0
-      ],
-      "max_angle_deg": 79.11,
-      "ptbxl_evr3": [
-        0.251,
-        0.176,
-        0.137
-      ],
-      "chapman_evr3": [
-        0.315,
-        0.231,
-        0.151
-      ],
-      "n_ptb": 59933,
-      "n_chap": 13781
-    },
-    "QRS": {
-      "principal_angles_deg": [
-        21.08,
-        9.03,
-        1.56
-      ],
-      "max_angle_deg": 21.08,
-      "ptbxl_evr3": [
-        0.559,
-        0.274,
-        0.076
-      ],
-      "chapman_evr3": [
-        0.545,
-        0.272,
-        0.064
-      ],
-      "n_ptb": 59917,
-      "n_chap": 13954
-    },
-    "ST": {
-      "principal_angles_deg": [
-        88.82,
-        12.23,
-        10.38
-      ],
-      "max_angle_deg": 88.82,
-      "ptbxl_evr3": [
-        0.393,
-        0.235,
-        0.099
-      ],
-      "chapman_evr3": [
-        0.417,
-        0.246,
-        0.1
-      ],
-      "n_ptb": 59914,
-      "n_chap": 13867
-    },
-    "T": {
-      "principal_angles_deg": [
-        89.46,
-        22.83,
-        6.71
-      ],
-      "max_angle_deg": 89.46,
-      "ptbxl_evr3": [
-        0.534,
-        0.141,
-        0.083
-      ],
-      "chapman_evr3": [
-        0.518,
-        0.147,
-        0.094
-      ],
-      "n_ptb": 59937,
-      "n_chap": 13782
-    }
+  "chapman": {
+    "n_records": 350,
+    "n_normal": 81,
+    "manifest_sha256": "de11310a41866942",
+    "n_used_records": 350
   },
-  "recoverability_QRS": {
-    "{I,II,V2}": {
-      "ptbxl": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 3,
-            "kappa_global": 3.219
+  "comparisons": {
+    "matched_normal": {
+      "P": {
+        "principal_angles_deg": [
+          81.66,
+          41.85,
+          12.97
+        ],
+        "max_angle_deg": 81.66,
+        "mid_angle_deg": 41.85,
+        "min_angle_deg": 12.97,
+        "n_ptb": 59925,
+        "n_chap": 3184,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 9.858,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 9.858,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 9.858,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 9.858,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 9.858,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 50.848,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 50.848,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 50.848,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 50.848,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 8.931,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.001": {
-            "rank": 3,
-            "kappa_global": 3.219
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.441,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.441,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.441,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.441,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.441,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 25.356,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 25.356,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 25.356,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 25.356,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.396,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.01": {
-            "rank": 3,
-            "kappa_global": 3.219
-          },
-          "0.03": {
-            "rank": 3,
-            "kappa_global": 3.219
-          },
-          "0.1": {
-            "rank": 3,
-            "kappa_global": 3.219
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 4.714,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 4.714,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 4.714,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 4.714,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 4.714,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.448
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 23221.923,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 25.853,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 25.853,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 25.853,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 25.853,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.1701
+            }
           }
         },
-        "rank_deploy": 3,
-        "leads": {
-          "III": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVR": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVL": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVF": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V1": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V3": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V4": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V5": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V6": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          }
-        }
+        "max_angle_ci": [
+          51.73,
+          89.78
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.0103,
+          0.3448
+        ]
       },
-      "chapman": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 3,
-            "kappa_global": 4.114
+      "QRS": {
+        "principal_angles_deg": [
+          13.77,
+          5.67,
+          3.58
+        ],
+        "max_angle_deg": 13.77,
+        "mid_angle_deg": 5.67,
+        "min_angle_deg": 3.58,
+        "n_ptb": 59895,
+        "n_chap": 3240,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 3.02,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 3.02,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 3.02,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 3.02,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.02,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 3.388,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 3.388,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 3.388,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 3.388,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.388,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.001": {
-            "rank": 3,
-            "kappa_global": 4.114
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.391,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.391,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.391,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.391,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.391,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.276,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.276,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.276,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.276,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.276,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.01": {
-            "rank": 3,
-            "kappa_global": 4.114
-          },
-          "0.03": {
-            "rank": 3,
-            "kappa_global": 4.114
-          },
-          "0.1": {
-            "rank": 3,
-            "kappa_global": 4.114
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 1.954,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 1.954,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 1.954,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 1.954,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 1.954,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.6539
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.347,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 2.347,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 2.347,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 2.347,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 2.347,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.687
+            }
           }
         },
-        "rank_deploy": 3,
-        "leads": {
-          "III": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
+        "max_angle_ci": [
+          9.59,
+          24.59
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.6507,
+          0.7203
+        ]
+      },
+      "ST": {
+        "principal_angles_deg": [
+          85.73,
+          9.27,
+          5.27
+        ],
+        "max_angle_deg": 85.73,
+        "mid_angle_deg": 9.27,
+        "min_angle_deg": 5.27,
+        "n_ptb": 59899,
+        "n_chap": 3240,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 3.84,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 3.84,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 3.84,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 3.84,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.84,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 35.349,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 35.349,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 35.349,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 35.349,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.644,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "aVR": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 1.982,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 1.982,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 1.982,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 1.982,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 1.982,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 10.082,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 10.082,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 10.082,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 10.082,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 10.082,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "aVL": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVF": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V1": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V3": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V4": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V5": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V6": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 9970.526,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.283,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 2.283,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 2.283,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 2.283,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.7136
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 20337.514,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 11.321,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 11.321,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 11.321,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 11.321,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.4672
+            }
           }
-        }
+        },
+        "max_angle_ci": [
+          57.29,
+          89.62
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.0217,
+          0.7112
+        ]
+      },
+      "T": {
+        "principal_angles_deg": [
+          80.89,
+          11.68,
+          3.39
+        ],
+        "max_angle_deg": 80.89,
+        "mid_angle_deg": 11.68,
+        "min_angle_deg": 3.39,
+        "n_ptb": 59910,
+        "n_chap": 3213,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 3.558,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 3.558,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 3.558,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 3.558,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.558,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 8.142,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 8.142,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 8.142,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 8.142,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 8.142,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
+          },
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 1.951,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 1.951,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 1.951,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 1.951,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 1.951,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 1.473,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 1.473,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 1.473,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 1.473,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 1.473,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
+          },
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.145,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 2.145,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 2.145,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 2.145,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 2.145,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.7358
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 8687.077,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 3.814,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 3.814,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 3.814,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 3.814,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.5928
+            }
+          }
+        },
+        "max_angle_ci": [
+          53.55,
+          89.31
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.2698,
+          0.7299
+        ]
       }
     },
-    "{I,II,V1,V3,V5}": {
-      "ptbxl": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 3,
-            "kappa_global": 2.541
+    "all_record": {
+      "P": {
+        "principal_angles_deg": [
+          79.06,
+          26.77,
+          16.96
+        ],
+        "max_angle_deg": 79.06,
+        "mid_angle_deg": 26.77,
+        "min_angle_deg": 16.96,
+        "n_ptb": 59731,
+        "n_chap": 13809,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 8.207,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 8.207,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 8.207,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 8.207,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 8.207,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 23.436,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 23.436,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 23.436,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 23.436,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.839,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.001": {
-            "rank": 3,
-            "kappa_global": 2.541
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.02,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.02,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.02,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.02,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.02,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 4.139,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 4.139,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 4.139,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 4.139,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 4.139,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.01": {
-            "rank": 3,
-            "kappa_global": 2.541
-          },
-          "0.03": {
-            "rank": 3,
-            "kappa_global": 2.541
-          },
-          "0.1": {
-            "rank": 3,
-            "kappa_global": 2.541
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 4.451,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 4.451,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 4.451,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 4.451,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 4.451,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.5642
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 6.445,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 6.445,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 6.445,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 6.445,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 6.445,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.1684
+            }
           }
         },
-        "rank_deploy": 3,
-        "leads": {
-          "III": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVR": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVL": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVF": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V2": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V4": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V6": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          }
-        }
+        "max_angle_ci": [
+          49.69,
+          89.89
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.0152,
+          0.3937
+        ]
       },
-      "chapman": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 3,
-            "kappa_global": 2.26
+      "QRS": {
+        "principal_angles_deg": [
+          13.97,
+          4.44,
+          3.13
+        ],
+        "max_angle_deg": 13.97,
+        "mid_angle_deg": 4.44,
+        "min_angle_deg": 3.13,
+        "n_ptb": 59721,
+        "n_chap": 14000,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 3.059,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 3.059,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 3.059,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 3.059,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.059,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 4.052,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 4.052,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 4.052,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 4.052,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 4.052,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.001": {
-            "rank": 3,
-            "kappa_global": 2.26
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.298,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.298,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.298,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.298,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.298,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.252,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.252,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.252,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.252,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.252,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.01": {
-            "rank": 3,
-            "kappa_global": 2.26
-          },
-          "0.03": {
-            "rank": 3,
-            "kappa_global": 2.26
-          },
-          "0.1": {
-            "rank": 3,
-            "kappa_global": 2.26
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.041,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 2.041,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 2.041,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 2.041,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 2.041,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.6203
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.718,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 2.718,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 2.718,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 2.718,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 2.718,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.6415
+            }
           }
         },
-        "rank_deploy": 3,
-        "leads": {
-          "III": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVR": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVL": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVF": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V2": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V4": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V6": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          }
-        }
-      }
-    },
-    "{V1,V2,V3}": {
-      "ptbxl": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 3,
-            "kappa_global": 3.908
-          },
-          "0.001": {
-            "rank": 3,
-            "kappa_global": 3.908
-          },
-          "0.01": {
-            "rank": 3,
-            "kappa_global": 3.908
-          },
-          "0.03": {
-            "rank": 3,
-            "kappa_global": 3.908
-          },
-          "0.1": {
-            "rank": 3,
-            "kappa_global": 3.908
-          }
-        },
-        "rank_deploy": 3,
-        "leads": {
-          "I": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "II": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "III": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVR": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVL": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVF": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V4": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V5": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V6": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          }
-        }
+        "max_angle_ci": [
+          9.04,
+          31.39
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.6106,
+          0.6692
+        ]
       },
-      "chapman": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 3,
-            "kappa_global": 6.739
+      "ST": {
+        "principal_angles_deg": [
+          80.56,
+          7.16,
+          2.49
+        ],
+        "max_angle_deg": 80.56,
+        "mid_angle_deg": 7.16,
+        "min_angle_deg": 2.49,
+        "n_ptb": 59516,
+        "n_chap": 13993,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 3.322,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 3.322,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 3.322,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 3.322,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 3.322,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 13.009,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 13.009,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 13.009,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 13.009,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 13.009,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.001": {
-            "rank": 3,
-            "kappa_global": 6.739
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.269,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.269,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.269,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.269,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.269,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 8.826,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 8.826,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 8.826,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 8.826,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 8.826,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.01": {
-            "rank": 3,
-            "kappa_global": 6.739
-          },
-          "0.03": {
-            "rank": 3,
-            "kappa_global": 6.739
-          },
-          "0.1": {
-            "rank": 3,
-            "kappa_global": 6.739
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.285,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 2.285,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 2.285,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 2.285,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 2.285,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.5985
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 5.982,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 5.982,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 5.982,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 5.982,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 5.982,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.5764
+            }
           }
         },
-        "rank_deploy": 3,
-        "leads": {
-          "I": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "II": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "III": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVR": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVL": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "aVF": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V4": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V5": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          },
-          "V6": {
-            "eta": 0.0,
-            "eta_normalized": 0.0
-          }
-        }
-      }
-    },
-    "limb-6": {
-      "ptbxl": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 2,
-            "kappa_global": 1.973
-          },
-          "0.001": {
-            "rank": 2,
-            "kappa_global": 1.973
-          },
-          "0.01": {
-            "rank": 2,
-            "kappa_global": 1.973
-          },
-          "0.03": {
-            "rank": 2,
-            "kappa_global": 1.973
-          },
-          "0.1": {
-            "rank": 2,
-            "kappa_global": 1.973
-          }
-        },
-        "rank_deploy": 2,
-        "leads": {
-          "V1": {
-            "eta": 0.2949,
-            "eta_normalized": 0.6695
-          },
-          "V2": {
-            "eta": 0.6583,
-            "eta_normalized": 0.8923
-          },
-          "V3": {
-            "eta": 0.6025,
-            "eta_normalized": 0.9643
-          },
-          "V4": {
-            "eta": 0.3246,
-            "eta_normalized": 0.594
-          },
-          "V5": {
-            "eta": 0.1047,
-            "eta_normalized": 0.216
-          },
-          "V6": {
-            "eta": 0.016,
-            "eta_normalized": 0.0386
-          }
-        }
+        "max_angle_ci": [
+          31.18,
+          89.71
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.2121,
+          0.6244
+        ]
       },
-      "chapman": {
-        "rcond_sweep": {
-          "0.0001": {
-            "rank": 2,
-            "kappa_global": 2.807
+      "T": {
+        "principal_angles_deg": [
+          70.08,
+          8.49,
+          2.02
+        ],
+        "max_angle_deg": 70.08,
+        "mid_angle_deg": 8.49,
+        "min_angle_deg": 2.02,
+        "n_ptb": 59285,
+        "n_chap": 13855,
+        "recoverability": {
+          "{I,II,V2}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.766,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.766,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.766,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.766,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.766,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 9.263,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 9.263,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 9.263,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 9.263,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 9.263,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.001": {
-            "rank": 2,
-            "kappa_global": 2.807
+          "{I,II,V1,V3,V5}": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.226,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.226,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.226,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.226,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.226,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 2.576,
+                  "rank": 3
+                },
+                "0.001": {
+                  "kappa_global": 2.576,
+                  "rank": 3
+                },
+                "0.01": {
+                  "kappa_global": 2.576,
+                  "rank": 3
+                },
+                "0.03": {
+                  "kappa_global": 2.576,
+                  "rank": 3
+                },
+                "0.1": {
+                  "kappa_global": 2.576,
+                  "rank": 3
+                }
+              },
+              "rank_deploy": 3,
+              "V2_eta": 0.0
+            }
           },
-          "0.01": {
-            "rank": 2,
-            "kappa_global": 2.807
-          },
-          "0.03": {
-            "rank": 2,
-            "kappa_global": 2.807
-          },
-          "0.1": {
-            "rank": 2,
-            "kappa_global": 2.807
+          "limb-6": {
+            "ptbxl": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 1.98,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 1.98,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 1.98,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 1.98,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 1.98,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.6402
+            },
+            "chapman": {
+              "rcond_sweep": {
+                "0.0001": {
+                  "kappa_global": 3.845,
+                  "rank": 2
+                },
+                "0.001": {
+                  "kappa_global": 3.845,
+                  "rank": 2
+                },
+                "0.01": {
+                  "kappa_global": 3.845,
+                  "rank": 2
+                },
+                "0.03": {
+                  "kappa_global": 3.845,
+                  "rank": 2
+                },
+                "0.1": {
+                  "kappa_global": 3.845,
+                  "rank": 2
+                }
+              },
+              "rank_deploy": 2,
+              "V2_eta": 0.5744
+            }
           }
         },
-        "rank_deploy": 2,
-        "leads": {
-          "V1": {
-            "eta": 0.3081,
-            "eta_normalized": 0.7162
-          },
-          "V2": {
-            "eta": 0.6344,
-            "eta_normalized": 0.9262
-          },
-          "V3": {
-            "eta": 0.6055,
-            "eta_normalized": 0.9923
-          },
-          "V4": {
-            "eta": 0.3513,
-            "eta_normalized": 0.62
-          },
-          "V5": {
-            "eta": 0.106,
-            "eta_normalized": 0.1811
-          },
-          "V6": {
-            "eta": 0.0357,
-            "eta_normalized": 0.0782
-          }
-        }
+        "max_angle_ci": [
+          39.07,
+          89.22
+        ],
+        "chapman_limb6_V2eta_ci": [
+          0.0756,
+          0.6879
+        ]
       }
     }
   },
   "lineage": {
-    "commit": "44091359597ebcec91996933a1a8a44677152526",
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": true,
     "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "cross_dataset.py",
+    "experiment_script_sha256": "446cfcb5d82c269e",
     "seed": 0,
     "targets": [
       "I",
@@ -588,17 +1518,20 @@
     "dataset": {
       "name": "PTB-XL",
       "n_records": 21799,
-      "ids_sha256": "d01d605b52faa1dd"
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
     },
     "n_train": 1500,
     "n_test": null,
-    "train_ids_sha256": "af7cf2f6ce6d27ca",
+    "train_ids_sha256": "4fd528172c55d714",
     "test_ids_sha256": null,
+    "checkpoint_sha256": null,
     "datasets": [
-      "PTB-XL (folds 1-7 NORM)",
-      "Chapman-Shaoxing-Ningbo (PhysioNet ecg-arrhythmia 1.0.0)"
+      "PTB-XL",
+      "Chapman-Shaoxing-Ningbo (ecg-arrhythmia 1.0.0)"
     ],
-    "chapman_n_records": 349,
-    "chapman_specs_sha256": "f7f864dd5b1fcc26"
-  }
+    "chapman_manifest_sha256": "de11310a41866942",
+    "chapman_n_records": 350
+  },
+  "ST_T_verdict": "cohort-specific (survives matched normal-vs-normal)"
 }

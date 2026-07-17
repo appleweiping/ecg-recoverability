@@ -63,11 +63,13 @@ def test_arxiv_compiles():
 
 def test_no_banned_phrases_in_tex():
     hits = []
-    for tex in (ROOT / "paper").glob("*.tex"):
+    # include auto-generated macros (paper/auto/*.tex) so banned tokens emitted into macros
+    # (e.g. a stray sigma-significance macro) are covered, not just hand-written .tex.
+    for tex in sorted((ROOT / "paper").rglob("*.tex")):
         txt = tex.read_text(errors="replace")
         for pat in BANNED:
             if re.search(pat, txt, re.IGNORECASE):
-                hits.append(f"{tex.name}: /{pat}/")
+                hits.append(f"{tex.relative_to(ROOT).as_posix()}: /{pat}/")
     assert not hits, f"banned/stale phrases present: {hits}"
 
 

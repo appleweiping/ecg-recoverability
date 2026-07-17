@@ -49,7 +49,7 @@ $\varrho\,\sigma_{\max}$ is treated as unobserved. Then $\eta^{(\varrho)}_{s,\el
 $\ell$ is \emph{not stably recoverable at resolution $\varrho$} (outside the retained numerical
 row space); it does \emph{not} by itself imply the exact matrix has a null direction---a
 tiny-but-nonzero singular value is exactly identifiable ($\eta=0$) yet $\varrho$-unidentifiable
-($\eta^{(\varrho)}>0$), as we verify numerically (App.~\ref{app:proof}). We therefore call the
+($\eta^{(\varrho)}>0$), as we verify numerically (\texttt{tests/test\_exact\_vs\_rho.py}). We therefore call the
 $\eta^{(\varrho)}$ heatmap the \emph{$\varrho$-identifiability} map; for well-separated
 configurations the exact and $\varrho$ verdicts coincide, and near-rank-deficient $S$ are
 reported with a $\varrho$-sweep and record-bootstrap CIs. \textbf{The limb-6 flagship is exact:}

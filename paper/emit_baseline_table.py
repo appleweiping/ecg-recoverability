@@ -169,7 +169,11 @@ def main():
             enorm = v.get("eta_normalized")
             m.append(r"\newcommand{\EtaNorm" + w + "}{" + (_fmt(enorm) if enorm is not None else "--") + "}")
             m.append(r"\newcommand{\Amb" + w + "}{" + _fmt(v.get("expected_ambiguity_mV", 0.0)) + "}")
-        m.append(r"\newcommand{\SafetyN}{" + str(safety.get("n_valid_delineation", safety.get("n_test", ""))) + "}")
+        m.append(r"\newcommand{\SafetyN}{"
+                 + str(safety.get("n_valid_common", safety.get("n_delineated", safety.get("n_test", "")))) + "}")
+        fbf = safety.get("baseline_fallback_frac")
+        if fbf is not None:
+            m.append(r"\newcommand{\SafetyFallbackPct}{" + f"{100 * fbf:.0f}" + "}")
         rec = safety.get("reconstructors", {})
         tots = []
         for name, r in rec.items():

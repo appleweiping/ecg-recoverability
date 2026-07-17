@@ -21,6 +21,12 @@ ST_THRESHOLD_MV = 0.1        # classic 0.1 mV threshold (absolute)
 ST_OFFSET_MS = 60.0          # measure ST at J point + 60 ms
 PR_FALLBACK_MS = 20.0        # fallback baseline window before QRS onset
 BEAT_AGGREGATION = "median"  # aggregate per-beat ST deviations by median over beats
+PR_MAX_MS = 320.0            # max plausible PR-segment span (P offset -> R onset); guards a
+                             # missing current-beat P offset from latching a PRIOR beat's P offset
+QRS_MAX_MS = 160.0           # widest plausible QRS (e.g. LBBB); an R onset further than this
+                             # before the J point is a prior beat's, not this beat's
+QRS_TYPICAL_MS = 100.0       # approximate QRS width, used to anchor the pre-QRS window when this
+                             # beat's R onset is missing
 
 
 def fiducials(lead_signal: np.ndarray, fs: int):
@@ -47,24 +53,34 @@ def fiducials(lead_signal: np.ndarray, fs: int):
 
 
 def _pr_baseline(sig: np.ndarray, fid: dict, r_off: int, fs: int):
-    """Isoelectric PR-segment baseline [P_offset, R_onset) for the beat ending at ``r_off``.
+    """Isoelectric PR-segment baseline [P_offset, R_onset) for the beat whose J point is ``r_off``.
 
-    Returns ``(baseline_vec (12,), used_fallback: bool)``. Fallback = a 20 ms window just
-    before QRS onset when P_offset is unavailable.
+    Returns ``(baseline_vec (12,), used_fallback: bool)``. Both the R onset and the P offset are
+    required to belong to the CURRENT beat: the R onset must be within one (wide) QRS width of the
+    J point, and the P offset within one physiological PR-segment span of that R onset. This
+    prevents silently latching onto a PRIOR beat's fiducial (a full-cardiac-cycle baseline window)
+    when this beat's own fiducial was dropped -- in that case we take the documented 20 ms pre-QRS
+    fallback and flag it, so ``fallback_frac`` is not undercounted.
     """
     r_on = fid["R_on"]; p_off = fid["P_off"]
-    prior_ron = r_on[r_on <= r_off]
-    if prior_ron.size == 0:
-        return np.zeros(sig.shape[1]), True
-    ron = int(prior_ron[-1])
-    prior_poff = p_off[p_off < ron]
-    if prior_poff.size:
-        poff = int(prior_poff[-1])
-        if ron - poff >= 2:                                  # a real PR segment exists
-            return sig[poff:ron].mean(axis=0), False
-    w = max(2, int(round(PR_FALLBACK_MS * fs / 1000.0)))     # fallback: 20 ms pre-QRS
-    a = max(0, ron - w)
-    return (sig[a:ron].mean(axis=0) if ron > a else sig[ron]), True
+    pr_max = int(round(PR_MAX_MS * fs / 1000.0))
+    qrs_max = int(round(QRS_MAX_MS * fs / 1000.0))
+    qrs_typ = int(round(QRS_TYPICAL_MS * fs / 1000.0))
+    w = max(2, int(round(PR_FALLBACK_MS * fs / 1000.0)))     # 20 ms fallback window
+    T = sig.shape[0]
+    # This beat's QRS onset: nearest R onset strictly before the J point AND within one wide QRS
+    # width (else this beat's R onset was dropped -> approximate it as J - typical QRS width).
+    cur_ron = r_on[(r_on < r_off) & (r_off - r_on <= qrs_max)]
+    ron = int(cur_ron[-1]) if cur_ron.size else max(0, int(r_off) - qrs_typ)
+    if ron <= 0:
+        return sig[0], True
+    # Isoelectric PR segment [P_off, R_on): the P offset must belong to THIS beat (bounded span).
+    cur_poff = p_off[(p_off < ron) & (ron - p_off >= 2) & (ron - p_off <= pr_max)]
+    if cur_poff.size:
+        poff = int(cur_poff[-1])
+        return sig[poff:ron].mean(axis=0), False
+    a = max(0, ron - w)                                       # fallback: 20 ms just before QRS onset
+    return (sig[a:ron].mean(axis=0) if ron > a else sig[min(ron, T - 1)]), True
 
 
 def st_deviation(sig: np.ndarray, fs: int, ref_lead: int = 1, fid: dict | None = None):

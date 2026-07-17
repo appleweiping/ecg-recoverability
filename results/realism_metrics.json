@@ -21,64 +21,60 @@
   "per_w": {
     "1.0": {
       "psd_logdist": {
-        "V2": 1.9461422006289164,
-        "V4": 1.7235506451129914,
-        "V6": 1.7571495215098063
+        "V2": 1.8837966267267863,
+        "V4": 1.6277097221215566,
+        "V6": 1.6948050530751546
       },
       "amp_wasserstein": {
-        "V2": 0.29380000164111447,
-        "V4": 0.6441409550110498,
-        "V6": 0.5823854563633597
-      },
-      "qrs_width_wasserstein": 0.0,
-      "gen_qrs_delineation_rate": 10.846666666666666
+        "V2": 0.4537245497107505,
+        "V4": 0.24098820666472115,
+        "V6": 0.21883983969688375
+      }
     },
     "2.0": {
       "psd_logdist": {
-        "V2": 1.8688957659403482,
-        "V4": 1.63987104733785,
-        "V6": 1.6942854948838553
+        "V2": 1.8296787440776825,
+        "V4": 1.5621779696146647,
+        "V6": 1.6343257729212444
       },
       "amp_wasserstein": {
-        "V2": 0.1641430090864499,
-        "V4": 0.604516767859459,
-        "V6": 0.553678226669629
-      },
-      "qrs_width_wasserstein": 0.0,
-      "gen_qrs_delineation_rate": 10.846666666666666
+        "V2": 0.39631250828504566,
+        "V4": 0.19335179587205253,
+        "V6": 0.16798823058605153
+      }
     },
     "4.0": {
       "psd_logdist": {
-        "V2": 2.027515626748403,
-        "V4": 1.7656704533100127,
-        "V6": 1.8427314205964407
+        "V2": 1.9935498515764871,
+        "V4": 1.7201719760894776,
+        "V6": 1.7453945656617482
       },
       "amp_wasserstein": {
-        "V2": 0.28434679597616197,
-        "V4": 0.5645589091380437,
-        "V6": 0.6176233494281764
-      },
-      "qrs_width_wasserstein": 0.0,
-      "gen_qrs_delineation_rate": 10.846666666666666
+        "V2": 0.5435402976473173,
+        "V4": 0.20634222467740376,
+        "V6": 0.14328156212965604
+      }
     },
     "6.0": {
       "psd_logdist": {
-        "V2": 2.3512677995363873,
-        "V4": 2.012936324675878,
-        "V6": 2.1028463701407114
+        "V2": 2.247546592553457,
+        "V4": 1.8986652048428854,
+        "V6": 1.9270491667588552
       },
       "amp_wasserstein": {
-        "V2": 0.6736846698323885,
-        "V4": 0.6254885850350063,
-        "V6": 0.7786913079023356
-      },
-      "qrs_width_wasserstein": 0.0,
-      "gen_qrs_delineation_rate": 10.846666666666666
+        "V2": 0.8313525566458702,
+        "V4": 0.3022977163394292,
+        "V6": 0.18626855015754654
+      }
     }
   },
   "lineage": {
-    "commit": "44091359597ebcec91996933a1a8a44677152526",
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": true,
     "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "realism_metrics.py",
+    "experiment_script_sha256": "d342fac4872c44f3",
     "seed": 0,
     "targets": [
       "V2",
@@ -90,13 +86,16 @@
     "dataset": {
       "name": "PTB-XL",
       "n_records": 21799,
-      "ids_sha256": "d01d605b52faa1dd"
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
     },
     "n_train": null,
     "n_test": 300,
     "train_ids_sha256": null,
     "test_ids_sha256": "c7e45c2c072e9f22",
-    "experiment": "diffusion realism vs guidance (retracted-claim negative result)",
-    "checkpoint": "results/gpu_ddpm.pt"
-  }
+    "checkpoint_sha256": "9aad8b6f601ed9e4",
+    "experiment": "diffusion realism vs guidance (abandoned pre-submission hypothesis)",
+    "kept_record_ids_sha256": "c7e45c2c072e9f22"
+  },
+  "metric_note": "Realism is measured on the TARGET (unobserved) leads only (PSD log-distance, amplitude Wasserstein). The prior QRS-width metric on the observed Lead II was vacuous and is removed."
 }

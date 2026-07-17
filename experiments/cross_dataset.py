@@ -223,7 +223,12 @@ def main(n_chapman=350, n_boot=100, seed=0):
     print(f"[cross] chapman: {counts['n_records']} records, {counts['n_normal']} sinus-rhythm", flush=True)
 
     def seg_pack(store, seg, normal_only=False):
-        X, rid, nm = store[seg]
+        item = store[seg]
+        if len(item) == 3:                     # Chapman: (X, rid, is_norm)
+            X, rid, nm = item
+        else:                                  # PTB-XL: (X, rid) -- no per-sample normal mask
+            X, rid = item
+            nm = np.ones(len(rid), dtype=bool)
         if normal_only:
             m = nm.astype(bool); X, rid = X[m], rid[m]
         return (X, rid)

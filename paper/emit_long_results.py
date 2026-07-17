@@ -61,32 +61,39 @@ def main():
 
     # ---------- cross-dataset ----------
     if cross:
-        seg = cross["segments"]
-        q = seg["QRS"]["principal_angles_deg"]
-        m += [r"\newcommand{\CrossNchap}{" + str(cross["n_chapman_records"]) + "}",
-              r"\newcommand{\CrossQRSangA}{" + f"{q[-1]:.1f}" + "}",   # largest QRS angle
-              r"\newcommand{\CrossQRSangMax}{" + f"{seg['QRS']['max_angle_deg']:.1f}" + "}",
-              r"\newcommand{\CrossSTang}{" + f"{seg['ST']['max_angle_deg']:.1f}" + "}",
-              r"\newcommand{\CrossTang}{" + f"{seg['T']['max_angle_deg']:.1f}" + "}",
-              r"\newcommand{\CrossPang}{" + f"{seg['P']['max_angle_deg']:.1f}" + "}"]
-        rq = cross["recoverability_QRS"]
+        ch = cross["chapman"]
+        m += [r"\newcommand{\CrossNchap}{" + str(ch["n_records"]) + "}",
+              r"\newcommand{\CrossNnormal}{" + str(ch["n_normal"]) + "}"]
 
-        def kap(cfg, ds):
-            return rq[cfg][ds]["rcond_sweep"][f"{cross['deploy_rcond']:g}"]
+        def ci_str(seg):
+            # value only (no $...$): the .tex supplies math mode, e.g. `$\CrossMNQRSCI$`
+            c = seg.get("max_angle_ci")
+            return f"[{c[0]:.0f},{c[1]:.0f}]" if c else f"{seg['max_angle_deg']:.0f}"
 
-        for tag, cfg in (("Span", "{I,II,V1,V3,V5}"), ("Triple", "{I,II,V2}"), ("Vvv", "{V1,V2,V3}")):
-            pp, cc = kap(cfg, "ptbxl"), kap(cfg, "chapman")
-            m += [r"\newcommand{\CrossKap" + tag + "Ptb}{" + f"{pp['kappa_global']:.1f}" + "}",
-                  r"\newcommand{\CrossKap" + tag + "Chap}{" + f"{cc['kappa_global']:.1f}" + "}",
-                  r"\newcommand{\CrossRank" + tag + "Ptb}{" + str(pp["rank"]) + "}"]
-        # limb-6: effective rank + a representative precordial eta (V2) both datasets
-        lp, lc = kap("limb-6", "ptbxl"), kap("limb-6", "chapman")
-        m += [r"\newcommand{\CrossLimbRankPtb}{" + str(lp["rank"]) + "}",
-              r"\newcommand{\CrossLimbRankChap}{" + str(lc["rank"]) + "}",
-              r"\newcommand{\CrossLimbEtaVtwoPtb}{"
-              + f"{rq['limb-6']['ptbxl']['leads']['V2']['eta']:.3f}" + "}",
-              r"\newcommand{\CrossLimbEtaVtwoChap}{"
-              + f"{rq['limb-6']['chapman']['leads']['V2']['eta']:.3f}" + "}"]
+        for cmp, pfx in (("matched_normal", "MN"), ("all_record", "AR")):
+            cc = cross["comparisons"].get(cmp, {})
+            for s, stag in (("QRS", "qrs"), ("ST", "st"), ("T", "t")):
+                seg = cc.get(s)
+                if not seg:
+                    continue
+                m.append(r"\newcommand{\Cross" + pfx + stag.upper() + "ang}{"
+                         + f"{seg['max_angle_deg']:.0f}" + "}")
+                if seg.get("max_angle_ci"):
+                    m.append(r"\newcommand{\Cross" + pfx + stag.upper() + "CI}{" + ci_str(seg) + "}")
+            # limb-6 recoverability (rank + V2 eta) and a well-posed kappa, matched cohort
+            qseg = cc.get("QRS", {})
+            rec = qseg.get("recoverability", {})
+            lb = rec.get("limb-6", {})
+            if lb:
+                m += [r"\newcommand{\Cross" + pfx + "LimbRankPtb}{" + str(lb["ptbxl"]["rank_deploy"]) + "}",
+                      r"\newcommand{\Cross" + pfx + "LimbRankChap}{" + str(lb["chapman"]["rank_deploy"]) + "}"]
+            sp = rec.get("{I,II,V1,V3,V5}", {})
+            if sp:
+                kp = sp["ptbxl"]["rcond_sweep"][f"{cross['deploy_rcond']:g}"]["kappa_global"]
+                kc = sp["chapman"]["rcond_sweep"][f"{cross['deploy_rcond']:g}"]["kappa_global"]
+                m += [r"\newcommand{\Cross" + pfx + "KapSpanPtb}{" + f"{kp:.1f}" + "}",
+                      r"\newcommand{\Cross" + pfx + "KapSpanChap}{" + f"{kc:.1f}" + "}"]
+        m.append(r"\newcommand{\CrossVerdict}{" + str(cross.get("ST_T_verdict", "")).split("(")[0].strip() + "}")
 
     # ---------- negative result (5-seed achievability gap) ----------
     if neg:
@@ -135,18 +142,10 @@ def main():
             m += [r"\newcommand{\OracleRhoLatLo}{" + f"{min(rv46):.2f}" + "}",
                   r"\newcommand{\OracleRhoLatHi}{" + f"{max(rv46):.2f}" + "}"]
 
-    # ---------- lead-weighting sensitivity (8-lead vs 12-lead) ----------
-    if lw:
-        seg = lw["segments"]
-        if "ST" in seg:
-            m.append(r"\newcommand{\LWSTang}{" + f"{seg['ST']['max_angle_deg']:.0f}" + "}")
-            v = seg["ST"]["configs"].get("{I,II,V2}", {})
-            if v:
-                m += [r"\newcommand{\LWKapTwelve}{" + f"{v['kappa_12lead']:.1f}" + "}",
-                      r"\newcommand{\LWKapEight}{" + f"{v['kappa_8lead']:.0f}" + "}"]
-        if "T" in seg:
-            m.append(r"\newcommand{\LWTang}{" + f"{seg['T']['max_angle_deg']:.0f}" + "}")
-
+    # NOTE: lead-weighting macros used by the papers (\LWspear*/\LWantlat*) are emitted by
+    # emit_baseline_table.py from the segment-level lead_weighting.json schema. The former
+    # \LW{ST,T}ang/\LWKap{Twelve,Eight} block was removed: those macros are unused in both papers
+    # and read a "configs" sub-key that the current lead_weighting.json schema does not have.
     (AUTO / "long_results_macros.tex").write_text("\n".join(m) + "\n")
     print("wrote", AUTO / "long_results_macros.tex", f"({len(m)} lines)")
 

@@ -8,15 +8,15 @@ claim is downgraded to "CFG changes the residual-recovery behaviour of this mode
 
 Loads the leakage-fixed arbitrary-mask DDPM (results/gpu_ddpm.pt) and, per guidance w,
 reconstructs the primary config {I,II,V1,V3,V5}->{V2,V4,V6} on held-out NORM records; for
-each target lead it compares GENERATED vs REAL distributions with metrics that need no
+each target lead it compares GENERATED vs REAL distributions with two metrics that need no
 extra model and are robust to delineation noise:
-  * PSD distance  -- mean L2 distance of the log power spectral density;
-  * amp-Wasserstein -- 1-Wasserstein distance of the per-record peak-to-peak amplitude
-                       distribution;
-  * QRS-width Wass  -- 1-Wasserstein of NeuroKit QRS-duration distribution (best effort;
-                       reports delineation success rate);
-alongside the achievability gap (oracle - postmean rho). Reports mean +/- record-bootstrap
-CI per w and the trade-off (Spearman corr of realism-improvement vs gap across w).
+  * PSD log-distance -- mean L2 distance of the log power spectral density;
+  * amp-Wasserstein  -- 1-Wasserstein distance of the per-record peak-to-peak amplitude
+                        distribution.
+(The earlier NeuroKit QRS-width Wasserstein metric was dropped as vacuous -- QRS width on the
+observed Lead II is invariant to which precordial leads are reconstructed. No achievability
+gap / Spearman trade-off is computed here; the gap is reported by gpu_diffusion_clean.py --ci.)
+Point estimates only; per-guidance seeds are shared so cross-w differences are not seed noise.
 
 Output: results/realism_metrics.json
 """
@@ -56,24 +56,7 @@ def _psd_logdist(a, b, fs=100):
     return float(np.sqrt(np.mean((la - lb) ** 2)))
 
 
-def _qrs_widths(sig12, fs=100, lead=1):
-    import neurokit2 as nk
-    try:
-        _, rp = nk.ecg_peaks(sig12[:, lead], sampling_rate=fs)
-        _, w = nk.ecg_delineate(sig12[:, lead], rp, sampling_rate=fs, method="dwt")
-        on = np.asarray(w.get("ECG_R_Onsets", []), float); off = np.asarray(w.get("ECG_R_Offsets", []), float)
-        on = on[~np.isnan(on)]; off = off[~np.isnan(off)]
-        widths = []
-        for a in on:
-            later = off[off > a]
-            if later.size:
-                widths.append((later[0] - a) / fs * 1000.0)  # ms
-        return widths
-    except Exception:
-        return []
-
-
-def run(n_test=300, seed=0, n_boot=200):
+def run(n_test=300, seed=0):
     import torch
     db = PTBXL()
     rng = np.random.default_rng(seed)
