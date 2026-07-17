@@ -31,6 +31,7 @@ CPU_STEPS = [
     ("experiments/st_safety.py", "continuous ST-threshold-event safety across reconstructors"),
     ("experiments/lead_weighting.py", "8-independent-lead vs 12-lead fit sensitivity"),
     ("experiments/maps_figure.py", "recoverability-map figure"),
+    ("experiments/ablation_figures.py", "rank / rho / subspace-angle ablation figures"),
 ]
 GPU_STEPS = [
     ("experiments/neural_baseline.py", "representative neural baseline (arbitrary-mask 1-D U-Net, 3 seeds) [GPU]"),

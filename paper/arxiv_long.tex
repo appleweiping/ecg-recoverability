@@ -116,8 +116,22 @@ held-out evaluation. All table numbers regenerate from result JSON via
 
 \section{Limitations}
 \label{sec:limits}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../results/ablations.png}
+  \caption{Sensitivities of the certificate. (a) Rank sweep: cumulative explained variance of the
+  per-segment dipolar subspace; the \emph{a-priori} rank-3 choice (the cardiac dipole is 3-D)
+  captures the bulk (QRS/ST). (b) $\varrho$-stability: global conditioning $\kappa_s(S)$ is flat in
+  the truncation tolerance for the deployed observed-lead sets (near-rank-deficient sets, reported
+  in \texttt{results/recoverability\_maps.json}, are $\varrho$-sensitive). (c) Estimated-subspace
+  sensitivity: max principal angle per segment under a NORM$\to$MI diagnosis shift and under the
+  12-vs-8-lead weighting; the low-amplitude ST/T subspaces move most (near/above $45^\circ$ for the
+  weighting), which is why we make no fine ST/T ordering claim.}
+  \label{fig:ablation}
+\end{figure}
 The subspace $\bm M_s$ is estimated, so $\eta/\kappa$ inherit its estimation error (reported via
-record-bootstrap CIs) and its cohort dependence (Sec.~\ref{sec:cross}); the ST/T third
+record-bootstrap CIs and the rank/$\varrho$/subspace-angle sensitivities of
+Fig.~\ref{fig:ablation}) and its cohort dependence (Sec.~\ref{sec:cross}); the ST/T third
 direction is cohort-specific. Identifiability is stated for the low-rank (dipolar) coordinate:
 a reconstructor may still recover predictable non-dipolar structure (Sec.~\ref{sec:exp}), so
 $\eta{>}0$ bounds the dipolar component, not every waveform detail. Conformal coverage is
