@@ -44,9 +44,16 @@ BAND_A = ("V2", "V4", "V6")
 CORE_SEGS = ("QRS", "ST", "T")
 
 
-# ------------------------------------------------------------------ oracle + data
+# ------------------------------------------------------------------ ridge comparator + data
 def _oracle(models, tr_samples, te_samples, cfg):
-    """One held-out ridge oracle per config: rho of E[residual|obs] with truth."""
+    """One held-out RIDGE ACHIEVABILITY COMPARATOR per config: rho of E[residual|obs] with truth.
+
+    NOTE on naming: the function name and the JSON keys (rho_oracle/oracle_rho/oracle_agg) are
+    retained for artifact/lineage compatibility, but this is a ridge fit on the OBSERVED leads
+    used as an *achievability reference* -- NOT a Bayes-optimal oracle or an upper bound. The
+    diffusion model can and does exceed it at low guidance (Delta rho < 0), so the paper refers
+    to it as the "ridge achievability comparator" (rho_ridge), not an oracle.
+    """
     obs_idx = [LEAD_INDEX[l] for l in cfg["obs"]]
     out = {}
     for s in SEGMENTS:

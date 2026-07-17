@@ -136,11 +136,11 @@ def main():
         rv46 = [rho(s, l) for s in ("QRS", "ST", "T") for l in ("V4", "V6") if rho(s, l) is not None]
         rv2 = [x for x in rv2 if x is not None]
         if rv2:
-            m += [r"\newcommand{\OracleRhoVtwoLo}{" + f"{min(rv2):.2f}" + "}",
-                  r"\newcommand{\OracleRhoVtwoHi}{" + f"{max(rv2):.2f}" + "}"]
+            m += [r"\newcommand{\RidgeRhoVtwoLo}{" + f"{min(rv2):.2f}" + "}",
+                  r"\newcommand{\RidgeRhoVtwoHi}{" + f"{max(rv2):.2f}" + "}"]
         if rv46:
-            m += [r"\newcommand{\OracleRhoLatLo}{" + f"{min(rv46):.2f}" + "}",
-                  r"\newcommand{\OracleRhoLatHi}{" + f"{max(rv46):.2f}" + "}"]
+            m += [r"\newcommand{\RidgeRhoLatLo}{" + f"{min(rv46):.2f}" + "}",
+                  r"\newcommand{\RidgeRhoLatHi}{" + f"{max(rv46):.2f}" + "}"]
 
     # NOTE: lead-weighting macros used by the papers (\LWspear*/\LWantlat*) are emitted by
     # emit_baseline_table.py from the segment-level lead_weighting.json schema. The former
