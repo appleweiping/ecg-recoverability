@@ -29,6 +29,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+from scipy.linalg import subspace_angles
 
 from ecgcert import lineage
 from ecgcert.data import PTBXL
@@ -65,17 +66,88 @@ def _perlead(M, mu, Xc, obs):
             kappa_per_lead(M, obs, rcond=DEPLOY_RCOND))
 
 
-def maps(n_records=1500, n_boot=200, seed=0):
-    db = PTBXL()
+def map_record_ids(db, n_records=1500, seed=0):
+    """The exact NORM record ids the primary recoverability map is estimated on.
+
+    Shared so lead_weighting.py (P0-D) uses the IDENTICAL records as the map.
+    """
     rng = np.random.default_rng(seed)
     norm = rng.permutation(db.ids_with_superclass("NORM", exclusive=False, folds=range(1, 9)))
-    used_ids = norm[:n_records]
+    return norm[:n_records]
+
+
+def _eta_norm_any_rank(M_r, obs):
+    """Rank-agnostic normalized eta for a (12,r) basis (eta_per_lead hardcodes r=3)."""
+    from ecgcert.physics import observed_dipole
+    r = M_r.shape[1]
+    od = observed_dipole(M_r, obs, rcond=DEPLOY_RCOND)
+    eta = np.linalg.norm(M_r @ (np.eye(r) - od.P_obs), axis=1)
+    denom = np.linalg.norm(M_r, axis=1)
+    out = np.full(12, np.nan); ok = denom > 1e-9
+    out[ok] = eta[ok] / denom[ok]
+    return out
+
+
+def _rank_sensitivity(samples):
+    """Per-segment cumulative EVR at r=1..5 (justify rank 3 = 3-D cardiac dipole a priori),
+    and limb-6 precordial normalized eta at ranks 2..5 (verdict stability across rank)."""
+    limb6 = CONFIGS["limb-6"]; prec = ["V1", "V2", "V3", "V4", "V5", "V6"]
+    out = {"note": "rank 3 chosen a priori: the cardiac dipole is 3-D (X,Y,Z).", "segments": {}}
+    for s in SEGMENTS:
+        X0, rid0 = samples[s]
+        Xc, _ = _clean(X0, rid0)
+        if Xc.shape[0] < 300:
+            continue
+        _, _, evr = fit_dipolar_subspace(Xc, rank=3)
+        cum = np.cumsum(evr)
+        d = {"cumulative_evr": {str(r): round(float(cum[r - 1]), 4) for r in (1, 2, 3, 4, 5)}}
+        if s in ("ST", "QRS", "T"):
+            d["limb6_precordial_eta_norm_by_rank"] = {}
+            for r in (2, 3, 4, 5):
+                Mr, _, _ = fit_dipolar_subspace(Xc, rank=r)
+                en = _eta_norm_any_rank(Mr, limb6)
+                d["limb6_precordial_eta_norm_by_rank"][str(r)] = {
+                    l: (None if not np.isfinite(en[LEAD_INDEX[l]]) else round(float(en[LEAD_INDEX[l]]), 3))
+                    for l in prec}
+        out["segments"][s] = d
+    return out
+
+
+def _diagnosis_sensitivity(db, norm_M, seed):
+    """Principal angle between the NORM-fit subspace and an MI-fit subspace, per segment --
+    quantifies how much the reference subspace depends on diagnosis (else scope to NORM)."""
+    mi_ids = np.random.default_rng(seed + 9).permutation(
+        db.ids_with_superclass("MI", exclusive=False, folds=range(1, 9)))[:1000]
+    mi = db.collect_all_segments(mi_ids, rate=100, max_per_record=40, max_records=1000, seed=seed)
+    out = {"reference": "map is trained on NORM; angle to an MI-fit subspace per segment"}
+    for s in SEGMENTS:
+        X = mi.get(s)
+        if X is None or X.shape[0] < 300 or s not in norm_M:
+            continue
+        X = X[np.all(np.isfinite(X), axis=1) & np.all(np.abs(X) <= 10.0, axis=1)]
+        Mmi, _, _ = fit_dipolar_subspace(X, rank=3)
+        ang = np.degrees(subspace_angles(norm_M[s], Mmi))
+        out[s] = {"principal_angles_deg": [round(float(a), 2) for a in ang],
+                  "max_angle_deg": round(float(ang.max()), 2)}
+    return out
+
+
+def maps(n_records=1500, n_boot=200, seed=0):
+    db = PTBXL()
+    used_ids = map_record_ids(db, n_records, seed)
     print(f"[maps] collecting segments from {len(used_ids)} NORM records ...", flush=True)
     samples = db.collect_all_segments_with_ids(used_ids, rate=100, max_per_record=40,
                                                max_records=n_records, seed=seed)
+    norm_M = {}
+    for s in SEGMENTS:
+        Xc, _ = _clean(*samples[s])
+        if Xc.shape[0] >= 300:
+            norm_M[s] = fit_dipolar_subspace(Xc, rank=3)[0]
 
     out = {"n_records": int(len(used_ids)), "n_boot": n_boot, "deploy_rcond": DEPLOY_RCOND,
            "rconds": list(RCONDS), "bootstrap": "record-level (resample records, refit M_s)",
+           "rank_sensitivity": _rank_sensitivity(samples),
+           "diagnosis_sensitivity": _diagnosis_sensitivity(db, norm_M, seed),
            "configs": {},
            "lineage": lineage.make(db, seed=seed, targets=list(LEADS), normalization=NORMALIZATION,
                                    train_ids=used_ids,

@@ -122,8 +122,10 @@ def run(n_train=1500, n_test=1500, rate=100, seed=0, per_record_pts=80):
     recons = ("dipolar", "ridge", "ols")
 
     test = rng.permutation(db.meta[db.meta["strat_fold"] == 10].index.to_numpy())[:n_test]
-    rows = {r: [] for r in recons}
-    n_valid = 0
+    # per-record events keyed by record id, only on records valid for ALL reconstructors
+    per = {r: {} for r in recons}                            # method -> {id: (fp, fn, err)}
+    fbfracs = []
+    n_delineated = 0
     for eid in test:
         try:
             sig = db.signal(int(eid), rate=rate)
@@ -134,44 +136,71 @@ def run(n_train=1500, n_test=1500, rate=100, seed=0, per_record_pts=80):
         fid = fiducials(sig[:, LEAD_INDEX["II"]], rate)      # ONCE, on observed Lead II
         if fid is None or np.asarray(fid["R_off"]).size == 0:
             continue
+        n_delineated += 1
         full = _reconstruct(sig, dip, maps)
-        valid_any = False
+        evs = {r: st_threshold_events(sig, full[r], rate, leads=PRECORDIAL_IDX,
+                                      thr=ST_THRESHOLD_MV, fid=fid) for r in recons}
+        if not all(evs[r].get("valid") for r in recons):     # common valid set only
+            continue
+        fbfracs.append(evs[recons[0]]["fallback_frac"])      # shared (from Lead II)
         for r in recons:
-            ev = st_threshold_events(sig, full[r], rate, leads=PRECORDIAL_IDX,
-                                     thr=ST_THRESHOLD_MV, fid=fid)
-            if ev.get("valid"):
-                rows[r].append(ev); valid_any = True
-        n_valid += valid_any
+            per[r][int(eid)] = (float(evs[r]["false_positive"]), float(evs[r]["false_negative"]),
+                                float(evs[r]["st_error_mv"]))
+    common_ids = sorted(set.intersection(*[set(per[r]) for r in recons])) if per[recons[0]] else []
 
-    out = {"config": "limb-6 -> precordial", "st_threshold_mV": ST_THRESHOLD_MV,
+    out = {"config": "limb-6 -> precordial (all six V1-V6 precordial leads evaluated)",
+           "st_threshold_mV": ST_THRESHOLD_MV,
            "st_rule": "|ST| >= 0.1 mV (absolute; elevation or depression)",
+           "beat_aggregation": "median over beats",
+           "baseline": "isoelectric PR segment [P_offset, R_onset); 20 ms pre-QRS fallback",
+           "baseline_fallback_frac": round(float(np.mean(fbfracs)), 4) if fbfracs else None,
+           "ridge_note": "illustrative fixed-ridge (lambda=1.0), not tuned",
            "certificate_ST_precordial": cert,
-           "n_test": int(len(test)), "n_valid_delineation": int(n_valid),
+           "n_test": int(len(test)), "n_delineated": int(n_delineated),
+           "n_valid_common": len(common_ids), "common_record_ids": common_ids,
            "note": ("eta_ST_precordial > 0 => precordial ST not identifiable from limb leads; "
                     "graded by eta_normalized (fraction unobservable) and expected ambiguity (mV). "
                     "The total wrong-event rate below is an empirically similar total error rate "
                     "across the evaluated reconstructors, NOT a certified lower bound."),
-           "reconstructors": {},
+           "reconstructors": {}, "paired_deltas": {},
            "lineage": lineage.make(db, seed=seed, targets=PRECORDIAL, normalization=NORMALIZATION,
                                    train_ids=tr_ids, test_ids=test,
                                    extra={"reconstruction": "continuous full-waveform, observed leads exact",
-                                          "st_offset_ms": 60.0, "fiducials": "shared, observed Lead II"})}
+                                          "st_offset_ms": 60.0, "fiducials": "shared, observed Lead II",
+                                          "kept_record_ids_sha256": lineage.ids_sha256(common_ids)})}
+    # per-reconstructor rates + per-record arrays on the common set
+    arr = {r: np.array([per[r][i] for i in common_ids], float) for r in recons}  # (n,3): fp,fn,err
     for r in recons:
-        R = rows[r]
-        if not R:
+        a = arr[r]
+        if a.size == 0:
             continue
-        fp = np.array([x["false_positive"] for x in R], float)
-        fn = np.array([x["false_negative"] for x in R], float)
-        sterr = np.array([x["st_error_mv"] for x in R], float)
+        fp, fn, err = a[:, 0], a[:, 1], a[:, 2]
         out["reconstructors"][r] = {
-            "n": len(R),
+            "n": len(common_ids),
             "false_positive_rate": round(float(fp.mean()), 4), "false_positive_ci": _boot_ci(fp),
             "false_negative_rate": round(float(fn.mean()), 4), "false_negative_ci": _boot_ci(fn),
             "total_wrong_rate": round(float((fp + fn).mean()), 4),
-            "mean_st_error_mv": round(float(np.nanmean(sterr)), 4),
+            "mean_st_error_mv": round(float(np.nanmean(err)), 4),
+            "per_record": {"ids": common_ids, "fp": [int(x) for x in fp],
+                           "fn": [int(x) for x in fn], "err": [round(float(x), 5) for x in err]},
         }
-        print(f"[{r:8s}] n={len(R)} FP={fp.mean():.3f} FN={fn.mean():.3f} "
-              f"total={(fp+fn).mean():.3f} |ST|err={np.nanmean(sterr):.3f}mV", flush=True)
+        print(f"[{r:8s}] n={len(common_ids)} FP={fp.mean():.3f} FN={fn.mean():.3f} "
+              f"total={(fp+fn).mean():.3f} |ST|err={np.nanmean(err):.3f}mV", flush=True)
+
+    # paired record-bootstrap difference CIs between ALL reconstructor pairs
+    def paired(a, b, col, n=2000):
+        d = arr[a][:, col] - arr[b][:, col]
+        br = np.random.default_rng(seed + 5)
+        bs = [d[br.integers(0, d.size, d.size)].mean() for _ in range(n)]
+        lo, hi = float(np.percentile(bs, 2.5)), float(np.percentile(bs, 97.5))
+        return {"mean_delta": round(float(d.mean()), 4), "ci": [round(lo, 4), round(hi, 4)],
+                "significant": bool(lo > 0 or hi < 0)}
+    if common_ids:
+        for i, a in enumerate(recons):
+            for b in recons[i + 1:]:
+                out["paired_deltas"][f"{a}_vs_{b}"] = {
+                    metric: paired(a, b, col) for metric, col in (("fp", 0), ("fn", 1), ("err", 2))}
+    print(f"[baseline] fallback_frac={out['baseline_fallback_frac']} n_common={len(common_ids)}", flush=True)
 
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "st_safety.json").write_text(json.dumps(out, indent=2))

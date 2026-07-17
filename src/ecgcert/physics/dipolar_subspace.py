@@ -238,13 +238,43 @@ def kappa_per_lead(M_s: np.ndarray, observed_leads, rcond: float = RECON_RCOND) 
     return np.linalg.norm(G, axis=1)
 
 
-def eta_per_lead(M_s: np.ndarray, observed_leads, rcond: float = RECON_RCOND) -> np.ndarray:
-    """Per-lead unidentifiability ``eta_{s,ell}(S) = ||e_ell^T M_s (I - M_{s,S}^+ M_{s,S})||_2``.
+def eta_exact_per_lead(M_s: np.ndarray, observed_leads) -> np.ndarray:
+    """EXACT per-lead unidentifiability using the exact Moore--Penrose pseudo-inverse.
 
-    ``eta_{s,ell}=0``: lead ``ell``'s dipolar component is *identifiable* from ``S``
-    (it lies entirely in the observed dipole directions).
-    ``eta_{s,ell}>0``: there exists a dipole direction unobserved by ``S`` that
-    changes lead ``ell`` -- its dipolar component is not identifiable at any SNR.
+    ``eta^{exact}_{s,ell}(S) = ||e_ell^T M_s (I - M_{s,S}^+ M_{s,S})||_2`` with ``M_{s,S}^+``
+    the exact pseudo-inverse (``numpy.linalg.pinv``, machine-precision cutoff). This is the
+    TRUE identifiability of the linear functional ``e_ell^T M_s d`` from ``M_{s,S} d``:
+
+    * ``eta^{exact}=0`` iff ``e_ell^T M_s`` lies in the exact row space of ``M_{s,S}``; then the
+      functional is determined by the observation -- identical observations for identical
+      functional value, at ANY SNR.
+    * ``eta^{exact}>0`` iff there is an exact kernel direction of ``M_{s,S}`` that changes lead
+      ``ell`` -- not identifiable at any SNR.
+
+    This depends only on the exact matrix, not on a truncation tolerance. Contrast with the
+    rho-truncated :func:`eta_per_lead`. Returns a (12,) array.
+    """
+    M_s = np.asarray(M_s, float)
+    M_S = M_s[_observed_idx(observed_leads)]                 # (|S|, 3)
+    P_exact = np.linalg.pinv(M_S) @ M_S                      # (3,3) exact row-space projector
+    return np.linalg.norm(M_s @ (np.eye(3) - P_exact), axis=1)
+
+
+def eta_per_lead(M_s: np.ndarray, observed_leads, rcond: float = RECON_RCOND) -> np.ndarray:
+    """rho-truncated per-lead unidentifiability ``eta^{(rho)}_{s,ell}(S)``.
+
+    Same form as :func:`eta_exact_per_lead` but with the pseudo-inverse/row-space projector
+    from a truncated SVD of ``M_{s,S}`` at relative tolerance ``rho=rcond`` (singular values
+    below ``rho * sigma_max`` are treated as unobserved). So:
+
+    * ``eta^{(rho)}=0``: lead ``ell``'s dipolar component is recoverable within the RETAINED
+      numerical row space at resolution ``rho``;
+    * ``eta^{(rho)}>0``: it is not stably recoverable at resolution ``rho`` (a direction is
+      observed only through a singular value below ``rho*sigma_max``). This does NOT by itself
+      imply the exact matrix has a null direction -- a tiny-but-nonzero singular value is
+      exactly identifiable yet rho-unidentifiable. Use :func:`eta_exact_per_lead` for the exact
+      verdict. We call the ``eta^{(rho)}`` map "rho-identifiability" in the paper.
+
     Returns a (12,) array.
     """
     od = observed_dipole(M_s, observed_leads, rcond=rcond)

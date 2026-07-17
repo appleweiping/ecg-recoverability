@@ -111,10 +111,13 @@ def run(n_per_fold=500, seed=0, n_boot=500):
 
     # record-level features/targets per fold group
     print("[tier2] collecting train/cal/test record-level segment means ...", flush=True)
+    f8_ids = fold_ids([8], cap=n_per_fold)
+    cal_ids = fold_ids([9], cap=n_per_fold)
+    te_ids = fold_ids([10], cap=n_per_fold * 2)
     tr = _collect(db, train_ids)
-    f8 = _collect(db, fold_ids([8], cap=n_per_fold))
-    cal = _collect(db, fold_ids([9], cap=n_per_fold))
-    te = _collect(db, fold_ids([10], cap=n_per_fold * 2))
+    f8 = _collect(db, f8_ids)
+    cal = _collect(db, cal_ids)
+    te = _collect(db, te_ids)
 
     from ecgcert import lineage
     out = {"alpha": ALPHA, "fold_discipline": "train 1-7 / tune 8 / cal 9 / test 10",
@@ -124,7 +127,10 @@ def run(n_per_fold=500, seed=0, n_boot=500):
            "lineage": lineage.make(db, seed=seed, targets=["V2", "V4", "V6"],
                                    normalization="raw mV segment means",
                                    train_ids=train_ids,
-                                   extra={"cal_fold": 9, "test_fold": 10, "tune_fold": 8})}
+                                   extra={"cal_fold": 9, "test_fold": 10, "tune_fold": 8,
+                                          "tune_ids_sha256": lineage.ids_sha256(f8_ids),
+                                          "cal_ids_sha256": lineage.ids_sha256(cal_ids),
+                                          "test_ids_sha256": lineage.ids_sha256(te_ids)})}
     # Mondrian over pre-registered (config, segment, lead) groups.
     for cname, obs in CONFIGS.items():
         obs_idx = [LEAD_INDEX[l] for l in obs]

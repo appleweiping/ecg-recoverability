@@ -134,30 +134,36 @@ when one of our own earlier claims was not supported.
 \appendix
 \section{Proof of Proposition~\ref{thm:perlead}}
 \label{app:proof}
-Write $\bm M_{s,S}=\bm{\mathrm{Sel}}_S\bm M_s$ with truncated SVD
-$\bm M_{s,S}=\bm U\bm\Sigma\bm V^{\top}$ at tolerance $\varrho$, where $\bm U,\bm V$ have
-orthonormal columns, so $\bm M_{s,S}^{+}=\bm V\bm\Sigma^{-1}\bm U^{\top}$ and
-$\bm P_{\mathrm{obs}}=\bm M_{s,S}^{+}\bm M_{s,S}=\bm V\bm V^{\top}$ is the orthogonal projector
-onto the retained row space $\operatorname{span}(\bm V)$ (the numerical row space of
-$\bm M_{s,S}$ at tolerance $\varrho$; the $\varrho$-sensitivity sweep in Sec.~\ref{sec:exp}
-reports where this truncation matters). Below $\eta,\kappa$ are understood at this $\varrho$.
+We work with the \emph{exact} $\bm M_{s,S}=\bm{\mathrm{Sel}}_S\bm M_s$, its exact Moore--Penrose
+inverse $\bm M_{s,S}^{+}$, and the exact orthogonal row-space projector
+$\bm P_{\mathrm{obs}}=\bm M_{s,S}^{+}\bm M_{s,S}$ (projecting onto $\operatorname{row}(\bm
+M_{s,S})=\ker(\bm M_{s,S})^{\perp}$).
 
 \textbf{(i) Identifiability.} The dipolar part of lead $\ell$ is the linear functional
-$f_\ell(\bm d)=\bm e_\ell^{\top}\bm M_s\bm d$. From $S$ we observe
-$\bm{\mathrm{Sel}}_S\bm M_s\bm d=\bm M_{s,S}\bm d$, i.e.\ the coordinates $\bm V^{\top}\bm d$
-(the components of $\bm d$ in $\operatorname{row}(\bm M_{s,S})$) up to noise; the orthogonal
-complement $(\bm I-\bm P_{\mathrm{obs}})\bm d$ is unobserved. Decompose
-$\bm e_\ell^{\top}\bm M_s=\bm e_\ell^{\top}\bm M_s\bm P_{\mathrm{obs}}
-+\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})$. If
-$\eta_{s,\ell}(S)=\|\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})\|_2=0$ then
-$f_\ell(\bm d)=\bm e_\ell^{\top}\bm M_s\bm P_{\mathrm{obs}}\bm d$ depends on $\bm d$ only through
-the observed coordinates $\bm P_{\mathrm{obs}}\bm d$, hence is determined by $\bm M_{s,S}\bm d$:
-lead $\ell$'s dipolar component is identifiable. Conversely if $\eta_{s,\ell}(S)>0$ there is a
-unit $\bm\delta\in\ker\bm M_{s,S}$ (an unobserved dipole direction, so $\bm M_{s,S}\bm\delta=0$)
-with $\bm e_\ell^{\top}\bm M_s\bm\delta\neq0$; the two dipoles $\bm d$ and $\bm d+t\bm\delta$
-produce identical observations for all $t$ but change $f_\ell$ by $t\,\bm e_\ell^{\top}\bm
-M_s\bm\delta$, so no estimator recovers $f_\ell$ at any SNR. This is the estimability criterion
-\cite{scheffe1959anova} for $f_\ell$.
+$f_\ell(\bm d)=\bm e_\ell^{\top}\bm M_s\bm d$. From $S$ we observe $\bm M_{s,S}\bm d$, which fixes
+$\bm P_{\mathrm{obs}}\bm d$ exactly; the exact kernel component $(\bm I-\bm P_{\mathrm{obs}})\bm
+d$ is unobserved. Decompose $\bm e_\ell^{\top}\bm M_s=\bm e_\ell^{\top}\bm M_s\bm
+P_{\mathrm{obs}}+\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})$. If
+$\eta_{s,\ell}(S)=\|\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})\|_2=0$ then $f_\ell(\bm
+d)=\bm e_\ell^{\top}\bm M_s\bm P_{\mathrm{obs}}\bm d$ depends on $\bm d$ only through the observed
+$\bm P_{\mathrm{obs}}\bm d$, hence is determined by $\bm M_{s,S}\bm d$: identifiable. Conversely
+if $\eta_{s,\ell}(S)>0$ there is a unit $\bm\delta\in\ker\bm M_{s,S}$ with $\bm e_\ell^{\top}\bm
+M_s\bm\delta\neq0$; then $\bm d$ and $\bm d+t\bm\delta$ give identical observations for all $t$
+but change $f_\ell$ by $t\,\bm e_\ell^{\top}\bm M_s\bm\delta$, so no estimator recovers $f_\ell$
+at any SNR. This is the exact estimability criterion \cite{scheffe1959anova} for $f_\ell$.
+
+\textbf{Exact vs.\ $\varrho$-truncated verdict (numerical check).} The deployed heatmap replaces
+$\bm P_{\mathrm{obs}}$ by the rank-$r$ truncation $\bm P_{\mathrm{obs}}^{(\varrho)}=\bm V_r\bm
+V_r^{\top}$ (singular directions with $\sigma_i\le\varrho\,\sigma_{\max}$ dropped). This can
+disagree with the exact verdict only near a truncation boundary, and only in the
+\emph{conservative} direction: $\eta^{(\varrho)}_{s,\ell}\ge0$ can be positive where
+$\eta_{s,\ell}=0$ (a tiny-but-nonzero singular value is exactly identifiable yet not stably
+recoverable at resolution $\varrho$), but not vice versa. We verify all three regimes in code
+(\texttt{tests/test\_exact\_vs\_rho.py}): (a) an exactly rank-deficient $\bm M_{s,S}$ gives
+$\eta=\eta^{(\varrho)}>0$; (b) $\bm M_{s,S}=\operatorname{diag}(1,1,10^{-6})$ gives $\eta=0$ but
+$\eta^{(\varrho)}>0$ at $\varrho=10^{-2}$; (c) a full-rank well-conditioned $\bm M_{s,S}$ gives
+$\eta=\eta^{(\varrho)}=0$. The limb-6 flagship falls in regime (a) exactly (rank~2), so its
+verdict is $\varrho$-independent.
 
 \textbf{(ii) Conditioning.} The mean-centred estimate is
 $\widehat{\bm L}_s-\bm\mu_s=\bm M_s\bm M_{s,S}^{+}(\bm y_S-\bm\mu_{s,S})$ with

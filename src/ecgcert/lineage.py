@@ -48,22 +48,69 @@ def ids_sha256(ids: Iterable) -> str:
     return hashlib.sha256(arr.tobytes()).hexdigest()[:16]
 
 
+def file_sha256(path) -> str:
+    """sha256 of a file's bytes (16 hex chars); 'missing' if absent."""
+    p = os.fspath(path)
+    if not os.path.exists(p):
+        return "missing"
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()[:16]
+
+
+def _git_dirty() -> bool:
+    try:
+        out = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=5)
+        return bool(out.stdout.strip())
+    except Exception:
+        return False
+
+
+def _protocol_sha() -> str:
+    return hashlib.sha256((PROTOCOL_VERSION + "|" + SEGMENT_DEF).encode()).hexdigest()[:12]
+
+
 def dataset_fingerprint(db) -> dict:
-    """Fingerprint the loaded PTB-XL: name, record count, sha256 of all sorted ecg_ids."""
+    """Fingerprint the loaded PTB-XL: name, record count, sha256 of sorted ecg_ids, and a
+    hash of the metadata CSV (dataset version/content)."""
     try:
         ids = np.asarray(sorted(int(i) for i in db.meta.index), dtype=np.int64)
+        meta_sha = "unknown"
+        try:
+            meta_sha = file_sha256(db.root / "ptbxl_database.csv")
+        except Exception:
+            pass
         return {"name": "PTB-XL", "n_records": int(ids.size),
-                "ids_sha256": hashlib.sha256(ids.tobytes()).hexdigest()[:16]}
+                "ids_sha256": hashlib.sha256(ids.tobytes()).hexdigest()[:16],
+                "metadata_sha256": meta_sha}
     except Exception:
         return {"name": "PTB-XL", "n_records": None, "ids_sha256": "unknown"}
 
 
 def make(db=None, *, seed, targets, normalization, train_ids=None, test_ids=None,
-         protocol: str = PROTOCOL_VERSION, extra: dict | None = None) -> dict:
-    """Build a lineage block for a result JSON."""
+         protocol: str = PROTOCOL_VERSION, script: str | None = None,
+         checkpoint: str | None = None, extra: dict | None = None) -> dict:
+    """Build a lineage block for a result JSON.
+
+    ``script`` (defaults to the immediate caller's file) is hashed as
+    ``experiment_script_sha256``; ``checkpoint`` (a model file) is hashed if given. Also records
+    ``git_dirty``, a protocol hash, and the dataset metadata hash.
+    """
+    if script is None:
+        try:
+            import inspect
+            script = inspect.stack()[1].filename
+        except Exception:
+            script = None
     lin = {
         "commit": _commit(),
+        "git_dirty": _git_dirty(),
         "protocol": protocol,
+        "protocol_sha256": _protocol_sha(),
+        "experiment_script": (os.path.basename(script) if script else None),
+        "experiment_script_sha256": (file_sha256(script) if script else None),
         "seed": int(seed),
         "targets": list(targets),
         "segment_def": SEGMENT_DEF,
@@ -73,6 +120,7 @@ def make(db=None, *, seed, targets, normalization, train_ids=None, test_ids=None
         "n_test": (int(len(list(test_ids))) if test_ids is not None else None),
         "train_ids_sha256": (ids_sha256(train_ids) if train_ids is not None else None),
         "test_ids_sha256": (ids_sha256(test_ids) if test_ids is not None else None),
+        "checkpoint_sha256": (file_sha256(checkpoint) if checkpoint else None),
     }
     if extra:
         lin.update(extra)

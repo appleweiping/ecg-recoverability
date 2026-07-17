@@ -83,59 +83,54 @@ def run(n_test=300, seed=0, n_boot=200):
     obs_idx = tuple(LEAD_INDEX[l] for l in OBS)
     tgt_idx = [LEAD_INDEX[l] for l in TARGETS]
 
-    # load real test signals
-    sigs = []
+    # load real test signals (track KEPT ids for honest lineage)
+    sigs, kept_ids = [], []
     for eid in test_ids:
         try:
             s = db.signal(int(eid), rate=100)[:1000]
         except Exception:
             continue
         if s.shape[0] == 1000 and np.all(np.isfinite(s)):
-            sigs.append(s.astype(np.float32))
+            sigs.append(s.astype(np.float32)); kept_ids.append(int(eid))
     print(f"[realism] {len(sigs)} test records", flush=True)
     model, scale, T = _load_model()
     yn = np.stack([(s.T / scale[:, None]) for s in sigs])          # (N,12,1000)
 
     from ecgcert import lineage
+    ckpt = str(RESULTS / "gpu_ddpm.pt")
     out = {"n_test": len(sigs), "guidances": list(GUIDANCES), "obs": OBS, "targets": TARGETS,
            "per_w": {},
            "lineage": lineage.make(db, seed=seed, targets=list(TARGETS),
-                                   normalization="per-lead 95th-pct |amp| (train)", test_ids=test_ids,
-                                   extra={"experiment": "diffusion realism vs guidance (retracted-claim negative result)",
-                                          "checkpoint": "results/gpu_ddpm.pt"})}
-    # real distributions (once)
+                                   normalization="per-lead 95th-pct |amp| (train)",
+                                   test_ids=kept_ids, checkpoint=ckpt,
+                                   extra={"experiment": "diffusion realism vs guidance (abandoned pre-submission hypothesis)",
+                                          "kept_record_ids_sha256": lineage.ids_sha256(kept_ids)})}
+    # real TARGET-lead amplitude distribution (once). We drop the previous QRS-width metric:
+    # it was delineated on the OBSERVED Lead II, which is kept exact, so it was vacuous.
     real_pp = {l: np.array([np.ptp(s[:, LEAD_INDEX[l]]) for s in sigs]) for l in TARGETS}
-    real_qrsw = []
-    for s in sigs[:150]:
-        real_qrsw += _qrs_widths(s)
-    real_qrsw = np.array(real_qrsw)
+    out["metric_note"] = ("Realism is measured on the TARGET (unobserved) leads only "
+                          "(PSD log-distance, amplitude Wasserstein). The prior QRS-width metric "
+                          "on the observed Lead II was vacuous and is removed.")
 
     for w in GUIDANCES:
-        # reconstruct in batches
+        # reconstruct in batches; noise seed is per-BATCH (deterministic) and SHARED across
+        # guidance, so guidance sweeps use the same noise realization per batch.
         rec = []
-        for i in range(0, len(sigs), 128):
-            r = model.sample(yn[i:i + 128], obs_idx=obs_idx, guidance=w, replace=True, steps=T, seed=1)
+        for bi, i in enumerate(range(0, len(sigs), 128)):
+            r = model.sample(yn[i:i + 128], obs_idx=obs_idx, guidance=w, replace=True, steps=T, seed=1000 + bi)
             rec.extend([(r[j] * scale[:, None]) for j in range(r.shape[0])])   # (12,1000) mV
-        # PSD distance + amplitude Wasserstein per target lead
+        # PSD distance + amplitude Wasserstein per TARGET lead
         psd = {l: [] for l in TARGETS}; gen_pp = {l: [] for l in TARGETS}
         for s, Lhat in zip(sigs, rec):
             for l in TARGETS:
                 li = LEAD_INDEX[l]
                 psd[l].append(_psd_logdist(Lhat[li], s[:, li]))
                 gen_pp[l].append(np.ptp(Lhat[li]))
-        gen_qrsw = []
-        for Lhat in rec[:150]:
-            gen_qrsw += _qrs_widths(Lhat.T)
-        gen_qrsw = np.array(gen_qrsw)
         row = {"psd_logdist": {l: float(np.mean(psd[l])) for l in TARGETS},
-               "amp_wasserstein": {l: float(wasserstein_distance(gen_pp[l], real_pp[l])) for l in TARGETS},
-               "qrs_width_wasserstein": (float(wasserstein_distance(gen_qrsw, real_qrsw))
-                                         if gen_qrsw.size and real_qrsw.size else None),
-               "gen_qrs_delineation_rate": float(len(gen_qrsw) / max(1, 150))}
+               "amp_wasserstein": {l: float(wasserstein_distance(gen_pp[l], real_pp[l])) for l in TARGETS}}
         out["per_w"][str(w)] = row
         print(f"  [w={w}] PSD={np.mean([row['psd_logdist'][l] for l in TARGETS]):.3f} "
-              f"ampW={np.mean([row['amp_wasserstein'][l] for l in TARGETS]):.3f} "
-              f"qrsW={row['qrs_width_wasserstein']}", flush=True)
+              f"ampW={np.mean([row['amp_wasserstein'][l] for l in TARGETS]):.3f}", flush=True)
 
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "realism_metrics.json").write_text(json.dumps(out, indent=2))
