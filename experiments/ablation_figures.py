@@ -35,7 +35,7 @@ def main():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(1, 3, figsize=(15.5, 4.2))
+    fig, axes = plt.subplots(1, 4, figsize=(20.5, 4.2))
 
     # ---- (a) rank sweep: cumulative EVR per segment ----
     ax = axes[0]
@@ -92,6 +92,22 @@ def main():
     ax.set_ylabel("max principal angle (deg)")
     ax.set_title("(c) Estimated-subspace sensitivity", fontsize=9.5)
     ax.legend(fontsize=8); ax.grid(alpha=0.3, axis="y")
+
+    # ---- (d) limb-6 precordial eta_norm by retained rank (ST): the rank-3 contingency ----
+    ax = axes[3]
+    prec = ("V1", "V2", "V3", "V4", "V5", "V6")
+    byrank = rs.get("ST", {}).get("limb6_precordial_eta_norm_by_rank", {})
+    ranks_d = sorted(int(r) for r in byrank)
+    x = np.arange(len(prec)); w = 0.8 / max(len(ranks_d), 1)
+    for j, r in enumerate(ranks_d):
+        vals = [byrank[str(r)].get(l, 0.0) for l in prec]
+        ax.bar(x + (j - (len(ranks_d) - 1) / 2) * w, vals, w, label=f"rank {r}")
+    ax.set_xticks(x); ax.set_xticklabels(prec)
+    ax.set_ylabel(r"limb-6 precordial $\tilde\eta$ (ST)")
+    ax.set_title("(d) Rank-3 contingency of the exact verdict", fontsize=9.5)
+    ax.text(0.02, 0.92, "rank 2: all $\\tilde\\eta{=}0$\n(rank-2 observation collapse)",
+            transform=ax.transAxes, fontsize=7, color="0.3", va="top")
+    ax.legend(fontsize=7, ncol=2); ax.grid(alpha=0.3, axis="y")
 
     fig.tight_layout()
     fig.savefig(RESULTS / "ablations.png", dpi=160)

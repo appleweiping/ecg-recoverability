@@ -35,8 +35,12 @@ required higher guidance to buy realism at the cost of fidelity. Instead realism
 better} at high guidance: from $w{=}1$ to $w{=}6$ the target-lead PSD log-distance rises (V2:
 $\RealPSDVtwoLo\!\to\!\RealPSDVtwoHi$; a small dip at $w{=}2$ then a clear rise, so worsening
 but not monotone) and the amplitude-Wasserstein distance rises (V2:
-$\RealAmpVtwoLo\!\to\!\RealAmpVtwoHi$). The trend is toward worse realism on most axes (a few,
-e.g.\ V4 amplitude, are flat); there is no monotone realism/fidelity trade to exploit.
+$\RealAmpVtwoLo\!\to\!\RealAmpVtwoHi$). The trend is toward \emph{worse} realism on essentially
+every target-lead axis (both PSD log-distance and amplitude-Wasserstein rise from $w{=}1$ to
+$w{=}6$); there is no monotone realism/fidelity trade to exploit. This is consistent with
+fundamental limits on hallucination in inverse problems~\cite{gottschling2026hallucinations} and
+the perception--distortion tradeoff~\cite{blau2018perception}: raising perceptual pressure
+(guidance) cannot manufacture target-lead information the observed leads do not carry.
 
 \textbf{(3) What is true instead.} The predictable non-dipolar residual is real but modest:
 ridge-comparator correlations (\texttt{gpu\_oracle\_gate.json}) are

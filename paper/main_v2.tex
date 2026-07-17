@@ -108,9 +108,10 @@ false-positive/false-negative split that is a reconstructor choice (Sec.~\ref{se
 10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}.
 
 \textbf{Reproducibility.} Code, fixed and deterministic seeds, a pinned dependency manifest, result
-lineage (commit / dataset / split hashes in every JSON), and a one-command pipeline are
-released\footnote{Anonymized for review; released on acceptance.}; every number in the tables is
-regenerated from result JSON (no hand-typed values). The neural baseline is a 24$\to$12-channel
+lineage (commit, a working-tree-clean flag, and dataset/split hashes in every JSON), and a
+one-command pipeline are released\footnote{Anonymized for review; released on acceptance. Camera-ready
+artifacts are regenerated from a clean tree (the lineage \texttt{git\_dirty} flag is asserted false).};
+every number in the tables is regenerated from result JSON (no hand-typed values). The neural baseline is a 24$\to$12-channel
 1-D U-Net (base width 64, residual GroupNorm blocks, 60 epochs, Adam $2{\times}10^{-4}$, MSE on
 masked leads under random masks, 3 training seeds); the residual predictor is a gradient-boosted
 quantile regressor. The map is a deterministic function of the estimated $\bm\mu_s,\bm M_s$
