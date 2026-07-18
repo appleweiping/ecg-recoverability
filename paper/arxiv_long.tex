@@ -23,30 +23,31 @@ calibrated intervals, and an honest account of an abandoned fabrication claim}
 
 \begin{abstract}
 Reconstructing missing electrocardiogram (ECG) leads from a reduced set is ill-posed, and a
-scalar reconstruction error says nothing about \emph{which} named feature's low-rank
-(dipolar) component, on \emph{which} lead, is even recoverable. We give a
-\emph{target-specific recoverability map}: for a
-waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead $\ell$, two
-closed-form numbers from one truncated SVD of the segment's empirical rank-3 spatial
-sub-matrix---a graded \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the target's low-rank
-component is recoverable from $S$) and a \emph{conditioning} $\kappa_{s,\ell}(S)$. The per-lead
-criterion is the classical estimability condition specialized to ECG; the contribution is its
-use as a graded, \emph{empirically-estimated} map (the estimated subspace differs
-$43$--$55^\circ$ from the textbook inverse-Dower dipole), the distribution-free calibrated
-intervals we attach to it, and a graded ST-safety study. On PTB-XL precordial ST is
-\emph{exactly} non-identifiable from limb leads (rank-2 frontal plane); the graded
-normalized-identifiability ordering is bootstrap-stable for QRS but sensitive to the limb-lead
-weighting for the low-amplitude ST/T segments (we report that sensitivity rather than an exact
-fine ordering). The total ST-threshold error rate is empirically similar across the evaluated
-reconstructors ($\TotWrongLo$--$\TotWrongHi\%$; an empirical observation, not a certified bound,
-dominated by missed crossings) while the false-positive/false-negative split is a
-reconstructor choice. The certificate transfers across PTB-XL
-and Chapman for QRS (aligned subspaces, reproduced $\kappa$ ordering) but not in the ST/T third
-direction. Finally, we document in full a claim this project abandoned---that a diffusion
-reconstructor proves ``fabrication is a property of the objective''---which a leakage-corrected,
-multi-seed re-analysis dissolved: the generative model only marginally beats a simple ridge comparator
-at low guidance and falls significantly behind it at high guidance, with no supporting realism trend. This long version accompanies a four-page conference paper and contains the full
-proofs, ablations, cross-dataset study, and the negative result.
+scalar reconstruction error says nothing about \emph{which} named feature's low-rank (dipolar)
+component, on \emph{which} lead, is even recoverable. We make this a target-specific, computable
+certificate. For a waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead
+$\ell$, two closed-form numbers from one truncated SVD of the segment's empirical rank-3 spatial
+sub-matrix give a graded \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the target's low-rank
+component is recoverable from $S$) and a \emph{conditioning} $\kappa_{s,\ell}(S)$. Around this map we
+build four quantitative tools. (i) A per-lead \emph{minimax ambiguity floor} $a_{s,\ell}(S)$---a
+worst-case-prior lower bound over a moment class, certified against nonlinear estimators---which
+\emph{predicts} the measured per-lead dipolar error of the linear reconstructors (Spearman
+$\CertValSpearAmb$, AUC $\CertValAUC$) and, separately, of a trained diffusion model (via the
+identifiability $\eta$-split), the below-floor gap metering the exploitable non-Gaussian structure
+that distribution-free calibrated intervals then cover. (ii) A training-free \emph{fabrication} metric---energy a reconstruction places in the
+certified-unrecoverable subspace---that rises with diffusion-guidance strength, the rigorous form of
+a ``fabrication is a property of the objective'' claim whose original accuracy-based version we
+document \emph{dissolving} under a leakage-corrected re-analysis. (iii) A cross-cohort \emph{transfer
+bound} ($\sin\Theta$) that makes the principal angle between two cohorts' dipolar subspaces a
+pre-deployment transfer-risk flag (QRS transfers PTB-XL$\to$Chapman; ST is flagged
+non-transferable). (iv) A \emph{prescriptive} use: greedy electrode selection under a budget matches
+the exhaustive optimum and is empirically submodular. On PTB-XL, precordial ST is \emph{exactly}
+non-identifiable from limb leads (rank-2 frontal plane), a verdict that is delineator- and
+sampling-rate-robust; the total ST-threshold error rate is empirically similar across reconstructors
+($\TotWrongLo$--$\TotWrongHi\%$, dominated by missed crossings) while the false-positive/negative
+split is a reconstructor choice. Every number is regenerated from lineage-stamped artifacts, and we
+document the abandoned claim in full: hiding the earlier, more exciting numbers would be exactly the
+selective reporting the certificate is built to expose.
 \end{abstract}
 
 \section{Introduction}
@@ -69,12 +70,20 @@ moderate ($\PhysMidAngLo$--$\PhysMidAngHi^\circ$), and one substantially differe
 ($\PhysMaxAngLo$--$\PhysMaxAngHi^\circ$)---so we call it an empirical rank-3 subspace rather than
 a physical dipole (Sec.~\ref{sec:exp}).
 
-This document is the extended version of a four-page conference submission. It adds: the full
-statement and proof of the certificate (Sec.~\ref{sec:cert}, App.~\ref{app:proof}); the
-cross-dataset transfer study (Sec.~\ref{sec:cross}); and a complete account of a claim we
-abandoned during pre-submission review (Sec.~\ref{sec:generative}). We report the abandonment in
-detail on purpose: hiding the earlier, more exciting numbers would be precisely the selective
-reporting our certificate is designed to expose.
+\textbf{Contributions.} Beyond the per-lead certificate (Sec.~\ref{sec:cert}, proof
+App.~\ref{app:proof}), this extended version of a four-page conference submission adds: (1) a
+certified per-lead \emph{minimax ambiguity floor} that lower-bounds the worst-case risk of every
+reconstructor and, empirically, \emph{predicts} the measured per-lead error of linear \emph{and}
+learned reconstructors (Prop.~\ref{thm:floor}, Fig.~\ref{fig:certval}); (2) a training-free
+\emph{fabrication} audit that quantifies energy placed in the certified-unrecoverable subspace and
+rises with diffusion guidance (Sec.~\ref{sec:generative}); (3) a cross-cohort \emph{transfer bound}
+turning the inter-cohort principal angle into a pre-deployment transfer-risk flag
+(Prop.~\ref{thm:transfer}, Sec.~\ref{sec:cross}); (4) delineator/sampling-rate robustness of the
+verdict (Sec.~\ref{sec:limits}) and a \emph{prescriptive} greedy electrode-selection rule
+(Sec.~\ref{sec:exp}); and (5) a
+complete account of a claim we abandoned during pre-submission review (Sec.~\ref{sec:generative}).
+We report the abandonment in detail on purpose: hiding the earlier, more exciting numbers would be
+precisely the selective reporting our certificate is designed to expose.
 
 \section{Related Work}
 \label{sec:related}
@@ -122,7 +131,7 @@ held-out evaluation. All table numbers regenerate from result JSON via
   $a_{s,\ell}(S)$ predicts the \emph{measured} per-lead dipolar-projection error of the dipolar,
   ridge, and OLS reconstructors. (a) $a_{s,\ell}(S)$ strongly predicts and ranks the measured error
   (Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$). The minimax floor $a_{s,\ell}(S)$
-  (Thm.~\ref{thm:floor}, $y{=}x$) is a \emph{worst-case-prior} lower bound, not an empirical envelope:
+  (Prop.~\ref{thm:floor}, $y{=}x$) is a \emph{worst-case-prior} lower bound, not an empirical envelope:
   on the true
   (non-Gaussian) prior, estimators that exploit predictable population structure beat it on a fraction
   of the $\CertValNetaPos$ non-trivial ($\eta{>}0$) cells (the pure-dipolar reconstructor on
@@ -181,7 +190,7 @@ three, and the certificate says which (\texttt{experiments/active\_selection.py}
 The subspace $\bm M_s$ is estimated, so $\eta/\kappa$ inherit its estimation error (reported via
 record-bootstrap CIs and the rank/$\varrho$/subspace-angle sensitivities of
 Fig.~\ref{fig:ablation}) and its cohort dependence (Sec.~\ref{sec:cross}); the ST/T third
-direction is cohort-specific. That cohort dependence is itself bounded: Thm.~\ref{thm:transfer}
+direction is cohort-specific. That cohort dependence is itself bounded: Prop.~\ref{thm:transfer}
 shows the verdict drifts across cohorts only as fast as the two cohorts' dipolar subspaces separate
 ($\sin\Theta$), so the measured principal angle is a computable transfer-risk flag---small for QRS
 ($\TransferAngleQRS^\circ$, tight measured drift $\TransferDriftQRS$) and large for ST
