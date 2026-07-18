@@ -1,0 +1,5 @@
+AutoResearchClaw pinned commit:
+e2e23c93b4943fd21cc531deb09850d8fda55357
+
+version:
+version = "0.5.0"

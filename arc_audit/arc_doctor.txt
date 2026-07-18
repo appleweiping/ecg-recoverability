@@ -1,0 +1,11 @@
+ResearchClaw Doctor Report (2026-07-18T12:16:37+00:00)
+[OK] python_version: Python 3.14.5
+[OK] yaml_import: PyYAML import ok
+[OK] config_valid: Config validation ok
+[OK] acp_agent: ACP agent found: D:\devtools\claude.CMD
+[WARN] sandbox_python: Sandbox python missing or not executable: .venv\bin\python3
+   Fix: Install sandbox interpreter or update experiment.sandbox.python_path
+[OK] matplotlib: matplotlib import ok
+[WARN] experiment_mode: Experiment mode is simulated ¡ª results will be synthetic
+   Fix: Use sandbox or docker mode for real execution
+Result: PASS
