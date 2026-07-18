@@ -19,7 +19,7 @@ NEED_LINEAGE = ("cross_dataset.json", "gpu_deficit_ci.json", "realism_metrics.js
                 "gpu_oracle_gate.json", "lead_weighting.json", "certificate_validation.json",
                 "fabrication_audit.json", "fabrication_diffusion.json",
                 "transfer_bound.json", "delineator_robustness.json",
-                "certificate_floor_diffusion.json")
+                "certificate_floor_diffusion.json", "active_selection.json")
 
 
 def _load(name):
@@ -234,6 +234,20 @@ def main():
               r"\newcommand{\RobSignStable}{" + ("yes" if rb["verdict_sign_stable"] else "no") + "}",
               r"\newcommand{\RobFNdominated}{"
               + ("yes" if rb["endpoint_fn_dominated_all_settings"] else "no") + "}"]
+
+    # ---------- certificate-guided active lead selection (prescriptive) ----------
+    asel = srcs["active_selection.json"]
+    if asel:
+        pb, sm = asel["per_budget"], asel["summary"]
+        def leadset(k):
+            return ",".join(pb[str(k)]["greedy_set"])
+        m += [r"\newcommand{\ActiveKoneLead}{" + leadset(1) + "}",
+              r"\newcommand{\ActiveKtwoSet}{" + leadset(2) + "}",
+              r"\newcommand{\ActiveKthreeSet}{" + leadset(3) + "}",
+              r"\newcommand{\ActiveKtwoJ}{" + f"{pb['2']['greedy_J']:.2f}" + "}",
+              r"\newcommand{\ActiveKtwoRand}{" + f"{pb['2']['random_J_mean']:.2f}" + "}",
+              r"\newcommand{\ActiveGreedyOptimal}{" + ("yes" if sm["greedy_matches_optimal_all_feasible"] else "no") + "}",
+              r"\newcommand{\ActiveSubmod}{" + f"{sm['empirical_submodular_fraction']:.2f}" + "}"]
 
     # NOTE: lead-weighting macros used by the papers (\LWspear*/\LWantlat*) are emitted by
     # emit_baseline_table.py from the segment-level lead_weighting.json schema. The former

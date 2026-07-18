@@ -143,6 +143,19 @@ formal artifact but an operational predictor of what each reconstructor can and 
 \input{results_v2_maps}
 \input{results_v2_baseline}
 
+\paragraph{The certificate is prescriptive, not only diagnostic.} Because $a_{s,\ell}(S)$ is a
+function of the chosen leads, it also selects them: minimising the total certified ambiguity
+$J(S)=\sum_{s,\ell}a_{s,\ell}(S)^2$ over an electrode budget $k$ turns the map into an optimal
+lead-placement rule. Greedy forward selection matches the \emph{exhaustive} optimum at every budget
+(over the eight independent measured leads), and the ambiguity reduction is empirically submodular
+($\ActiveSubmod$ of randomized diminishing-returns tests satisfied), so the greedy order carries a
+$1{-}1/e$ reading. The prescription is concrete and non-obvious: the single most informative lead is
+$\ActiveKoneLead$, the best pair $\{\ActiveKtwoSet\}$ (certified ambiguity $\ActiveKtwoJ$ vs
+$\ActiveKtwoRand$\,mV$^2$ for a random pair), and three certificate-chosen leads
+$\{\ActiveKthreeSet\}$ already recover the \emph{entire} dipolar ECG ($J{=}0$)---whereas random
+triples need not span the dipole. The marginal value of electrodes is concentrated in the first
+three, and the certificate says which (\texttt{experiments/active\_selection.py}).
+
 \input{results_long_crossdata}
 
 \input{results_long_generative}

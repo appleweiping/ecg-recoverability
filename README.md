@@ -131,7 +131,7 @@ experiments/
   neural_baseline.py            # representative neural (arbitrary-mask U-Net) baseline, 3 seeds
   lead_weighting.py             # 8-independent-lead vs 12-lead fit sensitivity
   maps_figure.py                # the recoverability-map figure
-tests/                          # 57 checks (16 cited JSONs) incl. per-lead certificate, rcond sensitivity,
+tests/                          # 57 checks (17 cited JSONs) incl. per-lead certificate, rcond sensitivity,
                                 #   graded/lineage units, paper-number consistency
 paper/main_v2.tex               # ICASSP 4-page draft (target-specific recoverability)
 paper/arxiv_long.tex            # extended version: full proofs, cross-dataset transfer,
