@@ -49,3 +49,32 @@ $\RidgeRhoLatLo$--$\RidgeRhoLatHi$ for V4/V6---consistent with the calibrated Ti
 intervals of Sec.~\ref{sec:calib}. So the honest statement is a \emph{graded predictability} of
 the residual, calibrated per feature and lead, not a proof of fabrication. We removed the
 fabrication-objective claim and rebuilt the paper around the parts that withstand scrutiny.
+
+\textbf{(4) A rigorous, ground-truth-free fabrication audit.} The certificate lets us make the
+fabrication idea precise without ground truth. Whatever a reconstruction asserts in the
+\emph{unidentifiable} dipole subspace $\bm Q=\bm I-\bm P_{\mathrm{obs}}$ is content the observed
+leads cannot fix; we score the fraction of a reconstruction's dipolar energy that lies there,
+$\phi=\|\bm M_s\bm Q\hat{\bm d}\|^2/\|\bm M_s\hat{\bm d}\|^2$ (Fig.~\ref{fig:fab}). Principled
+reconstructors \emph{abstain}: the dipolar and prior-mean reconstructions have $\phi\!=\!0$
+everywhere ($\le\FabAbstainMax$), and even ridge/OLS keep $\phi\!=\!0$ wherever the observation
+spans the dipole (limb-6, $\{$I,II,V2$\}$). But on a heavily under-determined single lead the
+linear reconstructors fabricate ($\phi\!=\!\FabRidgeLeadIQRS$ for ridge, Lead-I QRS), and the
+diffusion model fabricates most of its dipolar content in the provably unrecoverable subspace
+($\phi\!\approx\!\FabDiffLeadIlo$) with fabrication \emph{rising with guidance}
+($\phi\!:\!\FabDiffLeadIlo\!\to\!\FabDiffLeadIhi$ QRS, $\to\!\FabDiffLeadISThi$ ST as $w{:}1\to6$;
+$\phi\!\le\!\FabDiffLimbSix$ on limb-6). This is the defensible, disciplined form of ``fabrication
+is a property of the objective'': more guidance manufactures more content the data cannot support,
+without improving achievability (point 1)---quantified by the certificate rather than asserted.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../results/fabrication_audit_figure.png}
+  \caption{\textbf{Null-space dipolar fabrication audit} (ground-truth-free). $\phi$ = fraction of a
+  reconstruction's dipolar energy in the certified-unrecoverable subspace $\bm Q$. (a) Linear
+  reconstructors: dipolar/prior-mean abstain ($\phi{=}0$); single-lead ridge/OLS fabricate; on
+  observation sets that span the dipole (incl.\ limb-6) even ridge/OLS abstain. (b) The diffusion
+  model fabricates most of its dipolar content on a single lead and fabrication \emph{grows with
+  classifier-free guidance} $w$, while abstaining on limb-6. Regenerated from
+  \texttt{results/fabrication\_audit.json}, \texttt{fabrication\_diffusion.json}.}
+  \label{fig:fab}
+\end{figure}

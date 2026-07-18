@@ -31,13 +31,16 @@ CPU_STEPS = [
     ("experiments/st_safety.py", "continuous ST-threshold-event safety across reconstructors"),
     ("experiments/lead_weighting.py", "8-independent-lead vs 12-lead fit sensitivity"),
     ("experiments/certificate_validation.py", "per-lead certificate validation vs measured dipolar error"),
+    ("experiments/fabrication_audit.py", "null-space dipolar fabrication audit (linear reconstructors)"),
     ("experiments/maps_figure.py", "recoverability-map figure"),
     ("experiments/ablation_figures.py", "rank / rho / subspace-angle ablation figures"),
     ("experiments/certificate_validation_figure.py", "certificate-validation figure"),
+    ("experiments/fabrication_figure.py", "fabrication-audit figure"),
 ]
 GPU_STEPS = [
     ("experiments/neural_baseline.py", "representative neural baseline (arbitrary-mask 1-D U-Net, 3 seeds) [GPU]"),
     ("experiments/fair_baselines.py", "fair per-timepoint baselines + paired CIs (merges U-Net) [server]"),
+    ("experiments/fabrication_audit_diffusion.py", "DDPM null-space fabrication phi vs guidance [GPU]"),
 ]
 
 
