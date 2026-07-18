@@ -18,7 +18,8 @@ AUTO = ROOT / "paper" / "auto"
 NEED_LINEAGE = ("cross_dataset.json", "gpu_deficit_ci.json", "realism_metrics.json",
                 "gpu_oracle_gate.json", "lead_weighting.json", "certificate_validation.json",
                 "fabrication_audit.json", "fabrication_diffusion.json",
-                "transfer_bound.json", "delineator_robustness.json")
+                "transfer_bound.json", "delineator_robustness.json",
+                "certificate_floor_diffusion.json")
 
 
 def _load(name):
@@ -197,6 +198,16 @@ def main():
               r"\newcommand{\TransferDriftST}{" + f"{st['empirical_drift']:.3f}" + "}",
               r"\newcommand{\TransferLipLo}{" + f"{lo:.2f}" + "}",
               r"\newcommand{\TransferLipHi}{" + f"{hi:.2f}" + "}"]
+
+    # ---------- learned-model floor binding: DDPM vs certified floor a_l ----------
+    cfd = srcs["certificate_floor_diffusion.json"]
+    if cfd:
+        f = cfd["floor"]
+        m += [r"\newcommand{\FloorDiffViol}{" + f"{f['floor_violation_frac']:.2f}" + "}",
+              r"\newcommand{\FloorDiffNcells}{" + str(f["n_cells"]) + "}",
+              r"\newcommand{\FloorDiffGap}{" + f"{f['floor_gap_median_mV']:.3f}" + "}",
+              r"\newcommand{\FloorDiffEtaZero}{" + f"{f['median_rmse_eta0']:.3f}" + "}",
+              r"\newcommand{\FloorDiffEtaPos}{" + f"{f['median_rmse_etapos']:.3f}" + "}"]
 
     # ---------- delineator x rate robustness of the ST-safety endpoint ----------
     rb = srcs["delineator_robustness.json"]

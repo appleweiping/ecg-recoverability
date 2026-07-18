@@ -43,6 +43,7 @@ GPU_STEPS = [
     ("experiments/neural_baseline.py", "representative neural baseline (arbitrary-mask 1-D U-Net, 3 seeds) [GPU]"),
     ("experiments/fair_baselines.py", "fair per-timepoint baselines + paired CIs (merges U-Net) [server]"),
     ("experiments/fabrication_audit_diffusion.py", "DDPM null-space fabrication phi vs guidance [GPU]"),
+    ("experiments/certificate_floor_diffusion.py", "DDPM per-lead error vs certified floor a_l (learned-model binding) [GPU]"),
 ]
 
 

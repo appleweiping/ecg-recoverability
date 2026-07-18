@@ -17,7 +17,7 @@ CITED_JSON = ["fair_baselines", "st_safety", "recoverability_maps", "tier2_confo
               "baselines_physics", "cross_dataset", "lead_weighting", "gpu_deficit_ci",
               "realism_metrics", "gpu_oracle_gate", "neural_baseline", "certificate_validation",
               "fabrication_audit", "fabrication_diffusion", "transfer_bound",
-              "delineator_robustness"]
+              "delineator_robustness", "certificate_floor_diffusion"]
 MACROS = ["paper/auto/fair_baselines_macros.tex", "paper/auto/fair_baselines_table.tex",
           "paper/auto/long_results_macros.tex"]
 PDFS = ["paper/main_v2.pdf", "paper/arxiv_long.pdf"]

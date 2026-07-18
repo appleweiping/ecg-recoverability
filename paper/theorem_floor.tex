@@ -73,3 +73,12 @@ reconstructors sit right at it (median gap $\CertValFloorGap$\,mV)---beating the
 case only marginally by exploiting non-Gaussian population structure, exactly the residual the
 calibrated intervals of Sec.~\ref{sec:calib} meter. This turns the empirically similar total error
 across reconstructors (Sec.~\ref{sec:exp}) into a target-specific certified minimax floor.
+Crucially the floor also binds a \emph{learned} reconstructor: a trained arbitrary-mask diffusion
+model (DDPM, honest guidance $w{=}1$), evaluated against the \emph{same} floor on held-out records,
+sits above it in every one of $\FloorDiffNcells$ underdetermined cells (floor-violation fraction
+$\FloorDiffViol$, median gap $\FloorDiffGap$\,mV), and the certificate's identifiable/unidentifiable
+split predicts its error---median dipolar-projection RMSE $\FloorDiffEtaZero$\,mV where
+$\eta{=}0$ versus $\FloorDiffEtaPos$\,mV where $\eta{>}0$ (\texttt{experiments/certificate\_floor\_diffusion.py}).
+Notably the generative model does \emph{not} beat the moment-class floor at all, whereas the linear
+ridge does on a minority of cells---the worst-case bound is loose only for the estimator explicitly
+exploiting the non-Gaussian structure it excludes.
