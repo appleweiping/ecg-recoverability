@@ -100,7 +100,7 @@ across the evaluated reconstructors** (paired record-bootstrap Δ on FP, FN, and
 than they invent** (FN > FP — limb→precordial reconstruction smooths ST toward the population), and
 the FP/FN balance shifts with the reconstructor (dipolar has the largest false-positive share, OLS
 the smallest). Because we do not derive a minimax/Bayes lower bound we report only the **range of
-total-error point estimates**, **not** a certified floor. The PR-segment baseline fell back to the
+total-error point estimates**, **not** a certified lower bound. The PR-segment baseline fell back to the
 pre-QRS window in ~14% of beats, a delineation limitation the exact ST magnitudes inherit. We report
 ST-threshold events, not diagnoses.
 
