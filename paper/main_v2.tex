@@ -29,21 +29,22 @@ a scalar reconstruction error says nothing about \emph{which} named feature's lo
 \emph{target-specific recoverability map}: for a
 waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead $\ell$, two
 closed-form numbers derived from one truncated SVD of the segment's empirical rank-3 spatial
-(``dipolar'') sub-matrix---an \emph{identifiability} $\eta_{s,\ell}(S)$ (zero iff the
-target's low-rank component is recoverable from $S$) and a \emph{conditioning}
-$\kappa_{s,\ell}(S)$ (its noise/observed-residual gain). The per-lead criterion is the
-classical estimability condition specialized to ECG (exact vs.\ a numerical
-$\varrho$-truncation, which we separate). The robust findings: precordial ST is \emph{exactly}
+(``dipolar'') sub-matrix---an \emph{identifiability} $\eta_{s,\ell}(S)$, whose \emph{exact} value
+(via the exact pseudoinverse) is zero iff the target's dipolar component is recoverable from $S$,
+alongside a numerically $\varrho$-truncated variant $\eta^{\varrho}$ that measures recoverability
+\emph{within the retained rank-3 model}---and a \emph{conditioning} $\kappa_{s,\ell}(S)$ (its
+noise/observed-residual gain). The per-lead criterion is the classical estimability condition
+specialized to ECG. The robust findings: precordial ST is \emph{exactly}
 non-identifiable from limb leads (the limb leads span the frontal plane, so $\bm M_{s,S}$ has
 exact rank 2), and the graded normalized-identifiability ordering is bootstrap-stable for QRS.
 For the low-amplitude ST/T segments the fine ordering is \emph{sensitive to the limb-lead
 weighting} (a duplicated-limb sensitivity analysis), so we report it with that caveat rather
 than as an exact graded claim. We attach distribution-free calibrated intervals for the empirically
 predictable residual (conformalized quantile regression, strict fold discipline, honestly
-stated within-group coverage), and observe that the total ST-threshold error rate is
-empirically similar across the evaluated reconstructors (not a certified bound) while the
-false-positive/false-negative split is a reconstructor choice. The map turns ``trust the
-reconstruction'' into a per-feature, per-lead, calibrated statement.
+stated within-group coverage), and observe that the total ST-threshold error rate's point estimates
+range $\TotWrongLo$--$\TotWrongHi\%$ across the evaluated reconstructors (an empirical observation,
+not a certified bound) while the false-positive/false-negative split is a reconstructor choice. The
+map turns ``trust the reconstruction'' into a per-feature, per-lead, calibrated statement.
 \end{abstract}
 
 \begin{keywords}
@@ -89,10 +90,11 @@ CIs (Sec.~\ref{sec:cert}); (2) a calibration layer attaching distribution-free i
 (a sound application of conformalized quantile regression + Mondrian \cite{romano2019cqr}, not
 a new method) to the map per feature and lead, with strict fold discipline and honest
 within-group (not per-diagnosis) coverage (Sec.~\ref{sec:calib}); (3) a graded ST-safety study
-on PTB-XL---continuous full-waveform reconstruction shows anterior precordial ST is far from
-recoverable from limb leads, with a total ST-threshold error rate empirically similar across
-the evaluated reconstructors (an empirical observation, not a certified bound) and a
-false-positive/false-negative split that is a reconstructor choice (Sec.~\ref{sec:exp}).
+on PTB-XL---using the \emph{exact} verdict that precordial ST is non-identifiable from limb leads
+(rank-2 frontal plane), with a total ST-threshold error rate whose point estimates range
+$\TotWrongLo$--$\TotWrongHi\%$ across the evaluated reconstructors (an empirical observation, not a
+certified bound) and a false-positive/false-negative split that is a reconstructor choice
+(Sec.~\ref{sec:exp}).
 
 \section{The Recoverability Certificate}
 \label{sec:cert}
@@ -125,8 +127,8 @@ it gives a graded per-target-lead recoverability map---what is identifiable, how
 well-conditioned, and (via calibration) what interval the predictable residual admits---before
 and independent of any reconstructor. It states which lead configurations support recovery of a
 feature's low-rank component, e.g.\ that precordial ST is exactly non-identifiable from limb
-leads, and reports the empirically similar total ST-threshold error rate the evaluated
-reconstructors incur there (dominated by missed, not fabricated, crossings).
+leads, and reports the total ST-threshold error rate the evaluated reconstructors incur there
+(point estimates $\TotWrongLo$--$\TotWrongHi\%$, dominated by missed, not fabricated, crossings).
 
 \bibliographystyle{IEEEbib}
 \bibliography{refs}

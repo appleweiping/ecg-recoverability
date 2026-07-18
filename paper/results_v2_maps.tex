@@ -41,13 +41,15 @@ isoelectric PR-segment baseline [P offset\,--\,QRS onset], on fiducials from the
 shared between truth and reconstruction; median over beats; the PR-segment baseline fell back to
 the pre-QRS window in $\approx\SafetyFallbackPct$\% of beats), and count ST-threshold events ($|$ST$|{\ge}0.1$\,mV; false positive =
 crossing in reconstruction not truth, false negative = vice versa; Table~\ref{tab:safety}). On
-$\SafetyN$ common records the \emph{total} wrong-event rate is empirically similar across
-reconstructors ($\TotWrongLo$--$\TotWrongHi\%$) and is \emph{dominated by false negatives}
+$\SafetyN$ common records the \emph{total} wrong-event rate has point estimates ranging
+$\TotWrongLo$--$\TotWrongHi\%$ across reconstructors and is \emph{dominated by false negatives}
 (missed true crossings: limb$\to$precordial recovery smooths ST toward the population), with the
-false-positive/false-negative split a reconstructor choice (paired record-bootstrap $\Delta$
-significant). We do not derive a minimax/Bayes bound, so we call the shared total an empirically
-similar total error rate, \emph{not} a certified lower bound; we report ST-threshold events, not
-diagnoses.
+false-positive/false-negative split a reconstructor choice (paired record-bootstrap $\Delta$ on the
+FP/FN split, and on the total, in \texttt{results/st\_safety.json}). We do not derive a minimax/Bayes
+bound and make no equivalence claim: we report the range of total-error point estimates,
+\emph{not} a certified lower bound, and ST-threshold events, not diagnoses. Because the PR-segment
+baseline fell back to the pre-QRS window in $\approx\SafetyFallbackPct$\% of beats, the exact ST
+magnitudes inherit that delineation limitation.
 
 \begin{table}[t]
 \centering\small

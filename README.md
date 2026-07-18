@@ -51,12 +51,12 @@ lead amplitude with observation geometry, we grade the shortfall by **normalized
 `η̃ = η/‖eₗᵀ Mₛ‖` (the *fraction* of a lead's dipolar content that is unobservable) and by the
 **prior-conditional expected ambiguity in mV** — the residual a Bayes reconstructor still
 incurs after conditioning the unobserved dipole coordinate on the observed one through the
-fitted Gaussian dipole prior (a marginal footprint would ignore that correlation). For limb-6 no
-precordial lead is exactly identifiable; both measures fall from strongly unrecoverable anterior
-leads (V1–V4) to much-less-ambiguous lateral V5/V6. So the honest a-priori statement is:
-**anterior precordial ST (V1–V4) is far from identifiable from limb leads**, while lateral V5/V6
-are much less ambiguous — *but none is exactly identifiable*. A physiological "precordial vs.
-limb" split cannot make this graded call; the empirical map does. (Exact numbers:
+fitted Gaussian dipole prior (a marginal footprint would ignore that correlation). For limb-6 **no
+precordial lead is exactly identifiable** (η>0 for all) — the robust, exact claim. The *fine*
+ordering among precordial leads (e.g. anterior V1–V4 vs. lateral V5/V6) is **sensitive to the
+limb-lead weighting** for the low-amplitude ST/T segments (duplicated-limb sensitivity analysis), so
+we report it with that caveat rather than as a robust graded ordering. A physiological "precordial
+vs. limb" split cannot even make the exact call; the empirical map does. (Exact numbers:
 `results/recoverability_maps.json`, `results/st_safety.json`.)
 
 **Truncation-tolerance sensitivity.** Rank/`κ` of well-posed configurations are stable across
@@ -94,14 +94,15 @@ blanket "not recoverable". (Exact values + paired-Δ CIs: `results/fair_baseline
 10-second waveform with three real continuous reconstructors (observed leads kept exact; ST
 measured at J+60 ms vs. a PR baseline on fiducials located once on the observed Lead II and
 shared between truth and reconstruction; event = `|ST| ≥ 0.1 mV`, absolute). The **total**
-wrong-event rate (false-positive + false-negative crossings) is **empirically similar across
-the evaluated reconstructors**; all three **miss more true crossings than they invent** (FN > FP
-— limb→precordial reconstruction smooths ST toward the population), and the FP/FN balance shifts
-with the reconstructor (dipolar has the largest false-positive share, OLS the smallest). We
-report the whole matrix and — because we do not
-derive a minimax/Bayes lower bound — describe the shared total as an *empirically similar total
-error rate across these reconstructors*, **not** a certified floor. We report ST-threshold
-events, not diagnoses.
+wrong-event rate (false-positive + false-negative crossings) has **point estimates ranging ~51–54%
+across the evaluated reconstructors** (paired record-bootstrap Δ on FP, FN, and the total in
+`results/st_safety.json`; we make **no equivalence claim**); all three **miss more true crossings
+than they invent** (FN > FP — limb→precordial reconstruction smooths ST toward the population), and
+the FP/FN balance shifts with the reconstructor (dipolar has the largest false-positive share, OLS
+the smallest). Because we do not derive a minimax/Bayes lower bound we report only the **range of
+total-error point estimates**, **not** a certified floor. The PR-segment baseline fell back to the
+pre-QRS window in ~14% of beats, a delineation limitation the exact ST magnitudes inherit. We report
+ST-threshold events, not diagnoses.
 
 ## 5. `M_s` is an *empirical* subspace, not the physical dipole
 
@@ -179,6 +180,13 @@ pre-submission rebuild found three things that did **not** survive scrutiny and 
 
 So the fabrication-objective story was **deleted**, and "physical cardiac dipole" was
 **downgraded** to "empirical rank-3 subspace" (§5). What remains is the honest core above.
+
+The old "fabrication ratio φ" is renamed the **null-space dipolar energy ratio `R_Q`** and demoted to
+an **exploratory descriptor** in the arXiv supplement: `R_Q>0` (energy a reconstruction places in the
+unidentifiable subspace) does **not** by itself prove fabrication — the true dipole can carry that
+energy, and under correlated coordinates the Bayes posterior mean `E[Qd|Pd]` is generally nonzero, so
+`R_Q=0` is a choice, not "correct abstention." A calibrated standardized-assertion score (standardizing
+`Qd̂ − E[Qd|Pd]` by `Σ_{Q|P}`) is left to future work.
 
 ## 9. Citation & license
 

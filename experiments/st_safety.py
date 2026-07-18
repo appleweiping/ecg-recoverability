@@ -187,9 +187,14 @@ def run(n_train=1500, n_test=1500, rate=100, seed=0, per_record_pts=80, out_name
         print(f"[{r:8s}] n={len(common_ids)} FP={fp.mean():.3f} FN={fn.mean():.3f} "
               f"total={(fp+fn).mean():.3f} |ST|err={np.nanmean(err):.3f}mV", flush=True)
 
-    # paired record-bootstrap difference CIs between ALL reconstructor pairs
+    # paired record-bootstrap difference CIs between ALL reconstructor pairs.
+    # "total" = FP+FN paired delta (P0-5): whether the TOTAL wrong-event rate differs significantly
+    # between reconstructors (backs the "point estimates range X-Y%, no equivalence claim" wording).
     def paired(a, b, col, n=2000):
-        d = arr[a][:, col] - arr[b][:, col]
+        if col == "total":
+            d = (arr[a][:, 0] + arr[a][:, 1]) - (arr[b][:, 0] + arr[b][:, 1])
+        else:
+            d = arr[a][:, col] - arr[b][:, col]
         br = np.random.default_rng(seed + 5)
         bs = [d[br.integers(0, d.size, d.size)].mean() for _ in range(n)]
         lo, hi = float(np.percentile(bs, 2.5)), float(np.percentile(bs, 97.5))
@@ -199,7 +204,8 @@ def run(n_train=1500, n_test=1500, rate=100, seed=0, per_record_pts=80, out_name
         for i, a in enumerate(recons):
             for b in recons[i + 1:]:
                 out["paired_deltas"][f"{a}_vs_{b}"] = {
-                    metric: paired(a, b, col) for metric, col in (("fp", 0), ("fn", 1), ("err", 2))}
+                    metric: paired(a, b, col)
+                    for metric, col in (("fp", 0), ("fn", 1), ("err", 2), ("total", "total"))}
     print(f"[baseline] fallback_frac={out['baseline_fallback_frac']} n_common={len(common_ids)}", flush=True)
 
     RESULTS.mkdir(exist_ok=True)
