@@ -15,6 +15,7 @@ is absent; the test suite must pass with ZERO skips; both PDFs must compile.
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -71,6 +72,8 @@ def main():
     ap.add_argument("--gpu", action="store_true")
     ap.add_argument("--papers", action="store_true")
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--strict", action="store_true",
+                    help="also enforce git_dirty=false / non-null checkpoint SHA / current script hash")
     a = ap.parse_args()
     if not any((a.cpu, a.gpu, a.papers, a.all)):
         ap.error("choose --cpu / --gpu / --papers / --all")
@@ -84,7 +87,12 @@ def main():
     if a.papers or a.all:
         _run(["paper/emit_baseline_table.py"], "emit-baseline")   # fails closed if JSON absent
         _run(["paper/emit_long_results.py"], "emit-long")
-        r = subprocess.run([PY, "-m", "pytest", "-q", "--no-header"], cwd=ROOT)
+        # run the FULL release suite (ECG_RELEASE=1: strict integrity + zero skips), not the
+        # reduced default. --strict additionally enforces git_dirty=false / checkpoint / script hash.
+        env = {**os.environ, "ECG_RELEASE": "1"}
+        if a.strict:
+            env["ECG_RELEASE_STRICT"] = "1"
+        r = subprocess.run([PY, "-m", "pytest", "-q", "--no-header"], cwd=ROOT, env=env)
         if r.returncode != 0:
             raise SystemExit("[release] test suite FAILED")
         _build_pdf("main_v2")

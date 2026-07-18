@@ -1,11 +1,17 @@
-"""Reproduce every result JSON and figure of the CURRENT paper in one command.
+"""Run the CPU (and optionally GPU) experiment pipeline for the CURRENT paper.
 
     python experiments/run_all.py           # CPU pipeline (map, calibration, baselines, safety)
     python experiments/run_all.py --gpu     # also run the GPU/server steps (neural + fair table)
 
-Assumes PTB-XL is downloaded (scripts/download_data.py). Synthetic validation runs in
-seconds; the PTB-XL experiments are dominated by NeuroKit2 delineation (a few minutes each
-on CPU). The neural baseline needs a GPU and is intended for the server.
+Scope / honesty: this does NOT regenerate EVERY cited JSON from scratch in one command. It
+reproduces the CPU-derivable artifacts and figures; several cited JSONs are PRODUCED ELSEWHERE and
+are prerequisites here, not outputs: (a) GPU/server results (neural_baseline, fair_baselines merge,
+gpu_deficit_ci, gpu_oracle_gate, realism_metrics, fabrication_diffusion, certificate_floor_diffusion)
+need a GPU + trained checkpoint; (b) cross_dataset.json needs the Chapman download; (c) the delineator
+x rate st_safety_* variants and the transfer/robustness/active-selection analyses READ those committed
+JSONs. Assumes PTB-XL is downloaded (scripts/download_data.py). PTB-XL steps are dominated by NeuroKit2
+delineation (a few minutes each on CPU). For a full clean release, use scripts/release.py on a clean
+checkout (with the server for the GPU phase).
 
 This orchestrates the target-specific recoverability-map pipeline. The earlier
 "fabrication/hallucination" scripts were removed in the pre-submission rebuild (see README

@@ -60,10 +60,31 @@ def file_sha256(path) -> str:
     return h.hexdigest()[:16]
 
 
+_GEN_DIRS = ("results/", "paper/auto/")
+_GEN_EXT = (".pdf", ".png", ".aux", ".log", ".out", ".synctex.gz", ".bbl", ".blg", ".toc")
+
+
 def _git_dirty() -> bool:
+    """True iff there are uncommitted CODE changes.
+
+    ``git_dirty`` records whether the artifact was produced from committed code. It therefore
+    IGNORES the generated outputs a run necessarily writes (``results/``, emitted macros under
+    ``paper/auto/``, built PDFs/figures, LaTeX aux); otherwise the first experiment's own output
+    would flag every subsequent experiment in the same clean-tree run as dirty. A genuine
+    uncommitted change to any tracked source file still returns True.
+    """
     try:
         out = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=5)
-        return bool(out.stdout.strip())
+        for line in out.stdout.splitlines():
+            if not line.strip():
+                continue
+            path = line[3:].strip().strip('"')
+            if " -> " in path:                       # rename: take the destination
+                path = path.split(" -> ")[-1]
+            if path.startswith(_GEN_DIRS) or path.endswith(_GEN_EXT):
+                continue                             # generated artifact, not code
+            return True
+        return False
     except Exception:
         return False
 
