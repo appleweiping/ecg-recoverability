@@ -1,55 +1,33 @@
-\subsection*{Cross-cohort transfer of the recoverability verdict}
+\subsection*{Cross-cohort sensitivity of the verdict}
 \label{sec:transfer}
-The certificate is computed from a \emph{fitted} dipolar subspace $\bm M_s$ (the rank-3 PCA of one
-cohort's segment-$s$ samples). A natural worry is that the verdict is an artefact of the fitting
-cohort. It is not: because $\eta_{s,\ell}(S)=\|\bm e_\ell^\top\bm M_s(\bm I-\bm P_{\mathrm{obs}})\|_2$
-depends on $\bm M_s$ \emph{only through its column space}, it is invariant to any rotation of the
-$3$-dimensional dipole basis, and drifts across cohorts only as fast as the two cohorts' dipolar
-\emph{subspaces} separate.
+The certificate is computed from a \emph{fitted} dipolar subspace $\bm M_s$, so it is natural to ask
+how the verdict moves across cohorts. One fact is exact and useful:
+$\eta_{s,\ell}(S)=\|\bm e_\ell^\top\bm M_s(\bm I-\bm P_{\mathrm{obs}})\|_2$ depends on $\bm M_s$
+\emph{only through its column space}. Replacing $\bm M_s$ by $\bm M_s\bm R$ for any $\bm R\in O(3)$
+rotates $\bm P_{\mathrm{obs}}$ and $\bm e_\ell^\top\bm M_s$ together and leaves every $\eta$ unchanged;
+hence two cohorts that share a dipolar subspace (all principal angles zero) have identical verdicts,
+and in general the drift is governed by how far the two subspaces separate.
 
-\begin{theoremc}[Cross-cohort transfer bound]\label{thm:transfer}
-Let cohorts $A,B$ have segment-$s$ dipolar bases $\bm M_s^A,\bm M_s^B\in\mathbb R^{12\times3}$ with
-orthonormal columns, and let $\theta^\star$ be the largest principal angle between
-$\operatorname{col}(\bm M_s^A)$ and $\operatorname{col}(\bm M_s^B)$. For every target lead $\ell$
-and observed set $S$,
-\[
-\big|\eta_{s,\ell}^A(S)-\eta_{s,\ell}^B(S)\big|
-\;\le\; 2\sin(\theta^\star/2)\,\big(1+2\,\kappa_{s}(S)\big),
-\qquad \kappa_s(S)=\|\bm M_{s,S}^{+}\|_2=\|\bm M_s\bm M_{s,S}^{+}\|_2 ,
-\]
-the observed-set conditioning of Prop.~\ref{thm:perlead}. In particular $\theta^\star{=}0$ gives
-$\eta^A_{s,\ell}(S)=\eta^B_{s,\ell}(S)$ exactly.
-\end{theoremc}
+A $\sin\Theta$ (Davis--Kahan~\cite{davis1970rotation}) perturbation makes this quantitative but, at
+the conditioning we observe, \emph{vacuously so}. After optimal alignment,
+$|\eta^A_{s,\ell}(S)-\eta^B_{s,\ell}(S)|\le 2\sin(\theta^\star/2)\,(1+2\,\kappa_s)$, where
+$\theta^\star$ is the largest principal angle between the two cohorts' segment-$s$ dipolar subspaces
+and $\kappa_s=\max(\kappa_s^A,\kappa_s^B)$ is the larger observed-set conditioning; the
+projector-difference step uses the Stewart--Wedin bound and assumes the observed block keeps its rank
+across cohorts and that the $\varrho$-truncated projector coincides with the exact one. On
+PTB-XL$\to$Chapman (limb-6$\to$V2) the right-hand side evaluates to $\TransferRhsQRS$ (QRS) and
+$\TransferRhsST$ (ST), \emph{both exceeding} the trivial bound $|\Delta\eta|\le1$ (since
+$\eta\in[0,1]$). The inequality therefore \textbf{certifies nothing here}: it does not establish that
+the QRS verdict transfers, and it is not a pre-deployment guarantee. A non-vacuous statement would
+need a target-specific bound built from the aligned target-lead rows and the exact projector
+difference; we leave that to future work and do not claim it.
 
-\noindent\emph{Proof sketch.} $\eta$ is unchanged if $\bm M_s$ is right-multiplied by any
-$\bm R\in O(3)$ (it rotates $\bm P_{\mathrm{obs}}$ and $\bm e_\ell^\top\bm M_s$ together), so align the
-bases by the optimal $\bm R$, giving $\|\bm M_s^A-\bm M_s^B\|_2=2\sin(\theta^\star/2)=:\delta$. With
-$\bm m_\ell=\bm M_s^\top\bm e_\ell$ ($\|\bm m_\ell\|\le1$) and $\bm P_S$ the row-space projector,
-$\big|\,\|(\bm I{-}\bm P_S^A)\bm m_\ell^A\|-\|(\bm I{-}\bm P_S^B)\bm m_\ell^B\|\,\big|
-\le\|\bm m_\ell^A-\bm m_\ell^B\|+\|\bm P_S^A-\bm P_S^B\|_2\,\|\bm m_\ell^B\|
-\le\delta+2\delta\kappa_s(S)$, using the projector perturbation
-$\|\Delta\bm P_S\|_2\le2\|\Delta\bm M_{s,S}\|_2\|\bm M_{s,S}^{+}\|_2$ (Stewart--Wedin) and
-$\|\bm m_\ell^B\|\le1$.\hfill$\square$
-
-\smallskip
-\noindent\textbf{What this buys, and its honest limits.} The bound is a $\sin\Theta$ perturbation
-(Davis--Kahan~\cite{davis1970rotation}) that makes a \emph{single} extra cohort load-bearing: the
-transferability of the verdict is governed by a \emph{computable} quantity---the principal angle
-between the cohorts' dipolar subspaces---so a large angle \emph{flags} non-transfer before any
-target-cohort label is seen. The constant $1+2\kappa_s$ is worst-case and the bound is loose in
-absolute terms (for a well-conditioned observed set it can exceed the trivial $\eta\le1$); its value
-is as a \emph{pre-deployment transfer-risk flag}: a small principal angle certifies a small
-verdict drift, a large one refuses to. On PTB-XL$\to$Chapman (matched sinus, limb-6 $\to$ V2) the two
-regimes are visible. The QRS dipolar subspace is nearly shared
-($\theta^\star{=}\TransferAngleQRS^\circ$) and the measured drift is correspondingly tight
-($\TransferDriftQRS$, realized slope $\TransferLipQRS$)---the verdict transfers. The ST subspace is
-near-orthogonal ($\theta^\star{=}\TransferAngleST^\circ$, CI up to $89.6^\circ$): the bound turns
-vacuous and the drift is genuinely uncertain---the target-cohort $\eta$ bootstrap CI is
-$[0.02,0.71]$, spanning most of the admissible range, so the realized slope is only pinned to
-$[\TransferSTLipLo,\TransferSTLipHi]$ and we claim
-\emph{no} precise ST drift, only that the large angle flags the ST verdict as non-transferable
-(\texttt{experiments/transfer\_bound.py}). We therefore do not read a stable cross-segment Lipschitz
-constant from these two points; the load-bearing claim is the rigorous bound plus the angle as a
-computable transfer-risk diagnostic, corroborated by the tight QRS point. This is the cross-cohort
-analogue of the finite-sample $\sin\Theta$ term in Prop.~\ref{thm:floor}(iii): both control how a
-fitted subspace perturbs the verdict.
+We accordingly present the cross-cohort comparison as \emph{empirical sensitivity}, not a certified
+bound (\texttt{results/transfer\_bound.json}). The measured principal angle and the measured verdict
+drift agree qualitatively: for QRS the two dipolar subspaces are nearly aligned
+($\theta^\star{=}\TransferAngleQRS^\circ$; $\eta$ drift $\TransferDriftQRS$), whereas for ST they are
+nearly orthogonal ($\theta^\star{=}\TransferAngleST^\circ$, CI up to $89.6^\circ$) with a larger but
+highly uncertain drift (the Chapman $\eta$ bootstrap CI is $[0.02,0.71]$). This is a two-cohort
+observation---the QRS dipolar geometry happens to be shared between these cohorts while the
+low-amplitude ST geometry is not, consistent with the subspace-angle ablations of
+Sec.~\ref{sec:limits}---not a guarantee about unseen cohorts.

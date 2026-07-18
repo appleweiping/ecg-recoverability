@@ -198,15 +198,14 @@ def main():
     if tb:
         seg = tb["segments"]
         q, st = seg["QRS"], seg["ST"]
-        st_lip_ci = tb["summary"].get("st_lipschitz_ci") or [0.0, 0.0]
+        # the sin-Theta RHS is VACUOUS at this conditioning (both > the trivial |Delta eta| <= 1);
+        # emitted so the paper can state the values and label the bound vacuous.
         m += [r"\newcommand{\TransferAngleQRS}{" + f"{q['theta_star_deg']:.1f}" + "}",
               r"\newcommand{\TransferAngleST}{" + f"{st['theta_star_deg']:.1f}" + "}",
               r"\newcommand{\TransferDriftQRS}{" + f"{q['empirical_drift']:.3f}" + "}",
               r"\newcommand{\TransferDriftST}{" + f"{st['empirical_drift']:.3f}" + "}",
-              r"\newcommand{\TransferLipQRS}{" + f"{q['realized_lipschitz']:.2f}" + "}",
-              # honest: the ST drift is nearly unconstrained (target-cohort eta CI ~ [0,1])
-              r"\newcommand{\TransferSTLipLo}{" + f"{st_lip_ci[0]:.2f}" + "}",
-              r"\newcommand{\TransferSTLipHi}{" + f"{st_lip_ci[1]:.2f}" + "}"]
+              r"\newcommand{\TransferRhsQRS}{" + f"{q['certified_rhs']:.2f}" + "}",
+              r"\newcommand{\TransferRhsST}{" + f"{st['certified_rhs']:.1f}" + "}"]
 
     # ---------- learned-model floor binding: DDPM vs certified floor a_l ----------
     # Honest: report on the NON-TRIVIAL eta>0 cells; the DDPM does not violate because its dipolar

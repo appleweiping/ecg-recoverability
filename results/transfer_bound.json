@@ -1,11 +1,11 @@
 {
   "lineage": {
-    "commit": "fd341958b1278dae7d93c08a15197221d58e1e29",
+    "commit": "8e46ae99acdf7aa376cd066cb3ca0451f2bf1c58",
     "git_dirty": true,
     "protocol": "recoverability-v2-2026-07",
     "protocol_sha256": "a2ff753529e4",
     "experiment_script": "transfer_bound.py",
-    "experiment_script_sha256": "847072d659a5eb2e",
+    "experiment_script_sha256": "7c7c41af9a7a7d6e",
     "seed": 0,
     "targets": [
       "V2"
@@ -18,11 +18,11 @@
     "train_ids_sha256": null,
     "test_ids_sha256": null,
     "checkpoint_sha256": null,
-    "kind": "cross-cohort transfer bound (sin-Theta) validation",
+    "kind": "cross-cohort sensitivity; sin-Theta RHS reported but VACUOUS",
     "source": "cross_dataset.json",
     "source_commit": "2370ee266167f960de92d833908b070ba85adfe6"
   },
-  "bound": "|eta_A - eta_B| <= 2 sin(theta*/2) (1 + 2 kappa_S)",
+  "bound": "|eta_A - eta_B| <= 2 sin(theta*/2)(1 + 2 max(kappa_A,kappa_B))  [VACUOUS here: RHS > 1]",
   "segments": {
     "QRS": {
       "theta_star_deg": 13.77,
@@ -45,13 +45,12 @@
         0.0664
       ],
       "certified_rhs": 1.3652,
-      "bound_holds": true,
-      "realized_lipschitz": 0.1381,
-      "realized_lipschitz_ci": [
+      "rhs_is_vacuous": true,
+      "realized_ratio": 0.1381,
+      "realized_ratio_ci": [
         0.0,
         0.277
-      ],
-      "transfer_flag": "shared"
+      ]
     },
     "ST": {
       "theta_star_deg": 85.73,
@@ -74,30 +73,34 @@
         0.6919
       ],
       "certified_rhs": 32.166,
-      "bound_holds": true,
-      "realized_lipschitz": 0.1811,
-      "realized_lipschitz_ci": [
+      "rhs_is_vacuous": true,
+      "realized_ratio": 0.1811,
+      "realized_ratio_ci": [
         0.0018,
         0.5085
-      ],
-      "transfer_flag": "divergent"
+      ]
     }
   },
   "summary": {
     "target": "V2",
     "observed_set": "limb-6",
-    "all_bounds_hold": true,
-    "realized_lipschitz_point": {
-      "QRS": 0.1381,
-      "ST": 0.1811
+    "framing": "empirical cross-cohort sensitivity (the sin-Theta RHS is vacuous here)",
+    "rhs_vacuous_all_segments": true,
+    "certified_rhs": {
+      "QRS": 1.3652,
+      "ST": 32.166
     },
-    "st_lipschitz_ci": [
-      0.0018,
-      0.5085
-    ],
-    "qrs_flag": "shared",
-    "st_flag": "divergent",
-    "qrs_drift_tight": true,
-    "chordal_ratio_st_over_qrs": 5.67
+    "empirical_drift": {
+      "QRS": 0.0331,
+      "ST": 0.2464
+    },
+    "principal_angle_deg": {
+      "QRS": 13.77,
+      "ST": 85.73
+    },
+    "st_drift_ci": [
+      0.0024,
+      0.6919
+    ]
   }
 }

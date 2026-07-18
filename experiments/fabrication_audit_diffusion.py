@@ -1,13 +1,13 @@
-"""Diffusion tier of the null-space fabrication audit: phi(w) vs classifier-free guidance (GPU).
+"""Diffusion tier: null-space dipolar ENERGY ratio R_Q(w) vs classifier-free guidance (GPU, exploratory).
 
 Loads the trained arbitrary-mask DDPM (results/gpu_ddpm.pt), reconstructs the primary config
 {I,II,V1,V3,V5} -> {V2,V4,V6} on held-out NORM fold-10 records at each guidance weight w, and
-measures the null-space dipolar FABRICATION ratio phi = ||M_s Q d_hat||^2 / ||M_s d_hat||^2 (the
-fraction of the reconstruction's dipolar energy in the provably UNIDENTIFIABLE subspace;
-fabrication_audit.fabrication_ratio). If phi rises with w, cranking guidance makes the generative
-model assert more content the observation cannot fix -- the rigorous, ground-truth-free form of the
-abandoned "fabrication is a property of the objective" claim, and the counterpart to the
-achievability result (accuracy does NOT improve with w, gpu_deficit_ci.json).
+measures the null-space dipolar energy ratio R_Q = ||M_s Q d_hat||^2 / ||M_s d_hat||^2 (the fraction
+of the reconstruction's dipolar energy in the UNIDENTIFIABLE subspace; fabrication_audit.
+null_space_energy_ratio). R_Q rising with w means guidance places more content in the unidentifiable
+subspace -- an EXPLORATORY descriptor, NOT proof of fabrication (R_Q>0 does not certify hallucination;
+the Bayes posterior mean E[Qd|Pd] is generally nonzero). Counterpart to the achievability result
+(accuracy does NOT improve with w, gpu_deficit_ci.json).
 
 Output: results/fabrication_diffusion.json
 """
@@ -25,7 +25,7 @@ from ecgcert.models import fit_segment_models
 from ecgcert.physics import LEAD_INDEX
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from fabrication_audit import fabrication_ratio, SEGMENTS          # noqa: E402
+from fabrication_audit import null_space_energy_ratio, SEGMENTS    # noqa: E402
 from gpu_diffusion_clean import _preload, _batched                  # noqa: E402
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"
@@ -69,7 +69,7 @@ def run(n_test=300, seed=0, chunk=128):
                     m = models.get(s); idx = seg.get(s)
                     if m is None or idx is None or len(idx) == 0:
                         continue
-                    phis[s].append(fabrication_ratio(m.M, m.mu, obs, np.asarray(Lh)[:, idx].T))
+                    phis[s].append(null_space_energy_ratio(m.M, m.mu, obs, np.asarray(Lh)[:, idx].T))
             per_w[f"{w:g}"] = {s: round(float(np.mean(phis[s])), 5) for s in SEGMENTS if phis[s]}
             print(f"[fab-diff] {cname} w={w}: {per_w[f'{w:g}']}", flush=True)
         trend = {s: (per_w[ws[-1]].get(s, np.nan) - per_w[ws[0]].get(s, np.nan))
@@ -77,15 +77,15 @@ def run(n_test=300, seed=0, chunk=128):
         configs_out[cname] = {"obs": obs, "per_w": per_w,
                               "fabrication_trend_w1_to_w6": {s: round(float(trend[s]), 5) for s in trend}}
     out = {"configs": configs_out, "guidances": GUIDANCES,
-           "metric": ("phi = ||M_s Q d_hat||^2 / ||M_s d_hat||^2, fraction of the diffusion "
-                      "reconstruction's dipolar energy in the UNIDENTIFIABLE subspace (0 = honest, "
-                      ">0 = fabricates content the observation cannot fix)"),
+           "metric": ("R_Q = ||M_s Q d_hat||^2 / ||M_s d_hat||^2, fraction of the diffusion "
+                      "reconstruction's dipolar energy in the UNIDENTIFIABLE subspace. EXPLORATORY "
+                      "descriptor only: R_Q>0 does NOT prove fabrication (E[Qd|Pd] is generally nonzero)."),
            "n_test": len(sigs),
            "lineage": lineage.make(db, seed=seed, targets=["V2", "V4", "V6"],
                                    normalization="raw mV (DDPM reconstruction)",
-                                   train_ids=norm_train[:3000], test_ids=test_ids,
+                                   train_ids=norm_train[:3000], test_ids=test_ids, checkpoint=ckpt,
                                    extra={"checkpoint": ckpt, "guidances": GUIDANCES,
-                                          "metric": "null_space_dipolar_fabrication_vs_guidance"})}
+                                          "metric": "null_space_dipolar_energy_ratio_vs_guidance_exploratory"})}
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "fabrication_diffusion.json").write_text(json.dumps(out, indent=2))
     print("[json] results/fabrication_diffusion.json", flush=True)

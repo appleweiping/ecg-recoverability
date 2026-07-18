@@ -1,17 +1,18 @@
-r"""Certificate-guided active lead selection: which electrodes to place under a budget.
+r"""EXPLORATORY certificate-guided lead-CHANNEL selection under an abstract budget.
 
-The recoverability certificate is diagnostic (given S, what is recoverable). It is also
-\emph{prescriptive}: pick the observed set S (an electrode budget) that minimises the total certified
-ambiguity of the full 12-lead reconstruction,
+The recoverability certificate is diagnostic (given S, what is recoverable). One can also use it to
+SELECT channels: pick the observed set S (an ABSTRACT lead-channel budget -- we do NOT model physical
+electrode placement or Wilson-terminal constraints) minimising the total ambiguity of the 12-lead
+reconstruction,
 
-    J(S) = sum_{s in segments} sum_{l=1..12} a_{s,l}(S)^2 ,   a_{s,l}(S) = expected_ambiguity (mV),
+    J(S) = sum_{s in segments} sum_{l=1..12} a_{s,l}(S)^2 ,   a_{s,l}(S) = expected_ambiguity (mV).
 
-i.e. choose the k measured leads that leave the least of the ECG dipole-unrecoverable. We compare a
-GREEDY forward selection (add the lead giving the largest marginal drop in J) against the EXHAUSTIVE
-optimum (feasible for small k over the 8 independent measured leads {I,II,V1..V6}; III/aVR/aVL/aVF are
-linear combinations of I,II and add no information) and a RANDOM baseline. We also EMPIRICALLY test
-the diminishing-returns (submodularity) inequality of the ambiguity reduction rather than assuming it,
-so any (1-1/e) reading of the greedy solution is earned, not asserted.
+We compare GREEDY forward selection against the EXHAUSTIVE optimum (feasible for small k over the 8
+independent measured lead channels {I,II,V1..V6}; III/aVR/aVL/aVF are linear combinations of I,II) and
+a RANDOM baseline. We EMPIRICALLY test the diminishing-returns inequality on 200 random triples, but
+this is NOT a submodularity proof and we claim NO (1-1/e) approximation guarantee. Results are
+reported as EXPLORATORY on a single fitted cohort; cross-cohort / bootstrap stability of the selection
+is NOT established here and would be required before any placement recommendation.
 
 Output: results/active_selection.json
 """
