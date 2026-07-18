@@ -1,0 +1,148 @@
+{
+  "metric": "phi = ||M_s Q d_hat||^2 / ||M_s d_hat||^2, fraction of reconstruction dipolar energy in the UNIDENTIFIABLE subspace (0 = honest/abstains, >0 = fabricates)",
+  "note": "prior-mean = Bayes posterior mean (abstains) -> phi~0; dipolar stays in observed row space -> phi~0; ridge/OLS put the learned conditional mean in the null space.",
+  "configs": {
+    "Lead-I": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.5025,
+        "ols": 0.5025
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.13085,
+        "ols": 0.13085
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.34382,
+        "ols": 0.34382
+      }
+    },
+    "Lead-II": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.28133,
+        "ols": 0.28133
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.26178,
+        "ols": 0.26178
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.42764,
+        "ols": 0.42764
+      }
+    },
+    "{I,II,V2}": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      }
+    },
+    "{I,II,V1,V3,V5}": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      }
+    },
+    "limb-6": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      }
+    }
+  },
+  "segments": [
+    "QRS",
+    "ST",
+    "T"
+  ],
+  "lineage": {
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "fabrication_audit.py",
+    "experiment_script_sha256": "064d32baac284a68",
+    "seed": 0,
+    "targets": [
+      "I",
+      "II",
+      "III",
+      "aVR",
+      "aVL",
+      "aVF",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV segment samples",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
+    },
+    "n_train": 1500,
+    "n_test": 963,
+    "train_ids_sha256": "4fd528172c55d714",
+    "test_ids_sha256": "3876ca031f65c258",
+    "checkpoint_sha256": null,
+    "metric": "null_space_dipolar_fabrication_ratio"
+  }
+}
