@@ -1,0 +1,75 @@
+\subsection*{A certified minimax recoverability floor}
+\label{sec:floor}
+Proposition~\ref{thm:perlead} says \emph{whether} a target lead's dipolar coordinate is recoverable
+($\eta{=}0$) and \emph{how well-conditioned} the estimate is ($\kappa$). We now turn the binary
+verdict into a \emph{quantitative} per-lead risk floor in physical units that lower-bounds
+\emph{every} reconstructor, linear or learned. Fix segment $s$ and observed set $S$; write the
+dipole prior second moment $\bm\Sigma_d=\mathbb E[\bm d\bm d^\top]$, the observed-dipole row-space
+projector $\bm P=\bm M_{s,S}^{+}\bm M_{s,S}$, and $\bm Q=\bm I-\bm P$. The target is the dipolar
+functional of lead $\ell$, $\theta_\ell=\bm e_\ell^\top\bm M_s\bm d$, and the prior-conditional
+ambiguity of Sec.~\ref{sec:cert} is
+\[
+a_{s,\ell}(S)^2 \;=\; \bm e_\ell^\top\bm M_s\,\bm\Sigma_{Q\mid P}\,\bm M_s^\top\bm e_\ell,
+\qquad
+\bm\Sigma_{Q\mid P}=\bm Q\bm\Sigma_d\bm Q-\bm Q\bm\Sigma_d\bm P(\bm P\bm\Sigma_d\bm P)^{+}\bm P\bm\Sigma_d\bm Q .
+\]
+
+\begin{theoremc}[Minimax per-lead recoverability floor]\label{thm:floor}
+Let $\mathcal P(\bm\Sigma_d)=\{\pi:\ \mathbb E_\pi[\bm d\bm d^\top]\preceq\bm\Sigma_d\}$ be the class of
+priors with second moment dominated by $\bm\Sigma_d$.
+\begin{enumerate}[label=(\roman*),leftmargin=1.6em]
+\item \textbf{Noise-free dipolar floor (nonlinear estimators).} For \emph{any} estimator
+$\hat\theta_\ell(\bm y_S)$ (measurable, possibly nonlinear/learned) of $\theta_\ell$ from the exact
+observation $\bm y_S=\bm M_{s,S}\bm d$,
+\[
+\inf_{\hat\theta_\ell}\ \sup_{\pi\in\mathcal P(\bm\Sigma_d)}\ \mathbb E_\pi\big[(\hat\theta_\ell-\theta_\ell)^2\big]
+\;=\; a_{s,\ell}(S)^2 ,
+\]
+attained by the least-favourable Gaussian prior $\mathcal N(\bm 0,\bm\Sigma_d)$ and its linear
+posterior-mean estimator. In particular $a_{s,\ell}(S)^2=0$ iff $\eta_{s,\ell}(S)=0$, and every
+reconstructor incurs risk $\ge a_{s,\ell}(S)^2$ under the least-favourable prior in the class.
+\item \textbf{Noise/residual inflation.} With observed noise and non-dipolar residual of covariance
+$\bm N$ on $S$, the risk floor lifts to
+$a_{s,\ell}(S)^2+\lambda_{\min}$-scale term bounded through
+$\kappa_{s,\ell}(S)=\|\bm e_\ell^\top\bm M_s\bm M_{s,S}^{+}\|_2$: the amplified error is
+$\bm e_\ell^\top\bm M_s\bm M_{s,S}^{+}(\bm{\mathrm{Sel}}_S\bm r_s+\bm n)$, of variance
+$\le\kappa_{s,\ell}(S)^2\,\|\bm N\|_2$ (Prop.~\ref{thm:perlead}(ii)).
+\item \textbf{Finite-sample subspace floor.} With $\bm M_s$ replaced by its rank-3 PCA estimate
+$\widehat{\bm M}_s$ from $N$ records,
+$\big|a_{s,\ell}(S;\widehat{\bm M}_s)^2-a_{s,\ell}(S;\bm M_s)^2\big|\le C\,\sin\Theta(\widehat{\bm M}_s,\bm M_s)\,\|\bm\Sigma_d\|_2$,
+where $\sin\Theta$ is the principal-angle perturbation (Davis--Kahan~\cite{davis1970rotation}). The
+conservative floor $a^{-}_{s,\ell}(S)=\min$ over the record-bootstrap confidence set of
+$\widehat{\bm M}_s$ then lower-bounds the risk uniformly in the estimated subspace.
+\end{enumerate}
+\end{theoremc}
+
+\noindent\emph{Proof sketch.} (i) Gaussian conditioning gives
+$\mathrm{Var}(\theta_\ell\mid\bm P\bm d)=\bm e_\ell^\top\bm M_s\bm\Sigma_{Q\mid P}\bm M_s^\top\bm e_\ell$
+with the posterior mean Bayes-optimal under squared loss, so the Bayes risk equals $a_{s,\ell}^2$;
+estimating the \emph{linear} functional $\theta_\ell=\bm e_\ell^\top\bm M_s\bm d$ under a
+convex, quadratically-constrained parameter class makes the nonlinear minimax risk equal the linear
+one, with a least-favourable Gaussian prior (Donoho--Liu~\cite{donohoLiu1991}; Donoho, optimal
+recovery~\cite{donoho1994}), giving the sup--inf identity and the bound for arbitrary $\hat\theta_\ell$.
+(ii) Cauchy--Schwarz/$\sigma_{\min}$ on the amplified-error term, as in
+Prop.~\ref{thm:perlead}(ii). (iii) Weyl/Davis--Kahan perturbation of the projectors and Schur
+complement as functions of $\widehat{\bm M}_s$, propagated through the quadratic form.\hfill$\square$
+
+\smallskip
+\noindent\textbf{What is and is not certified.} The floor is \emph{minimax over the moment class}
+$\mathcal P(\bm\Sigma_d)$, not distribution-free: a reconstructor exploiting higher moments the true
+(non-Gaussian) $\bm d$ happens to carry could beat $a_{s,\ell}^2$ under the \emph{true} prior, not
+the least-favourable one. The certified quantity is the \emph{dipolar} functional $\theta_\ell$,
+where the algebra is exact; a floor on the \emph{full} lead $\bm e_\ell^\top\bm L_s$ would require
+bounding $\operatorname{tr}\mathrm{Cov}(\bm r_\ell\mid\bm y_S)$, which we decline to certify and
+instead meter empirically with the distribution-free intervals of Sec.~\ref{sec:calib}. So
+``no estimator beats $a_{s,\ell}(S)$ over the moment class'' is a target-specific, finite-sample
+statement about the identifiable dipolar component; we verify it numerically under the
+least-favourable Gaussian prior (\texttt{tests/test\_floor.py}: zero floor violations). On real ECG
+the floor is \emph{operational and tight}: the theoretical ambiguity $a_{s,\ell}$ strongly predicts
+the measured per-lead dipolar error (Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$;
+Fig.~\ref{fig:certval}), the identifiable/unidentifiable split is separated with AUC
+$\CertValAUC$, and the pure-dipolar reconstructor is bounded by the floor while data-driven
+reconstructors sit right at it (median gap $\CertValFloorGap$\,mV)---beating the moment-class worst
+case only marginally by exploiting non-Gaussian population structure, exactly the residual the
+calibrated intervals of Sec.~\ref{sec:calib} meter. This turns the empirically similar total error
+across reconstructors (Sec.~\ref{sec:exp}) into a target-specific certified minimax floor.

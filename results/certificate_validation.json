@@ -1,0 +1,2860 @@
+{
+  "n_train": 1500,
+  "n_test": 963,
+  "eta_zero_tol": 0.001,
+  "metric": "per-lead dipolar-projection RMSE (mV): e_l^T (M_s M_s^+)(Lhat-Ltrue)",
+  "configs": [
+    "Lead-I",
+    "Lead-II",
+    "{I,II,V2}",
+    "{I,II,V1,V3,V5}",
+    "limb-6"
+  ],
+  "segments": [
+    "QRS",
+    "ST",
+    "T"
+  ],
+  "n_cells": 132,
+  "correlations": {
+    "dipolar": {
+      "spearman_amb_rmse": 0.8128635483178056,
+      "spearman_amb_rmse_ci": [
+        0.7204,
+        0.8873
+      ],
+      "pearson_amb_rmse": 0.9330773056270574,
+      "spearman_etanorm_rmse": 0.6196791410052573,
+      "spearman_etanorm_rmse_ci": [
+        0.4954,
+        0.7105
+      ],
+      "spearman_kappa_rmse_within_identifiable": 0.5455137607775735,
+      "auc_eta_pos_predicts_large_error": 0.8717757936507936,
+      "median_rmse_eta0": 0.04012,
+      "median_rmse_etapos": 0.12631,
+      "floor_violation_frac": 0.1364,
+      "floor_gap_median_mV": 0.03136
+    },
+    "ridge": {
+      "spearman_amb_rmse": 0.8277014212469894,
+      "spearman_amb_rmse_ci": [
+        0.7403,
+        0.9005
+      ],
+      "pearson_amb_rmse": 0.9437252478774887,
+      "spearman_etanorm_rmse": 0.6542639684669376,
+      "spearman_etanorm_rmse_ci": [
+        0.5412,
+        0.7375
+      ],
+      "spearman_kappa_rmse_within_identifiable": 0.40433154268976573,
+      "auc_eta_pos_predicts_large_error": 0.8752480158730159,
+      "median_rmse_eta0": 0.03087,
+      "median_rmse_etapos": 0.10895,
+      "floor_violation_frac": 0.3788,
+      "floor_gap_median_mV": 0.00856
+    },
+    "ols": {
+      "spearman_amb_rmse": 0.8277014212469894,
+      "spearman_amb_rmse_ci": [
+        0.7403,
+        0.9005
+      ],
+      "pearson_amb_rmse": 0.9437301316135305,
+      "spearman_etanorm_rmse": 0.6542639684669376,
+      "spearman_etanorm_rmse_ci": [
+        0.5412,
+        0.7375
+      ],
+      "spearman_kappa_rmse_within_identifiable": 0.40433154268976573,
+      "auc_eta_pos_predicts_large_error": 0.8752480158730159,
+      "median_rmse_eta0": 0.03086,
+      "median_rmse_etapos": 0.10895,
+      "floor_violation_frac": 0.3788,
+      "floor_gap_median_mV": 0.00855
+    }
+  },
+  "cells": [
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "II",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.37574,
+      "eta_normalized": 0.99729,
+      "kappa": 0.0634,
+      "amb_mV": 0.21957,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.29712,
+        "ridge": 0.20682,
+        "ols": 0.20681
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "III",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.37574,
+      "eta_normalized": 0.62868,
+      "kappa": 1.0634,
+      "amb_mV": 0.21957,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.30508,
+        "ridge": 0.19972,
+        "ols": 0.19972
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "aVR",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.18812,
+      "eta_normalized": 0.67723,
+      "kappa": 0.4676,
+      "amb_mV": 0.10993,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.15183,
+        "ridge": 0.11648,
+        "ols": 0.11648
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "aVL",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.18805,
+      "eta_normalized": 0.38492,
+      "kappa": 1.0316,
+      "amb_mV": 0.10989,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.16302,
+        "ridge": 0.10689,
+        "ols": 0.10689
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "aVF",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.37551,
+      "eta_normalized": 0.83634,
+      "kappa": 0.5632,
+      "amb_mV": 0.21943,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.29921,
+        "ridge": 0.20052,
+        "ols": 0.20052
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "V1",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.33284,
+      "eta_normalized": 0.73637,
+      "kappa": 0.6997,
+      "amb_mV": 0.22753,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.22181,
+        "ridge": 0.22173,
+        "ols": 0.22173
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "V2",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.7157,
+      "eta_normalized": 0.99879,
+      "kappa": 0.0807,
+      "amb_mV": 0.4918,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.46492,
+        "ridge": 0.46453,
+        "ols": 0.46453
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "V3",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.61032,
+      "eta_normalized": 0.99762,
+      "kappa": 0.0964,
+      "amb_mV": 0.42362,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.45068,
+        "ridge": 0.40759,
+        "ols": 0.40759
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "V4",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.51424,
+      "eta_normalized": 0.93834,
+      "kappa": 0.4335,
+      "amb_mV": 0.32369,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.43417,
+        "ridge": 0.32499,
+        "ols": 0.32499
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "V5",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.39339,
+      "eta_normalized": 0.80614,
+      "kappa": 0.6607,
+      "amb_mV": 0.23222,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.33028,
+        "ridge": 0.24022,
+        "ols": 0.24022
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "QRS",
+      "lead": "V6",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.30194,
+      "eta_normalized": 0.75047,
+      "kappa": 0.6084,
+      "amb_mV": 0.17704,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.23744,
+        "ridge": 0.18182,
+        "ols": 0.18181
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "I",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.43588,
+      "eta_normalized": 0.99729,
+      "kappa": 0.0854,
+      "amb_mV": 0.19816,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.26709,
+        "ridge": 0.1831,
+        "ols": 0.1831
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "III",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.43588,
+      "eta_normalized": 0.7293,
+      "kappa": 1.0854,
+      "amb_mV": 0.19816,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.27625,
+        "ridge": 0.175,
+        "ols": 0.175
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "aVR",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.21766,
+      "eta_normalized": 0.7836,
+      "kappa": 0.458,
+      "amb_mV": 0.09895,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.13974,
+        "ridge": 0.11016,
+        "ols": 0.11016
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "aVL",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.43583,
+      "eta_normalized": 0.89212,
+      "kappa": 0.5858,
+      "amb_mV": 0.19813,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.26882,
+        "ridge": 0.17465,
+        "ols": 0.17465
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "aVF",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.21784,
+      "eta_normalized": 0.48518,
+      "kappa": 1.042,
+      "amb_mV": 0.09903,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.15389,
+        "ridge": 0.10106,
+        "ols": 0.10106
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "V1",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.43396,
+      "eta_normalized": 0.96009,
+      "kappa": 0.3356,
+      "amb_mV": 0.23002,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.23986,
+        "ridge": 0.22299,
+        "ols": 0.22299
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "V2",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.65636,
+      "eta_normalized": 0.91597,
+      "kappa": 0.7631,
+      "amb_mV": 0.46399,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.45587,
+        "ridge": 0.44739,
+        "ols": 0.4474
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "V3",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.60126,
+      "eta_normalized": 0.98281,
+      "kappa": 0.2997,
+      "amb_mV": 0.43511,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.43117,
+        "ridge": 0.4182,
+        "ols": 0.41819
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "V4",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.39958,
+      "eta_normalized": 0.72912,
+      "kappa": 0.9955,
+      "amb_mV": 0.27887,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.31463,
+        "ridge": 0.28799,
+        "ols": 0.28798
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "V5",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.33433,
+      "eta_normalized": 0.68513,
+      "kappa": 0.9435,
+      "amb_mV": 0.17802,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.24358,
+        "ridge": 0.20205,
+        "ols": 0.20205
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "QRS",
+      "lead": "V6",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.28835,
+      "eta_normalized": 0.71668,
+      "kappa": 0.7447,
+      "amb_mV": 0.12801,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.1839,
+        "ridge": 0.15007,
+        "ols": 0.15007
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "III",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.4142,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.02465,
+        "ridge": 0.02321,
+        "ols": 0.02321
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "aVR",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.7071,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.07458,
+        "ridge": 0.06997,
+        "ols": 0.06997
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "aVL",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1181,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.0287,
+        "ridge": 0.0277,
+        "ols": 0.02771
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "aVF",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1174,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.05153,
+        "ridge": 0.04783,
+        "ols": 0.04782
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "V1",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.8077,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.05805,
+        "ridge": 0.0566,
+        "ols": 0.0566
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "V3",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.3903,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.17627,
+        "ridge": 0.1632,
+        "ols": 0.1632
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.6253,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.19145,
+        "ridge": 0.17736,
+        "ols": 0.17736
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "V5",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.369,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.15326,
+        "ridge": 0.14288,
+        "ols": 0.14288
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "QRS",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.013,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.10557,
+        "ridge": 0.09916,
+        "ols": 0.09916
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "QRS",
+      "lead": "III",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.3832,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.0441,
+        "ridge": 0.02044,
+        "ols": 0.02045
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "QRS",
+      "lead": "aVR",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.3954,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.02569,
+        "ridge": 0.02483,
+        "ols": 0.02482
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "QRS",
+      "lead": "aVL",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.0638,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.0342,
+        "ridge": 0.01053,
+        "ols": 0.01053
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "QRS",
+      "lead": "aVF",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.048,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03692,
+        "ridge": 0.02615,
+        "ols": 0.02616
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "QRS",
+      "lead": "V2",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.2472,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.12054,
+        "ridge": 0.10718,
+        "ols": 0.10719
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "QRS",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.7919,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.05109,
+        "ridge": 0.04743,
+        "ols": 0.04743
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "QRS",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.5865,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03945,
+        "ridge": 0.039,
+        "ols": 0.039
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "QRS",
+      "lead": "V1",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.29746,
+      "eta_normalized": 0.65809,
+      "kappa": 0.6085,
+      "amb_mV": 0.20826,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.22611,
+        "ridge": 0.21021,
+        "ols": 0.21012
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "QRS",
+      "lead": "V2",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.65392,
+      "eta_normalized": 0.91256,
+      "kappa": 0.5226,
+      "amb_mV": 0.45783,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.46671,
+        "ridge": 0.44004,
+        "ols": 0.44001
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "QRS",
+      "lead": "V3",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.59913,
+      "eta_normalized": 0.97933,
+      "kappa": 0.2353,
+      "amb_mV": 0.41947,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.4208,
+        "ridge": 0.40392,
+        "ols": 0.40392
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "QRS",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.33511,
+      "eta_normalized": 0.61148,
+      "kappa": 0.8385,
+      "amb_mV": 0.23462,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.25964,
+        "ridge": 0.25667,
+        "ols": 0.2565
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "QRS",
+      "lead": "V5",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.10988,
+      "eta_normalized": 0.22517,
+      "kappa": 0.9287,
+      "amb_mV": 0.07693,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.14988,
+        "ridge": 0.14894,
+        "ols": 0.1486
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "QRS",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.02418,
+      "eta_normalized": 0.06011,
+      "kappa": 0.7818,
+      "amb_mV": 0.01693,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.11202,
+        "ridge": 0.10611,
+        "ols": 0.10577
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "II",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.52651,
+      "eta_normalized": 0.98353,
+      "kappa": 0.3565,
+      "amb_mV": 0.08946,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.08653,
+        "ridge": 0.08665,
+        "ols": 0.08666
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "III",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.52652,
+      "eta_normalized": 0.94914,
+      "kappa": 0.6435,
+      "amb_mV": 0.08946,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.08522,
+        "ridge": 0.07522,
+        "ols": 0.07522
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "aVR",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.26403,
+      "eta_normalized": 0.82066,
+      "kappa": 0.6773,
+      "amb_mV": 0.04486,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.05903,
+        "ridge": 0.05626,
+        "ols": 0.05626
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "aVL",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.26385,
+      "eta_normalized": 0.76385,
+      "kappa": 0.8214,
+      "amb_mV": 0.04483,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.05784,
+        "ridge": 0.04232,
+        "ols": 0.04232
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "aVF",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.52577,
+      "eta_normalized": 0.99727,
+      "kappa": 0.1434,
+      "amb_mV": 0.08933,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.08086,
+        "ridge": 0.07824,
+        "ols": 0.07825
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "V1",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.31391,
+      "eta_normalized": 0.80245,
+      "kappa": 0.8601,
+      "amb_mV": 0.0848,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09459,
+        "ridge": 0.07662,
+        "ols": 0.07662
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "V2",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.71767,
+      "eta_normalized": 0.9778,
+      "kappa": 0.5667,
+      "amb_mV": 0.19543,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.18789,
+        "ridge": 0.17323,
+        "ols": 0.17323
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "V3",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.56998,
+      "eta_normalized": 0.96878,
+      "kappa": 0.5375,
+      "amb_mV": 0.1544,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.1524,
+        "ridge": 0.15107,
+        "ols": 0.15106
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "V4",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.28924,
+      "eta_normalized": 0.58592,
+      "kappa": 1.4739,
+      "amb_mV": 0.0744,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.1104,
+        "ridge": 0.10775,
+        "ols": 0.10774
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "V5",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.04816,
+      "eta_normalized": 0.0882,
+      "kappa": 2.004,
+      "amb_mV": 0.01305,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.10942,
+        "ridge": 0.08554,
+        "ols": 0.08552
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "ST",
+      "lead": "V6",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.07321,
+      "eta_normalized": 0.14597,
+      "kappa": 1.828,
+      "amb_mV": 0.0187,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.10128,
+        "ridge": 0.06919,
+        "ols": 0.06918
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "I",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.26695,
+      "eta_normalized": 0.98353,
+      "kappa": 0.0916,
+      "amb_mV": 0.06004,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.05872,
+        "ridge": 0.05295,
+        "ols": 0.05294
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "III",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.26694,
+      "eta_normalized": 0.48121,
+      "kappa": 0.9084,
+      "amb_mV": 0.06004,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.06607,
+        "ridge": 0.05761,
+        "ols": 0.05761
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "aVR",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.13309,
+      "eta_normalized": 0.41367,
+      "kappa": 0.5472,
+      "amb_mV": 0.02994,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.03277,
+        "ridge": 0.03165,
+        "ols": 0.03164
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "aVL",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.26695,
+      "eta_normalized": 0.77283,
+      "kappa": 0.4095,
+      "amb_mV": 0.06004,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.06081,
+        "ridge": 0.05342,
+        "ols": 0.05342
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "aVF",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.1333,
+      "eta_normalized": 0.25284,
+      "kappa": 0.9528,
+      "amb_mV": 0.02999,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.04169,
+        "ridge": 0.03706,
+        "ols": 0.03706
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "V1",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.37672,
+      "eta_normalized": 0.96301,
+      "kappa": 0.1969,
+      "amb_mV": 0.08811,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.07533,
+        "ridge": 0.07563,
+        "ols": 0.07563
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "V2",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.72672,
+      "eta_normalized": 0.99012,
+      "kappa": 0.1923,
+      "amb_mV": 0.1956,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.17558,
+        "ridge": 0.17441,
+        "ols": 0.17441
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "V3",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.58016,
+      "eta_normalized": 0.98608,
+      "kappa": 0.1827,
+      "amb_mV": 0.16907,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.16157,
+        "ridge": 0.15662,
+        "ols": 0.15662
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "V4",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.45693,
+      "eta_normalized": 0.92564,
+      "kappa": 0.349,
+      "amb_mV": 0.12541,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.12902,
+        "ridge": 0.11907,
+        "ols": 0.11906
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "V5",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.536,
+      "eta_normalized": 0.9816,
+      "kappa": 0.1948,
+      "amb_mV": 0.12416,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.1236,
+        "ridge": 0.11123,
+        "ols": 0.11122
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "ST",
+      "lead": "V6",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.49802,
+      "eta_normalized": 0.99305,
+      "kappa": 0.1103,
+      "amb_mV": 0.10785,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.10205,
+        "ridge": 0.09269,
+        "ols": 0.09269
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "III",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.4142,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.02657,
+        "ridge": 0.01872,
+        "ols": 0.01872
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "aVR",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.7071,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.04174,
+        "ridge": 0.03069,
+        "ols": 0.03068
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "aVL",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1185,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.04005,
+        "ridge": 0.0286,
+        "ols": 0.0286
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "aVF",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1165,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.00729,
+        "ridge": 0.00706,
+        "ols": 0.00705
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "V1",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.7367,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.0369,
+        "ridge": 0.02884,
+        "ols": 0.02883
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "V3",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.2226,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.08294,
+        "ridge": 0.06942,
+        "ols": 0.06941
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.652,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.103,
+        "ridge": 0.07786,
+        "ols": 0.07785
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "V5",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 2.0356,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.11238,
+        "ridge": 0.08176,
+        "ols": 0.08175
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "ST",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.8051,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.09446,
+        "ridge": 0.06785,
+        "ols": 0.06784
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "ST",
+      "lead": "III",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.0984,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03568,
+        "ridge": 0.0094,
+        "ols": 0.00939
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "ST",
+      "lead": "aVR",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.5227,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.01903,
+        "ridge": 0.01452,
+        "ols": 0.01452
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "ST",
+      "lead": "aVL",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.6679,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.02391,
+        "ridge": 0.0133,
+        "ols": 0.01329
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "ST",
+      "lead": "aVF",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.0225,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03173,
+        "ridge": 0.00558,
+        "ols": 0.00557
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "ST",
+      "lead": "V2",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1613,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.06834,
+        "ridge": 0.06184,
+        "ols": 0.06183
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "ST",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.6985,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03088,
+        "ridge": 0.0324,
+        "ols": 0.03239
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "ST",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.7854,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03556,
+        "ridge": 0.03489,
+        "ols": 0.03489
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "ST",
+      "lead": "V1",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.30723,
+      "eta_normalized": 0.78537,
+      "kappa": 0.5458,
+      "amb_mV": 0.08379,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09503,
+        "ridge": 0.07508,
+        "ols": 0.07487
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "ST",
+      "lead": "V2",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.71358,
+      "eta_normalized": 0.97222,
+      "kappa": 0.3711,
+      "amb_mV": 0.19461,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.18891,
+        "ridge": 0.17279,
+        "ols": 0.17236
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "ST",
+      "lead": "V3",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.56535,
+      "eta_normalized": 0.96091,
+      "kappa": 0.3517,
+      "amb_mV": 0.15418,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.1507,
+        "ridge": 0.14973,
+        "ols": 0.14952
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "ST",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.26483,
+      "eta_normalized": 0.53647,
+      "kappa": 0.937,
+      "amb_mV": 0.07222,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.10789,
+        "ridge": 0.10254,
+        "ols": 0.1026
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "ST",
+      "lead": "V5",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.04785,
+      "eta_normalized": 0.08763,
+      "kappa": 1.2384,
+      "amb_mV": 0.01305,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.10939,
+        "ridge": 0.08345,
+        "ols": 0.08352
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "ST",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.06618,
+      "eta_normalized": 0.13197,
+      "kappa": 1.1239,
+      "amb_mV": 0.01805,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.10093,
+        "ridge": 0.06844,
+        "ols": 0.06844
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "II",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.52669,
+      "eta_normalized": 0.98377,
+      "kappa": 0.332,
+      "amb_mV": 0.0915,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09778,
+        "ridge": 0.09519,
+        "ols": 0.09519
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "III",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.52671,
+      "eta_normalized": 0.93876,
+      "kappa": 0.6681,
+      "amb_mV": 0.0915,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09527,
+        "ridge": 0.07724,
+        "ols": 0.07724
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "aVR",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.26419,
+      "eta_normalized": 0.80837,
+      "kappa": 0.6648,
+      "amb_mV": 0.04589,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.06407,
+        "ridge": 0.06404,
+        "ols": 0.06403
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "aVL",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.26375,
+      "eta_normalized": 0.73789,
+      "kappa": 0.8336,
+      "amb_mV": 0.04582,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.06171,
+        "ridge": 0.04221,
+        "ols": 0.0422
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "aVF",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.52607,
+      "eta_normalized": 0.99576,
+      "kappa": 0.168,
+      "amb_mV": 0.09139,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09192,
+        "ridge": 0.08331,
+        "ols": 0.08331
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "V1",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.29346,
+      "eta_normalized": 0.77063,
+      "kappa": 0.8386,
+      "amb_mV": 0.07327,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09525,
+        "ridge": 0.06479,
+        "ols": 0.06479
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "V2",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.73871,
+      "eta_normalized": 0.99167,
+      "kappa": 0.3315,
+      "amb_mV": 0.1876,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.21707,
+        "ridge": 0.18057,
+        "ols": 0.18056
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "V3",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.56556,
+      "eta_normalized": 0.95682,
+      "kappa": 0.5937,
+      "amb_mV": 0.14384,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.17874,
+        "ridge": 0.16446,
+        "ols": 0.16444
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "V4",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.26489,
+      "eta_normalized": 0.5852,
+      "kappa": 1.2684,
+      "amb_mV": 0.065,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.11208,
+        "ridge": 0.11333,
+        "ols": 0.11331
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "V5",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.02419,
+      "eta_normalized": 0.04162,
+      "kappa": 2.0068,
+      "amb_mV": 0.006,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.1118,
+        "ridge": 0.08873,
+        "ols": 0.08871
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-I",
+      "segment": "T",
+      "lead": "V6",
+      "observed": [
+        "I"
+      ],
+      "eta": 0.08145,
+      "eta_normalized": 0.17811,
+      "kappa": 1.5549,
+      "amb_mV": 0.01924,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.0897,
+        "ridge": 0.06725,
+        "ols": 0.06724
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "I",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.28469,
+      "eta_normalized": 0.98377,
+      "kappa": 0.097,
+      "amb_mV": 0.0636,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.07192,
+        "ridge": 0.05805,
+        "ols": 0.05805
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "III",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.28471,
+      "eta_normalized": 0.50743,
+      "kappa": 0.903,
+      "amb_mV": 0.0636,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.07771,
+        "ridge": 0.06071,
+        "ols": 0.06072
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "aVR",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.14186,
+      "eta_normalized": 0.43407,
+      "kappa": 0.5499,
+      "amb_mV": 0.03169,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.03953,
+        "ridge": 0.03556,
+        "ols": 0.03554
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "aVL",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.28466,
+      "eta_normalized": 0.79637,
+      "kappa": 0.4038,
+      "amb_mV": 0.06359,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.07328,
+        "ridge": 0.05738,
+        "ols": 0.05738
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "aVF",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.14221,
+      "eta_normalized": 0.26918,
+      "kappa": 0.9504,
+      "amb_mV": 0.03177,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.04703,
+        "ridge": 0.03857,
+        "ols": 0.03857
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "V1",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.3635,
+      "eta_normalized": 0.95457,
+      "kappa": 0.212,
+      "amb_mV": 0.07346,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.06488,
+        "ridge": 0.06442,
+        "ols": 0.06442
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "V2",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.74043,
+      "eta_normalized": 0.99398,
+      "kappa": 0.1525,
+      "amb_mV": 0.20484,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.20751,
+        "ridge": 0.1873,
+        "ols": 0.1873
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "V3",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.5808,
+      "eta_normalized": 0.98261,
+      "kappa": 0.205,
+      "amb_mV": 0.18096,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.19615,
+        "ridge": 0.16986,
+        "ols": 0.16984
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "V4",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.41864,
+      "eta_normalized": 0.92488,
+      "kappa": 0.3215,
+      "amb_mV": 0.12566,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.14522,
+        "ridge": 0.1197,
+        "ols": 0.11968
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "V5",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.57329,
+      "eta_normalized": 0.98633,
+      "kappa": 0.1789,
+      "amb_mV": 0.12501,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.14037,
+        "ridge": 0.11364,
+        "ols": 0.11362
+      },
+      "n_records": 962
+    },
+    {
+      "config": "Lead-II",
+      "segment": "T",
+      "lead": "V6",
+      "observed": [
+        "II"
+      ],
+      "eta": 0.44146,
+      "eta_normalized": 0.96538,
+      "kappa": 0.2228,
+      "amb_mV": 0.0894,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09756,
+        "ridge": 0.08098,
+        "ols": 0.08096
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "III",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.4143,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.02535,
+        "ridge": 0.01797,
+        "ols": 0.01798
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "aVR",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.707,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.04355,
+        "ridge": 0.03327,
+        "ols": 0.03326
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "aVL",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1183,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.04019,
+        "ridge": 0.02952,
+        "ols": 0.02953
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "aVF",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1168,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.00706,
+        "ridge": 0.00677,
+        "ols": 0.00675
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "V1",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.7885,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.04035,
+        "ridge": 0.03011,
+        "ols": 0.03011
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "V3",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1061,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.08191,
+        "ridge": 0.07047,
+        "ols": 0.07047
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.3592,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.0898,
+        "ridge": 0.07069,
+        "ols": 0.07068
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "V5",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 2.0036,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.11031,
+        "ridge": 0.0824,
+        "ols": 0.08239
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V2}",
+      "segment": "T",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.5065,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.0837,
+        "ridge": 0.06206,
+        "ols": 0.06205
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "T",
+      "lead": "III",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.0894,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03768,
+        "ridge": 0.00666,
+        "ols": 0.00666
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "T",
+      "lead": "aVR",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.5226,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.01955,
+        "ridge": 0.01457,
+        "ols": 0.01457
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "T",
+      "lead": "aVL",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.6602,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.02464,
+        "ridge": 0.01134,
+        "ols": 0.01134
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "T",
+      "lead": "aVF",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.0165,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03409,
+        "ridge": 0.00479,
+        "ols": 0.0048
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "T",
+      "lead": "V2",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 1.1964,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.07879,
+        "ridge": 0.07041,
+        "ols": 0.07041
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "T",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.6341,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.03099,
+        "ridge": 0.03105,
+        "ols": 0.03104
+      },
+      "n_records": 962
+    },
+    {
+      "config": "{I,II,V1,V3,V5}",
+      "segment": "T",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "eta": 0.0,
+      "eta_normalized": 0.0,
+      "kappa": 0.6403,
+      "amb_mV": 0.0,
+      "eta_zero": true,
+      "measured_rmse_mV": {
+        "dipolar": 0.02897,
+        "ridge": 0.02901,
+        "ols": 0.02901
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "T",
+      "lead": "V1",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.2847,
+      "eta_normalized": 0.74764,
+      "kappa": 0.5367,
+      "amb_mV": 0.07256,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.09871,
+        "ridge": 0.06418,
+        "ols": 0.0642
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "T",
+      "lead": "V2",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.73579,
+      "eta_normalized": 0.98776,
+      "kappa": 0.2276,
+      "amb_mV": 0.18752,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.22122,
+        "ridge": 0.17981,
+        "ols": 0.18006
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "T",
+      "lead": "V3",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.55985,
+      "eta_normalized": 0.94717,
+      "kappa": 0.3909,
+      "amb_mV": 0.14268,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.17301,
+        "ridge": 0.15725,
+        "ols": 0.15755
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "T",
+      "lead": "V4",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.24189,
+      "eta_normalized": 0.5344,
+      "kappa": 0.8118,
+      "amb_mV": 0.06165,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.10566,
+        "ridge": 0.10276,
+        "ols": 0.10301
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "T",
+      "lead": "V5",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.02258,
+      "eta_normalized": 0.03884,
+      "kappa": 1.2374,
+      "amb_mV": 0.00575,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.1117,
+        "ridge": 0.08457,
+        "ols": 0.08471
+      },
+      "n_records": 962
+    },
+    {
+      "config": "limb-6",
+      "segment": "T",
+      "lead": "V6",
+      "observed": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "eta": 0.07138,
+      "eta_normalized": 0.1561,
+      "kappa": 0.9686,
+      "amb_mV": 0.01819,
+      "eta_zero": false,
+      "measured_rmse_mV": {
+        "dipolar": 0.0902,
+        "ridge": 0.06207,
+        "ols": 0.06214
+      },
+      "n_records": 962
+    }
+  ],
+  "lineage": {
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "certificate_validation.py",
+    "experiment_script_sha256": "6916974c8a4c5dea",
+    "seed": 0,
+    "targets": [
+      "I",
+      "II",
+      "III",
+      "aVR",
+      "aVL",
+      "aVF",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV segment samples; dipolar-projection per-lead error",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
+    },
+    "n_train": 1500,
+    "n_test": 963,
+    "train_ids_sha256": "4fd528172c55d714",
+    "test_ids_sha256": "3876ca031f65c258",
+    "checkpoint_sha256": null,
+    "metric": "dipolar_projection_per_lead_rmse_mV",
+    "configs": [
+      "Lead-I",
+      "Lead-II",
+      "{I,II,V2}",
+      "{I,II,V1,V3,V5}",
+      "limb-6"
+    ]
+  }
+}

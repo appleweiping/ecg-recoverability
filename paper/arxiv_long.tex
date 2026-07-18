@@ -1,6 +1,7 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,graphicx,booktabs,bm,amsthm}
+\usepackage{enumitem}
 \usepackage{cite}
 \usepackage[hidelinks]{hyperref}
 
@@ -98,6 +99,7 @@ distribution-free intervals under exchangeability; we apply Mondrian CQR per $(S
 \section{The Recoverability Certificate}
 \label{sec:cert}
 \input{theorem_corrected}
+\input{theorem_floor}
 
 \section{Distribution-Free Calibration}
 \label{sec:calib}
@@ -110,6 +112,29 @@ distribution-free intervals under exchangeability; we apply Mondrian CQR per $(S
 deterministic function of the estimated $\bm\mu_s,\bm M_s$ (record-level bootstrap CIs), not a
 held-out evaluation. All table numbers regenerate from result JSON via
 \texttt{paper/emit\_baseline\_table.py}.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../results/certificate_validation.png}
+  \caption{\textbf{The certificate is operational.} Across $\CertValNcells$ (config, segment,
+  target-lead) cells on held-out fold-10 records, the theoretical per-lead expected ambiguity
+  $a_{s,\ell}(S)$ predicts the \emph{measured} per-lead dipolar-projection error of the dipolar,
+  ridge, and OLS reconstructors. (a) Calibration against the certified minimax floor (Thm.~\ref{thm:floor},
+  $y{=}x$): points track and sit on/above the floor (Spearman $\CertValSpearAmb$, Pearson
+  $\CertValPearAmb$); the near-optimal ridge/OLS achieve it (median gap $\CertValFloorGap$\,mV) while the
+  pure-dipolar reconstructor is bounded by it. (b) The binary verdict separates recoverability: median
+  dipolar error $\CertValMedIdent$\,mV for identifiable ($\eta{=}0$) vs $\CertValMedUnident$\,mV for
+  unidentifiable ($\eta{>}0$) leads (AUC $\CertValAUC$). Regenerated from
+  \texttt{results/certificate\_validation.json}.}
+  \label{fig:certval}
+\end{figure}
+
+\textbf{The certificate predicts measured error.} On held-out records the theoretical expected
+ambiguity $a_{s,\ell}$ and the measured per-lead dipolar-projection RMSE are strongly rank- and
+value-correlated (Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$; Fig.~\ref{fig:certval}a),
+the identifiability verdict $\eta{>}0$ predicts a large measured error with AUC $\CertValAUC$, and
+$\kappa$ predicts the residual error \emph{within} the identifiable regime---so the map is not a
+formal artifact but an operational predictor of what each reconstructor can and cannot recover.
 \input{results_v2_maps}
 \input{results_v2_baseline}
 
