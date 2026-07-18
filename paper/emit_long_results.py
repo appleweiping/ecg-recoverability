@@ -157,10 +157,17 @@ def main():
             m.append(r"\newcommand{\CertValPearAmb}{" + f"{dp['pearson_amb_rmse']:.2f}" + "}")
         if dp.get("auc_eta_pos_predicts_large_error") is not None:
             m.append(r"\newcommand{\CertValAUC}{" + f"{dp['auc_eta_pos_predicts_large_error']:.2f}" + "}")
-        # tightest achieved floor gap across reconstructors (mV), + median split
-        gaps = [c.get("floor_gap_median_mV") for c in cc.values() if c.get("floor_gap_median_mV") is not None]
-        if gaps:
-            m.append(r"\newcommand{\CertValFloorGap}{" + f"{min(gaps):.3f}" + "}")
+        # Honest floor relation: a_l is a MINIMAX (worst-case-prior) lower bound, NOT an empirical
+        # envelope. Report the fraction of NON-TRIVIAL (eta>0) cells where each estimator BEATS the
+        # worst-case floor by exploiting non-Gaussian population structure (the metered Tier-II
+        # residual). "Sits above the floor" is false; the diluted all-cell median gap is dropped.
+        rg = cc.get("ridge", {})
+        if dp.get("floor_violation_frac_etapos") is not None:
+            m.append(r"\newcommand{\CertValViolDip}{" + f"{dp['floor_violation_frac_etapos']:.2f}" + "}")
+        if rg.get("floor_violation_frac_etapos") is not None:
+            m.append(r"\newcommand{\CertValViolRidge}{" + f"{rg['floor_violation_frac_etapos']:.2f}" + "}")
+        if dp.get("n_etapos") is not None:
+            m.append(r"\newcommand{\CertValNetaPos}{" + str(dp["n_etapos"]) + "}")
         if dp.get("median_rmse_eta0") is not None and dp.get("median_rmse_etapos") is not None:
             m += [r"\newcommand{\CertValMedIdent}{" + f"{dp['median_rmse_eta0']:.3f}" + "}",
                   r"\newcommand{\CertValMedUnident}{" + f"{dp['median_rmse_etapos']:.3f}" + "}"]
@@ -191,21 +198,27 @@ def main():
     if tb:
         seg = tb["segments"]
         q, st = seg["QRS"], seg["ST"]
-        lo, hi = tb["summary"]["realized_lipschitz_range"]
+        st_lip_ci = tb["summary"].get("st_lipschitz_ci") or [0.0, 0.0]
         m += [r"\newcommand{\TransferAngleQRS}{" + f"{q['theta_star_deg']:.1f}" + "}",
               r"\newcommand{\TransferAngleST}{" + f"{st['theta_star_deg']:.1f}" + "}",
               r"\newcommand{\TransferDriftQRS}{" + f"{q['empirical_drift']:.3f}" + "}",
               r"\newcommand{\TransferDriftST}{" + f"{st['empirical_drift']:.3f}" + "}",
-              r"\newcommand{\TransferLipLo}{" + f"{lo:.2f}" + "}",
-              r"\newcommand{\TransferLipHi}{" + f"{hi:.2f}" + "}"]
+              r"\newcommand{\TransferLipQRS}{" + f"{q['realized_lipschitz']:.2f}" + "}",
+              # honest: the ST drift is nearly unconstrained (target-cohort eta CI ~ [0,1])
+              r"\newcommand{\TransferSTLipLo}{" + f"{st_lip_ci[0]:.2f}" + "}",
+              r"\newcommand{\TransferSTLipHi}{" + f"{st_lip_ci[1]:.2f}" + "}"]
 
     # ---------- learned-model floor binding: DDPM vs certified floor a_l ----------
+    # Honest: report on the NON-TRIVIAL eta>0 cells; the DDPM does not violate because its dipolar
+    # error is far LOOSER than a_l (median RMSE vs median floor), not because the floor binds tightly.
     cfd = srcs["certificate_floor_diffusion.json"]
     if cfd:
         f = cfd["floor"]
-        m += [r"\newcommand{\FloorDiffViol}{" + f"{f['floor_violation_frac']:.2f}" + "}",
-              r"\newcommand{\FloorDiffNcells}{" + str(f["n_cells"]) + "}",
-              r"\newcommand{\FloorDiffGap}{" + f"{f['floor_gap_median_mV']:.3f}" + "}",
+        m += [r"\newcommand{\FloorDiffViol}{" + f"{f['floor_violation_frac_etapos']:.2f}" + "}",
+              r"\newcommand{\FloorDiffNcells}{" + str(f["n_etapos"]) + "}",
+              r"\newcommand{\FloorDiffGap}{" + f"{f['floor_gap_median_etapos_mV']:.3f}" + "}",
+              r"\newcommand{\FloorDiffRmsePos}{" + f"{f['median_rmse_etapos']:.3f}" + "}",
+              r"\newcommand{\FloorDiffAmbPos}{" + f"{f['median_amb_etapos']:.3f}" + "}",
               r"\newcommand{\FloorDiffEtaZero}{" + f"{f['median_rmse_eta0']:.3f}" + "}",
               r"\newcommand{\FloorDiffEtaPos}{" + f"{f['median_rmse_etapos']:.3f}" + "}"]
 

@@ -2,8 +2,10 @@
 \label{sec:floor}
 Proposition~\ref{thm:perlead} says \emph{whether} a target lead's dipolar coordinate is recoverable
 ($\eta{=}0$) and \emph{how well-conditioned} the estimate is ($\kappa$). We now turn the binary
-verdict into a \emph{quantitative} per-lead risk floor in physical units that lower-bounds
-\emph{every} reconstructor, linear or learned. Fix segment $s$ and observed set $S$; write the
+verdict into a \emph{quantitative} per-lead risk floor in physical units that lower-bounds the
+\emph{worst-case} risk of every reconstructor---linear or learned---under the least-favourable prior
+in the moment class (an estimator may still beat it on a benign true prior; Fig.~\ref{fig:certval}).
+Fix segment $s$ and observed set $S$; write the
 dipole prior second moment $\bm\Sigma_d=\mathbb E[\bm d\bm d^\top]$, the observed-dipole row-space
 projector $\bm P=\bm M_{s,S}^{+}\bm M_{s,S}$, and $\bm Q=\bm I-\bm P$. The target is the dipolar
 functional of lead $\ell$, $\theta_\ell=\bm e_\ell^\top\bm M_s\bm d$, and the prior-conditional
@@ -65,20 +67,24 @@ instead meter empirically with the distribution-free intervals of Sec.~\ref{sec:
 ``no estimator beats $a_{s,\ell}(S)$ over the moment class'' is a target-specific, finite-sample
 statement about the identifiable dipolar component; we verify it numerically under the
 least-favourable Gaussian prior (\texttt{tests/test\_floor.py}: zero floor violations). On real ECG
-the floor is \emph{operational and tight}: the theoretical ambiguity $a_{s,\ell}$ strongly predicts
-the measured per-lead dipolar error (Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$;
-Fig.~\ref{fig:certval}), the identifiable/unidentifiable split is separated with AUC
-$\CertValAUC$, and the pure-dipolar reconstructor is bounded by the floor while data-driven
-reconstructors sit right at it (median gap $\CertValFloorGap$\,mV)---beating the moment-class worst
-case only marginally by exploiting non-Gaussian population structure, exactly the residual the
-calibrated intervals of Sec.~\ref{sec:calib} meter. This turns the empirically similar total error
-across reconstructors (Sec.~\ref{sec:exp}) into a target-specific certified minimax floor.
-Crucially the floor also binds a \emph{learned} reconstructor: a trained arbitrary-mask diffusion
-model (DDPM, honest guidance $w{=}1$), evaluated against the \emph{same} floor on held-out records,
-sits above it in every one of $\FloorDiffNcells$ underdetermined cells (floor-violation fraction
-$\FloorDiffViol$, median gap $\FloorDiffGap$\,mV), and the certificate's identifiable/unidentifiable
-split predicts its error---median dipolar-projection RMSE $\FloorDiffEtaZero$\,mV where
-$\eta{=}0$ versus $\FloorDiffEtaPos$\,mV where $\eta{>}0$ (\texttt{experiments/certificate\_floor\_diffusion.py}).
-Notably the generative model does \emph{not} beat the moment-class floor at all, whereas the linear
-ridge does on a minority of cells---the worst-case bound is loose only for the estimator explicitly
-exploiting the non-Gaussian structure it excludes.
+the floor is \emph{operational} as a predictor: the theoretical ambiguity $a_{s,\ell}$ strongly
+predicts and ranks the measured per-lead dipolar error (Spearman $\CertValSpearAmb$, Pearson
+$\CertValPearAmb$; Fig.~\ref{fig:certval}), and the identifiable/unidentifiable split is separated
+with AUC $\CertValAUC$. It is, however, a \emph{minimax} floor and not an empirical envelope: on the
+true (non-Gaussian) prior, estimators exploiting predictable population structure beat the
+worst-case $a_{s,\ell}$ on a fraction of the $\CertValNetaPos$ non-trivial ($\eta{>}0$) cells---the
+pure-dipolar reconstructor on $\CertValViolDip$, ridge/OLS on $\CertValViolRidge$---and this
+below-floor gap is precisely the Tier-II predictable residual the calibrated intervals of
+Sec.~\ref{sec:calib} meter (the more an estimator exploits it, the further below the worst-case floor
+it sits). This is fully consistent with the theorem, which certifies the worst case over the moment
+class, not the risk on any single true prior. A \emph{learned} reconstructor illustrates the other
+extreme: a trained arbitrary-mask diffusion model (DDPM, honest guidance $w{=}1$), evaluated against
+the \emph{same} floor on held-out records, never dips below it on any of the $\FloorDiffNcells$
+non-trivial cells (violation fraction $\FloorDiffViol$)---but only because its dipolar-projection
+error is far \emph{looser} than the floor (median $\FloorDiffRmsePos$ vs floor $\FloorDiffAmbPos$\,mV),
+i.e.\ it leaves the exploitable structure on the table rather than being tightly bound by it. The
+certificate's $\eta$-split still predicts its error (median $\FloorDiffEtaZero$\,mV where $\eta{=}0$
+vs $\FloorDiffEtaPos$\,mV where $\eta{>}0$; \texttt{experiments/certificate\_floor\_diffusion.py}).
+So the certified quantity is a worst-case minimax floor that also \emph{predicts} per-lead error
+across linear and learned reconstructors, with the estimator-specific gap to it quantifying exploited
+non-Gaussian structure.

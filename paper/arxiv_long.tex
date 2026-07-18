@@ -86,7 +86,7 @@ push reconstruction accuracy \cite{gradowski2025reveals,cardoso2024bayesian,lenc
 fang2026imputeecg}. These target the reconstruction; we target the \emph{prior} question of what
 a given configuration can support, independent of the reconstructor. Accordingly our neural
 baseline is a \emph{representative} masked-completion U-Net of this family, included to show the
-certificate binds even a flexible learned reconstructor---not a claim to beat
+certificate's verdict still \emph{predicts} a flexible learned reconstructor's error---not a claim to beat
 \cite{lence2025ecgrecover,fang2026imputeecg}. \textbf{Identifiability and lead selection.} Whether a linear functional is
 recoverable from a sub-observation is the classical estimability question
 \cite{scheffe1959anova}; choosing which leads to observe is optimal sensor selection
@@ -120,13 +120,17 @@ held-out evaluation. All table numbers regenerate from result JSON via
   \caption{\textbf{The certificate is operational.} Across $\CertValNcells$ (config, segment,
   target-lead) cells on held-out fold-10 records, the theoretical per-lead expected ambiguity
   $a_{s,\ell}(S)$ predicts the \emph{measured} per-lead dipolar-projection error of the dipolar,
-  ridge, and OLS reconstructors. (a) Calibration against the certified minimax floor (Thm.~\ref{thm:floor},
-  $y{=}x$): points track and sit on/above the floor (Spearman $\CertValSpearAmb$, Pearson
-  $\CertValPearAmb$); the near-optimal ridge/OLS achieve it (median gap $\CertValFloorGap$\,mV) while the
-  pure-dipolar reconstructor is bounded by it. (b) The binary verdict separates recoverability: median
-  dipolar error $\CertValMedIdent$\,mV for identifiable ($\eta{=}0$) vs $\CertValMedUnident$\,mV for
-  unidentifiable ($\eta{>}0$) leads (AUC $\CertValAUC$). Regenerated from
-  \texttt{results/certificate\_validation.json}.}
+  ridge, and OLS reconstructors. (a) $a_{s,\ell}(S)$ strongly predicts and ranks the measured error
+  (Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$). The minimax floor $a_{s,\ell}(S)$
+  (Thm.~\ref{thm:floor}, $y{=}x$) is a \emph{worst-case-prior} lower bound, not an empirical envelope:
+  on the true
+  (non-Gaussian) prior, estimators that exploit predictable population structure beat it on a fraction
+  of the $\CertValNetaPos$ non-trivial ($\eta{>}0$) cells (the pure-dipolar reconstructor on
+  $\CertValViolDip$, ridge/OLS on $\CertValViolRidge$)---exactly the Tier-II residual the calibrated
+  intervals of Sec.~\ref{sec:calib} meter, with the below-floor gap measuring how much structure each
+  exploits. (b) The binary verdict separates recoverability: median dipolar error $\CertValMedIdent$\,mV
+  for identifiable ($\eta{=}0$) vs $\CertValMedUnident$\,mV for unidentifiable ($\eta{>}0$) leads (AUC
+  $\CertValAUC$). Regenerated from \texttt{results/certificate\_validation.json}.}
   \label{fig:certval}
 \end{figure}
 
@@ -166,10 +170,10 @@ record-bootstrap CIs and the rank/$\varrho$/subspace-angle sensitivities of
 Fig.~\ref{fig:ablation}) and its cohort dependence (Sec.~\ref{sec:cross}); the ST/T third
 direction is cohort-specific. That cohort dependence is itself bounded: Thm.~\ref{thm:transfer}
 shows the verdict drifts across cohorts only as fast as the two cohorts' dipolar subspaces separate
-($\sin\Theta$), and empirically the PTB-XL$\to$Chapman drift is Lipschitz in that distance with a
-small stable constant---so a large principal angle \emph{flags} non-transfer (ST,
-$\TransferAngleST^\circ$, drift $\TransferDriftST$) versus transfer (QRS, $\TransferAngleQRS^\circ$,
-drift $\TransferDriftQRS$) in advance. Identifiability is stated for the low-rank (dipolar) coordinate:
+($\sin\Theta$), so the measured principal angle is a computable transfer-risk flag---small for QRS
+($\TransferAngleQRS^\circ$, tight measured drift $\TransferDriftQRS$) and large for ST
+($\TransferAngleST^\circ$, where the bound is vacuous and the drift itself is uncertain), flagging
+the ST verdict as non-transferable in advance. Identifiability is stated for the low-rank (dipolar) coordinate:
 a reconstructor may still recover predictable non-dipolar structure (Sec.~\ref{sec:exp}), so
 $\eta{>}0$ bounds the dipolar component, not every waveform detail. Conformal coverage is
 within-$(S,s,\ell)$-group marginal under exchangeability, not conditional on diagnosis; rare

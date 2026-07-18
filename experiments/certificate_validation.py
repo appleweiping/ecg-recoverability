@@ -188,13 +188,23 @@ def run(n_train=1500, n_test=1500, max_per_record=40, seed=0):
             "auc_eta_pos_predicts_large_error": _auc(y, ~z),   # eta>0 (not eta_zero) should score high error
             "median_rmse_eta0": round(float(np.median(y[z])), 5) if z.any() else None,
             "median_rmse_etapos": round(float(np.median(y[~z])), 5) if (~z).any() else None,
-            # floor: measured dipolar error must sit on/above the ambiguity floor a_l
-            "floor_violation_frac": round(float(np.mean(y < amb - 1e-6)), 4),
-            "floor_gap_median_mV": round(float(np.median(y - amb)), 5),
+            # Floor relation. a_l is a MINIMAX (worst-case-prior) lower bound over the moment class,
+            # NOT an empirical envelope: on the TRUE (non-Gaussian) prior an estimator exploiting
+            # predictable population structure can beat a_l (the Tier-II residual the conformal
+            # intervals of Sec. calib meter). We report the violation fraction and gap on the
+            # NON-TRIVIAL eta>0 cells (a_l>0; on eta=0 cells a_l=0 so a violation is impossible and
+            # the all-cell aggregate is diluted). floor_violation_frac_etapos > 0 is EXPECTED and
+            # measures exploited non-Gaussian structure, not a theorem failure.
+            "floor_violation_frac": round(float(np.mean(y < amb - 1e-6)), 4),           # all cells (diluted)
+            "floor_gap_median_mV": round(float(np.median(y - amb)), 5),                 # all cells (diluted)
+            "n_etapos": int((~z).sum()),
+            "floor_violation_frac_etapos": round(float(np.mean(y[~z] < amb[~z] - 1e-6)), 4) if (~z).any() else None,
+            "floor_gap_median_etapos_mV": round(float(np.median((y - amb)[~z])), 5) if (~z).any() else None,
         }
         print(f"[certval] {nm}: spearman(amb,rmse)={corr[nm]['spearman_amb_rmse']} "
               f"AUC(eta>0)={corr[nm]['auc_eta_pos_predicts_large_error']} "
-              f"floor_viol={corr[nm]['floor_violation_frac']} "
+              f"floor_viol(eta>0)={corr[nm]['floor_violation_frac_etapos']} "
+              f"gap_med(eta>0)={corr[nm]['floor_gap_median_etapos_mV']} "
               f"med_rmse eta0={corr[nm]['median_rmse_eta0']} etapos={corr[nm]['median_rmse_etapos']}", flush=True)
 
     for c in cells:

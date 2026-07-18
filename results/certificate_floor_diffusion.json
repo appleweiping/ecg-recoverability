@@ -12,11 +12,15 @@
     "T"
   ],
   "floor": {
+    "n_cells": 39,
+    "n_etapos": 18,
     "floor_violation_frac": 0.0,
+    "floor_violation_frac_etapos": 0.0,
     "floor_gap_median_mV": 0.07923,
-    "median_rmse_eta0": 0.06581,
+    "floor_gap_median_etapos_mV": 0.13888,
     "median_rmse_etapos": 0.22695,
-    "n_cells": 39
+    "median_amb_etapos": 0.08036,
+    "median_rmse_eta0": 0.06581
   },
   "cells": [
     {
@@ -455,7 +459,7 @@
     "protocol": "recoverability-v2-2026-07",
     "protocol_sha256": "a2ff753529e4",
     "experiment_script": "certificate_floor_diffusion.py",
-    "experiment_script_sha256": "adf642922487082c",
+    "experiment_script_sha256": "ab3886816a486fd0",
     "seed": 0,
     "targets": [
       "I",

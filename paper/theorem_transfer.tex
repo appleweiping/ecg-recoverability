@@ -38,13 +38,18 @@ transferability of the verdict is governed by a \emph{computable} quantity---the
 between the cohorts' dipolar subspaces---so a large angle \emph{flags} non-transfer before any
 target-cohort label is seen. The constant $1+2\kappa_s$ is worst-case and the bound is loose in
 absolute terms (for a well-conditioned observed set it can exceed the trivial $\eta\le1$); its value
-is \emph{relative}. Empirically it is not merely satisfied but predictive. On PTB-XL$\to$Chapman
-(matched sinus, limb-6 $\to$ V2), the realized drift is Lipschitz in the chordal subspace distance
-with a small, \emph{stable} constant $\eta$-drift$/2\sin(\theta^\star/2)\in[\TransferLipLo,\TransferLipHi]$
-across a sixfold range of angles: the QRS dipolar subspace is nearly shared
-($\theta^\star{=}\TransferAngleQRS^\circ$, drift $\TransferDriftQRS$), whereas the ST subspace is
-near-orthogonal ($\theta^\star{=}\TransferAngleST^\circ$, drift $\TransferDriftST$)---the certificate
-transfers precisely to the degree the dipolar geometry is shared, and the measured angle says so in
-advance (\texttt{experiments/transfer\_bound.py}). This is the cross-cohort analogue of the
-finite-sample $\sin\Theta$ term in Thm.~\ref{thm:floor}(iii): both control how a fitted subspace
-perturbs the verdict.
+is as a \emph{pre-deployment transfer-risk flag}: a small principal angle certifies a small
+verdict drift, a large one refuses to. On PTB-XL$\to$Chapman (matched sinus, limb-6 $\to$ V2) the two
+regimes are visible. The QRS dipolar subspace is nearly shared
+($\theta^\star{=}\TransferAngleQRS^\circ$) and the measured drift is correspondingly tight
+($\TransferDriftQRS$, realized slope $\TransferLipQRS$)---the verdict transfers. The ST subspace is
+near-orthogonal ($\theta^\star{=}\TransferAngleST^\circ$, CI up to $89.6^\circ$): the bound turns
+vacuous and the drift is genuinely uncertain---the target-cohort $\eta$ bootstrap CI is
+$[0.02,0.71]$, spanning most of the admissible range, so the realized slope is only pinned to
+$[\TransferSTLipLo,\TransferSTLipHi]$ and we claim
+\emph{no} precise ST drift, only that the large angle flags the ST verdict as non-transferable
+(\texttt{experiments/transfer\_bound.py}). We therefore do not read a stable cross-segment Lipschitz
+constant from these two points; the load-bearing claim is the rigorous bound plus the angle as a
+computable transfer-risk diagnostic, corroborated by the tight QRS point. This is the cross-cohort
+analogue of the finite-sample $\sin\Theta$ term in Thm.~\ref{thm:floor}(iii): both control how a
+fitted subspace perturbs the verdict.

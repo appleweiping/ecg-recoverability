@@ -1,11 +1,11 @@
 {
   "lineage": {
-    "commit": "f0003f6442921fdd2d083d444214540a788fefc6",
+    "commit": "fd341958b1278dae7d93c08a15197221d58e1e29",
     "git_dirty": true,
     "protocol": "recoverability-v2-2026-07",
     "protocol_sha256": "a2ff753529e4",
     "experiment_script": "transfer_bound.py",
-    "experiment_script_sha256": "eb679ccab67f8bc0",
+    "experiment_script_sha256": "847072d659a5eb2e",
     "seed": 0,
     "targets": [
       "V2"
@@ -40,9 +40,17 @@
       ],
       "kappa_used": 2.347,
       "empirical_drift": 0.0331,
+      "empirical_drift_ci": [
+        0.0,
+        0.0664
+      ],
       "certified_rhs": 1.3652,
       "bound_holds": true,
       "realized_lipschitz": 0.1381,
+      "realized_lipschitz_ci": [
+        0.0,
+        0.277
+      ],
       "transfer_flag": "shared"
     },
     "ST": {
@@ -61,9 +69,17 @@
       ],
       "kappa_used": 11.321,
       "empirical_drift": 0.2464,
+      "empirical_drift_ci": [
+        0.0024,
+        0.6919
+      ],
       "certified_rhs": 32.166,
       "bound_holds": true,
       "realized_lipschitz": 0.1811,
+      "realized_lipschitz_ci": [
+        0.0018,
+        0.5085
+      ],
       "transfer_flag": "divergent"
     }
   },
@@ -71,13 +87,17 @@
     "target": "V2",
     "observed_set": "limb-6",
     "all_bounds_hold": true,
-    "realized_lipschitz_range": [
-      0.1381,
-      0.1811
+    "realized_lipschitz_point": {
+      "QRS": 0.1381,
+      "ST": 0.1811
+    },
+    "st_lipschitz_ci": [
+      0.0018,
+      0.5085
     ],
     "qrs_flag": "shared",
     "st_flag": "divergent",
-    "drift_ratio_st_over_qrs": 7.44,
+    "qrs_drift_tight": true,
     "chordal_ratio_st_over_qrs": 5.67
   }
 }

@@ -23,7 +23,7 @@
         0.7204,
         0.8873
       ],
-      "pearson_amb_rmse": 0.9330773056270574,
+      "pearson_amb_rmse": 0.9330773056270575,
       "spearman_etanorm_rmse": 0.6196791410052573,
       "spearman_etanorm_rmse_ci": [
         0.4954,
@@ -34,7 +34,10 @@
       "median_rmse_eta0": 0.04012,
       "median_rmse_etapos": 0.12631,
       "floor_violation_frac": 0.1364,
-      "floor_gap_median_mV": 0.03136
+      "floor_gap_median_mV": 0.03136,
+      "n_etapos": 84,
+      "floor_violation_frac_etapos": 0.2143,
+      "floor_gap_median_etapos_mV": 0.01562
     },
     "ridge": {
       "spearman_amb_rmse": 0.8277014212469894,
@@ -42,7 +45,7 @@
         0.7403,
         0.9005
       ],
-      "pearson_amb_rmse": 0.9437252478774887,
+      "pearson_amb_rmse": 0.9437252478774891,
       "spearman_etanorm_rmse": 0.6542639684669376,
       "spearman_etanorm_rmse_ci": [
         0.5412,
@@ -53,7 +56,10 @@
       "median_rmse_eta0": 0.03087,
       "median_rmse_etapos": 0.10895,
       "floor_violation_frac": 0.3788,
-      "floor_gap_median_mV": 0.00856
+      "floor_gap_median_mV": 0.00856,
+      "n_etapos": 84,
+      "floor_violation_frac_etapos": 0.5952,
+      "floor_gap_median_etapos_mV": -0.005
     },
     "ols": {
       "spearman_amb_rmse": 0.8277014212469894,
@@ -61,7 +67,7 @@
         0.7403,
         0.9005
       ],
-      "pearson_amb_rmse": 0.9437301316135305,
+      "pearson_amb_rmse": 0.9437301316135301,
       "spearman_etanorm_rmse": 0.6542639684669376,
       "spearman_etanorm_rmse_ci": [
         0.5412,
@@ -72,7 +78,10 @@
       "median_rmse_eta0": 0.03086,
       "median_rmse_etapos": 0.10895,
       "floor_violation_frac": 0.3788,
-      "floor_gap_median_mV": 0.00855
+      "floor_gap_median_mV": 0.00855,
+      "n_etapos": 84,
+      "floor_violation_frac_etapos": 0.5952,
+      "floor_gap_median_etapos_mV": -0.00511
     }
   },
   "cells": [
@@ -2814,12 +2823,12 @@
     }
   ],
   "lineage": {
-    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "commit": "fd341958b1278dae7d93c08a15197221d58e1e29",
     "git_dirty": true,
     "protocol": "recoverability-v2-2026-07",
     "protocol_sha256": "a2ff753529e4",
     "experiment_script": "certificate_validation.py",
-    "experiment_script_sha256": "6916974c8a4c5dea",
+    "experiment_script_sha256": "c445222d272872ff",
     "seed": 0,
     "targets": [
       "I",

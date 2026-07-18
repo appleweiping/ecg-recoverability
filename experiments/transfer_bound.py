@@ -79,6 +79,17 @@ def main():
         all_hold = all_hold and holds
         # realized Lipschitz constant of eta in the chordal subspace distance (empirical slope)
         lipschitz = (drift / delta) if delta > 0 else float("nan")
+        # drift is a POINT estimate; propagate the target-cohort eta bootstrap CI so the ST cell
+        # (whose eta CI is nearly [0,1]) is not read as a precise number. drift_ci = range of
+        # |eta_A - c| over c in the Chapman eta CI; lipschitz_ci = drift_ci / delta.
+        eta_ci = blk.get("chapman_limb6_V2eta_ci")
+        drift_ci = lip_ci = None
+        if eta_ci:
+            lo_c, hi_c = float(eta_ci[0]), float(eta_ci[1])
+            dlo = 0.0 if lo_c <= eta_A <= hi_c else min(abs(eta_A - lo_c), abs(eta_A - hi_c))
+            dhi = max(abs(eta_A - lo_c), abs(eta_A - hi_c))
+            drift_ci = [round(dlo, 4), round(dhi, 4)]
+            lip_ci = [round(dlo / delta, 4), round(dhi / delta, 4)] if delta > 0 else None
         # angle-based pre-deployment transfer diagnostic (reported heuristic, NOT claimed rigorous):
         # a small principal angle means shared dipolar geometry -> small expected drift.
         flag = ("shared" if theta_star < 30 else "divergent" if theta_star > 60 else "partial")
@@ -92,9 +103,11 @@ def main():
             "eta_chapman_ci": blk.get("chapman_limb6_V2eta_ci"),
             "kappa_used": round(kappa, 4),
             "empirical_drift": round(drift, 4),
+            "empirical_drift_ci": drift_ci,
             "certified_rhs": round(rhs, 4),
             "bound_holds": bool(holds),
             "realized_lipschitz": round(lipschitz, 4),
+            "realized_lipschitz_ci": lip_ci,
             "transfer_flag": flag,
         }
 
@@ -106,11 +119,14 @@ def main():
     summary = {
         "target": TARGET, "observed_set": "limb-6",
         "all_bounds_hold": bool(all_hold),
-        "realized_lipschitz_range": [round(min(lips), 4), round(max(lips), 4)],
+        # point estimates only; the ST realized-Lipschitz is nearly unconstrained (see its CI), so
+        # we do NOT claim a stable cross-segment constant -- the rigorous claim is the bound + the
+        # angle as a pre-deployment transfer-RISK flag, corroborated by the tight QRS point.
+        "realized_lipschitz_point": {s: per_seg[s]["realized_lipschitz"] for s in SEGMENTS},
+        "st_lipschitz_ci": per_seg["ST"].get("realized_lipschitz_ci"),
         "qrs_flag": per_seg["QRS"]["transfer_flag"],
         "st_flag": per_seg["ST"]["transfer_flag"],
-        "drift_ratio_st_over_qrs": round(per_seg["ST"]["empirical_drift"]
-                                         / max(per_seg["QRS"]["empirical_drift"], 1e-9), 2),
+        "qrs_drift_tight": bool(per_seg["QRS"]["empirical_drift"] < 0.1),
         "chordal_ratio_st_over_qrs": round(per_seg["ST"]["chordal_delta"]
                                            / max(per_seg["QRS"]["chordal_delta"], 1e-9), 2),
     }
@@ -128,10 +144,9 @@ def main():
         print(f"  {seg}: theta*={d['theta_star_deg']}deg drift={d['empirical_drift']} "
               f"rhs={d['certified_rhs']} holds={d['bound_holds']} flag={d['transfer_flag']} "
               f"lip={d['realized_lipschitz']}", flush=True)
-    print(f"[transfer] all_hold={all_hold} lipschitz_range={summary['realized_lipschitz_range']} "
-          f"qrs={summary['qrs_flag']} st={summary['st_flag']} "
-          f"drift_ratio={summary['drift_ratio_st_over_qrs']}x chordal_ratio={summary['chordal_ratio_st_over_qrs']}x",
-          flush=True)
+    print(f"[transfer] all_hold={all_hold} lipschitz_point={summary['realized_lipschitz_point']} "
+          f"st_lip_ci={summary['st_lipschitz_ci']} qrs={summary['qrs_flag']} st={summary['st_flag']} "
+          f"chordal_ratio={summary['chordal_ratio_st_over_qrs']}x", flush=True)
 
 
 if __name__ == "__main__":

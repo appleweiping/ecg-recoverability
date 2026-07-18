@@ -1,12 +1,17 @@
 """Does the certified minimax floor bind a LEARNED generative reconstructor? (GPU)
 
-certificate_validation.py showed the per-lead dipolar-projection error of the LINEAR reconstructors
-(dipolar / ridge / OLS) sits on/above the certified ambiguity floor a_l (paper/theorem_floor.tex).
-The floor is proved against ANY estimator, linear or nonlinear, over the moment class -- so a trained
-diffusion model must obey it too. This closes that loop empirically: we reconstruct held-out fold-10
-NORM records with the arbitrary-mask DDPM (results/gpu_ddpm.pt) at honest guidance w=1, measure the
-SAME per-lead dipolar-projection RMSE e_l^T (M_s M_s^+)(Lhat - Ltrue), and check it against the SAME
-floor a_l computed from the SAME NORM-train dipolar subspace M_s as certificate_validation.
+The certified floor a_l (paper/theorem_floor.tex) is a MINIMAX (worst-case-prior) lower bound over
+the moment class {E[dd^T] <= Sigma_d}. It bounds the worst-case risk against ANY estimator, linear or
+nonlinear -- but it does NOT force a specific estimator on the TRUE (non-Gaussian) prior to obey it:
+certificate_validation.py shows the linear ridge beats a_l on a majority of eta>0 cells by exploiting
+predictable population structure the worst-case prior excludes. Here we EMPIRICALLY CHECK whether a
+trained generative model does the same. We reconstruct held-out fold-10 NORM records with the
+arbitrary-mask DDPM (results/gpu_ddpm.pt) at honest guidance w=1, measure the SAME per-lead
+dipolar-projection RMSE e_l^T (M_s M_s^+)(Lhat - Ltrue), and compare it to the SAME floor a_l computed
+from the SAME NORM-train dipolar subspace M_s as certificate_validation. Finding: the DDPM stays above
+a_l (0 violations on eta>0 cells) -- but only because its dipolar-projection error is far LOOSER than
+a_l (it leaves the exploitable structure on the table), not because the floor tightly binds it; the
+eta-split still predicts its error.
 
 M_s (hence a_l, eta, kappa) is refit here identically to certificate_validation (folds 1-7,
 n_train, max_per_record=40, fit_dipolar_subspace rank 3), so the DDPM is measured against exactly the
@@ -120,19 +125,28 @@ def run(n_train=1500, n_test=300, max_per_record=40, seed=0, chunk=128):
         print(f"[certfloor-diff] {cname}: {sum(c['config']==cname for c in cells)} cells", flush=True)
 
     # ---- floor test for the LEARNED model (same methodology as certificate_validation) ----
+    # Report on the NON-TRIVIAL eta>0 cells (a_l>0): on eta=0 cells a_l=0 so a violation is
+    # impossible and the all-cell count is diluted. The DDPM not violating does NOT mean the floor
+    # tightly binds it -- it is a loose reconstructor on the dipolar-projection metric (median RMSE
+    # far above a_l), which is exactly why it never dips below the worst-case floor.
     y = np.array([c["ddpm_rmse_mV"] for c in cells])
     amb = np.array([c["amb_mV"] for c in cells])
     z = np.array([c["eta_zero"] for c in cells])
+    pos = ~z
     floor = {
-        "floor_violation_frac": round(float(np.mean(y < amb - 1e-6)), 4),
-        "floor_gap_median_mV": round(float(np.median(y - amb)), 5),
+        "n_cells": len(cells), "n_etapos": int(pos.sum()),
+        "floor_violation_frac": round(float(np.mean(y < amb - 1e-6)), 4),               # all cells (diluted)
+        "floor_violation_frac_etapos": round(float(np.mean(y[pos] < amb[pos] - 1e-6)), 4) if pos.any() else None,
+        "floor_gap_median_mV": round(float(np.median(y - amb)), 5),                      # all cells (diluted)
+        "floor_gap_median_etapos_mV": round(float(np.median((y - amb)[pos])), 5) if pos.any() else None,
+        "median_rmse_etapos": round(float(np.median(y[pos])), 5) if pos.any() else None,
+        "median_amb_etapos": round(float(np.median(amb[pos])), 5) if pos.any() else None,
         "median_rmse_eta0": round(float(np.median(y[z])), 5) if z.any() else None,
-        "median_rmse_etapos": round(float(np.median(y[~z])), 5) if (~z).any() else None,
-        "n_cells": len(cells),
     }
-    print(f"[certfloor-diff] DDPM floor_viol={floor['floor_violation_frac']} "
-          f"gap_med={floor['floor_gap_median_mV']} "
-          f"med_rmse eta0={floor['median_rmse_eta0']} etapos={floor['median_rmse_etapos']}", flush=True)
+    print(f"[certfloor-diff] DDPM floor_viol(eta>0)={floor['floor_violation_frac_etapos']} "
+          f"gap_med(eta>0)={floor['floor_gap_median_etapos_mV']} "
+          f"med_rmse eta0={floor['median_rmse_eta0']} etapos={floor['median_rmse_etapos']} "
+          f"(vs floor {floor['median_amb_etapos']})", flush=True)
 
     out = {"reconstructor": "DDPM (arbitrary-mask, guidance w=1)", "guidance": GUIDANCE,
            "metric": "per-lead dipolar-projection RMSE (mV): e_l^T (M_s M_s^+)(Lhat-Ltrue)",
