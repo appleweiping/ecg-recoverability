@@ -1,7 +1,7 @@
 [project]
 name = "ecg-recoverability"
 version = "0.1.0"
-description = "Target-Specific Recoverability Maps for Reduced-Lead ECG Reconstruction: per-lead identifiability/conditioning with calibrated intervals"
+description = "Robust target-specific, model-conditional recoverability maps for reduced-lead ECG reconstruction"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 license = { text = "MIT" }
@@ -9,16 +9,20 @@ dependencies = [
     "numpy>=1.26",
     "scipy>=1.11",
     "pandas>=2.0",
+    "pyarrow>=17.0",
     "scikit-learn>=1.3",
     "matplotlib>=3.8",
-    "wfdb>=4.1",
-    "neurokit2>=0.2.7",
+    "wfdb==4.1.2",
+    "neurokit2==0.2.12",
     "tqdm>=4.66",
     "pyyaml>=6.0",
+    "pypdf>=5.1",
+    "cryptography>=43.0",
 ]
 
 [project.optional-dependencies]
-torch = ["torch>=2.2"]
+torch = ["torch==2.8.0"]
+remote = ["paramiko>=3.5"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [build-system]

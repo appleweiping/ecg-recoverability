@@ -1,278 +1,224 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
-\usepackage{amsmath,amssymb,graphicx,booktabs,bm,amsthm}
-\usepackage{enumitem}
-\usepackage{cite}
+\usepackage{amsmath,amssymb,graphicx,booktabs,bm,amsthm,enumitem,cite}
 \usepackage[hidelinks]{hyperref}
 
-% result macros (auto-generated from results/*.json; do not hand-edit numbers)
+% Evidence-gated primary-paper macros.
+\input{auto/robust_map_placeholders}
+% Historical macros are loaded only for the quarantined legacy supplement.
+% They must never be cited as evidence for the refactored primary claim.
 \input{auto/fair_baselines_macros}
 \input{auto/long_results_macros}
 
-\title{\textbf{Target-Specific Recoverability Maps for Reduced-Lead ECG
-Reconstruction}\\[2pt]\large A graded per-lead identifiability + conditioning certificate with
-calibrated intervals, and an honest account of an abandoned fabrication claim}
-% Double-blind toggle: \anontrue for a double-blind venue submission; \anonfalse for arXiv.
-\newif\ifanon\anonfalse
-\ifanon\author{Anonymous authors\\ Paper under double-blind review}
-\else\author{Weiping Yan\\ University of Minnesota, Twin Cities}\fi
+\newcommand{\LegacyBanner}{%
+  \begin{center}
+  \fbox{\parbox{0.92\linewidth}{\textbf{Legacy supplement---not evidence for the primary
+  claim.} This material records an earlier research branch.  It is excluded from the
+  Stage~15 claim--evidence decision and from the four-page submission.}}
+  \end{center}}
+
+\title{\textbf{Robust Target-Specific Recoverability Maps for Reduced-Lead ECG
+Reconstruction}\\[2pt]\large Evidence-gated extended protocol and legacy research record}
+\newif\ifanon\anontrue
+\ifanon
+  \author{Anonymous authors\\Paper under double-blind review}
+\else
+  \author{Weiping Yan\\University of Minnesota, Twin Cities}
+\fi
 \date{}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Reconstructing missing electrocardiogram (ECG) leads from a reduced set is ill-posed, and a
-scalar reconstruction error says nothing about \emph{which} named feature's low-rank (dipolar)
-component, on \emph{which} lead, is even recoverable. We make this a target-specific, computable
-certificate. For a waveform segment $s$ (P/QRS/ST/T), an observed lead set $S$, and a target lead
-$\ell$, two closed-form numbers from one truncated SVD of the segment's empirical rank-3 spatial
-sub-matrix give a graded \emph{identifiability} $\eta_{s,\ell}(S)$ (its exact value zero iff the
-target's dipolar component is recoverable from $S$) and a \emph{conditioning} $\kappa_{s,\ell}(S)$.
-To the map we attach an exact per-lead \emph{minimax ambiguity floor} $a_{s,\ell}(S)$---the exact
-minimax risk of estimating the target's dipolar functional over a second-moment class, attained by a
-Gaussian least-favourable prior---which on real data \emph{predicts} the measured per-lead dipolar
-error of the reconstructors we evaluate (Spearman $\CertValSpearAmb$, AUC $\CertValAUC$); it is a
-worst-case-prior floor, so estimators exploiting predictable non-Gaussian structure fall below it,
-and that gap is exactly the residual our distribution-free calibrated intervals cover. On PTB-XL,
-precordial ST is \emph{exactly} non-identifiable from limb leads (rank-2 frontal plane), a verdict
-robust to delineator and sampling rate; the total ST-threshold-event error rate's point estimates
-range $\TotWrongLo$--$\TotWrongHi\%$ across the evaluated reconstructors (dominated by missed
-crossings) while the false-positive/negative split is a reconstructor choice. Cross-cohort
-(PTB-XL$\to$Chapman) the QRS dipolar subspace is nearly shared while ST is not---an empirical
-sensitivity, not a certified transfer guarantee. We document in full a claim we abandoned---that a
-diffusion reconstructor demonstrates ``fabrication is a property of the objective''---which a
-leakage-corrected, multi-seed re-analysis dissolved; an exploratory null-space energy descriptor and
-a greedy lead-selection heuristic are reported as such. Every number is regenerated from
-lineage-stamped artifacts.
+Reduced-lead electrocardiogram (ECG) reconstruction is commonly assessed only after a model
+produces a waveform.  We propose a training-set diagnostic that maps each observed configuration,
+waveform segment, and target lead to a continuous recoverability score.  The score combines target
+geometry outside the observed-row span with within-span amplification, then aggregates over a
+prespecified family of rank, lead-weighting, and patient-bootstrap fits.  The sole primary empirical
+claim is that this robust map predicts held-out target-lead reconstruction error beyond simple
+configuration and signal-scale covariates, across reconstruction families and on an external
+cohort.  Numerical claims are withheld pending the Stage~15 evidence decision.  This extended
+document separates the new protocol from earlier conditional theory, calibration, clinical-event,
+lead-selection, and diffusion branches, which are retained only as a transparent legacy supplement.
 \end{abstract}
 
-\section{Introduction}
-\label{sec:intro}
-Wearable and reduced-lead ECG acquisition makes lead \emph{reconstruction} ubiquitous: recover
-the standard 12 leads from one, three, or six observed leads
-\cite{gradowski2025reveals,cardoso2024bayesian}. A low aggregate error certifies nothing about
-\emph{which} morphological features are trustworthy: a cardiologist reads the P wave, the QRS
-complex, the ST segment and the T wave, each on specific leads, and a reconstruction that gets
-the mean right but invents an ST deviation invents a finding.
+\section{Research question and contribution}
+Reduced-lead acquisition motivates fixed transforms, regression, and learned completion models
+\cite{edenbrandt1988dower,kors1990vcg,nelwan2004reduced,gradowski2025reveals,%
+cardoso2024bayesian,lence2025ecgrecover,fang2026imputeecg,pagotto2025minimal}.  These methods answer
+how to synthesize a missing waveform.  We ask a complementary question: before selecting a
+reconstructor, can training-set spatial geometry anticipate which segment and target lead will have
+larger held-out error?
 
-We ask a sharper, reconstructor-independent question: \emph{for a given observed lead set,
-which target lead's low-rank morphology is even identifiable, and how well-conditioned is its
-recovery?} Each waveform segment's instantaneous potential is approximately low rank across
-leads; we estimate a per-segment rank-3 spatial basis $\bm M_s$ (top-3 singular vectors of the
-population lead covariance). We stress that $\bm M_s$ is a \emph{population-estimated (PCA)}
-object: on real PTB-XL its three principal angles to the classical vectorcardiographic
-(inverse-Dower) space are graded---one close ($\PhysMinAngLo$--$\PhysMinAngHi^\circ$), one
-moderate ($\PhysMidAngLo$--$\PhysMidAngHi^\circ$), and one substantially different
-($\PhysMaxAngLo$--$\PhysMaxAngHi^\circ$)---so we call it an empirical rank-3 subspace rather than
-a physical dipole (Sec.~\ref{sec:exp}).
+The refactored paper has one claim and one falsification route.  For each observed set $S$, segment
+$s$, and target lead $\ell$, a frozen robust score should (i) rank held-out target error, (ii) add
+out-of-sample predictive value beyond lead count, configuration rank, target scale, pairwise
+correlation, and global conditioning, (iii) retain its direction across transparent and learned
+reconstructors, and (iv) retain its direction on a second cohort.  Failure of the incremental,
+cross-model, or external tests prevents a positive headline.  The score is described as a map or
+diagnostic; it is not a clinical guarantee or a claim about all information in an ECG waveform.
 
-\textbf{Contributions.} Beyond the per-lead certificate (Sec.~\ref{sec:cert}, proof
-App.~\ref{app:proof}), this extended version of a four-page conference submission adds: (1) an exact
-per-lead \emph{minimax ambiguity floor}---the exact minimax risk of the target's dipolar functional
-over a second-moment class---which, on real data, \emph{predicts} the measured per-lead dipolar error
-of the evaluated reconstructors (Prop.~\ref{thm:floor}, Fig.~\ref{fig:certval}); (2)
-delineator/sampling-rate robustness of the exact ST verdict (Sec.~\ref{sec:limits}); (3) an empirical
-cross-cohort sensitivity study (PTB-XL$\to$Chapman) with a $\sin\Theta$ diagnostic of
-dipolar-subspace agreement (Sec.~\ref{sec:cross}); and (4) a complete account of a claim we abandoned
-during pre-submission review, together with two \emph{exploratory} descriptors---a null-space energy
-ratio and a greedy lead-selection heuristic---reported as exploratory, not certified
-(Sec.~\ref{sec:generative}, Sec.~\ref{sec:exp}). We report the abandonment in detail on purpose:
-hiding the earlier, more exciting numbers would be precisely the selective reporting our certificate
-is designed to expose.
+\section{Robust target-specific map}
+\label{sec:primary-method}
+Let $\bm x_{i,s}(t)\in\mathbb R^p$ be the multilead signal for patient $i$ in segment $s$.  A
+training-only weighted covariance fit gives $\bm M_s^v\in\mathbb R^{p\times r}$, with
+$v=(r,w,b)$ indexing candidate rank, lead weighting, and patient-bootstrap replicate.  For target
+row $\bm m_{s,\ell}^v$ and observed rows $\bm M_{s,S}^v$, define
+\begin{align}
+u_{s,\ell}^{v}(S)&=
+\frac{\|\bm m_{s,\ell}^{v}[\bm I-(\bm M_{s,S}^{v})^+\bm M_{s,S}^{v}]\|_2}
+{\|\bm m_{s,\ell}^{v}\|_2+\epsilon},\\
+g_{s,\ell}^{v}(S)&=\|\bm m_{s,\ell}^{v}(\bm M_{s,S}^{v})^+\|_2,\\
+q_{s,\ell}^{v}(S)&=
+\left[(u_{s,\ell}^{v})^2+
+\left\{\frac{\nu_{s,S}^{v}g_{s,\ell}^{v}}
+{\sigma_{s,\ell}^{v}+\epsilon}\right\}^{2}\right]^{1/2},
+\label{eq:robust-score-long}
+\end{align}
+where $\nu$ is a training-only observed residual scale and $\sigma$ a training-only target scale.
+The first term measures target geometry absent from the observed-row span of the fitted
+representation; the second measures amplification relative to target scale.  The primary map is the
+median $q^v$ over plausible fits, accompanied by patient-bootstrap quantiles.  Its empirical value
+comes only from the held-out tests below.
 
-\section{Related Work}
-\label{sec:related}
-\textbf{Lead reconstruction and VCG synthesis.} Fixed linear transforms synthesize the
-vectorcardiogram or missing leads from a standard set (inverse-Dower \cite{edenbrandt1988dower},
-Kors regression \cite{kors1990vcg}), and reduced-lead reconstruction has a long clinical
-literature \cite{nelwan2004reduced}; recent deep and arbitrary-mask waveform-completion models
-push reconstruction accuracy \cite{gradowski2025reveals,cardoso2024bayesian,lence2025ecgrecover,%
-fang2026imputeecg}. These target the reconstruction; we target the \emph{prior} question of what
-a given configuration can support, independent of the reconstructor. Accordingly our neural
-baseline is a \emph{representative} masked-completion U-Net of this family, included to show the
-certificate's verdict still \emph{predicts} a flexible learned reconstructor's error---not a claim to beat
-\cite{lence2025ecgrecover,fang2026imputeecg}. \textbf{Identifiability and lead selection.} Whether a linear functional is
-recoverable from a sub-observation is the classical estimability question
-\cite{scheffe1959anova}; choosing which leads to observe is optimal sensor selection
-\cite{joshi2009sensor}. Our per-lead $\eta$ is estimability specialized to the ECG dipolar
-functional; the novelty is not the identity but the graded, empirically-estimated,
-per-target-lead map with calibrated per-record error attached. \textbf{Uncertainty for inverse
-problems.} Conformal prediction \cite{romano2019cqr,angelopoulos2023gentle} gives
-distribution-free intervals under exchangeability; we apply Mondrian CQR per $(S,s,\ell)$ group.
+\paragraph{Prespecified perturbations.}
+The primary fit uses eight algebraically independent measured channels; the 12 displayed leads form
+a weighting sensitivity.  Folds 1--7 fit rank candidates $2$--$5$, fold~8 chooses the primary rank
+by an out-of-sample representation criterion, and all plausible ranks remain in the envelope.
+Patient-cluster bootstrap resamples refit the subspace.  Sign conventions, units, segment windows,
+pseudoinverse tolerance, and missing-segment rules are frozen before fold~10 is opened.
 
-\section{The Recoverability Certificate}
-\label{sec:cert}
+\section{Evaluation and analysis contract}
+\label{sec:primary-eval}
+\paragraph{Split discipline and cohorts.}
+PTB-XL official folds 1--7 are used for fitting, fold~8 for design choices, fold~9 for a full pipeline
+rehearsal without claim selection, and fold~10 once for the primary evaluation
+\cite{wagner2020ptbxl}.  The Chapman--Shaoxing--Ningbo cohort is the external test and uses the
+frozen PTB-XL specification \cite{zheng2020chapman}.  The patient is the resampling unit.  QRS, ST,
+and T form the core analysis; P-wave results move to the supplement if the frozen delineation-quality
+criterion is not met.
+
+\paragraph{Reconstruction families.}
+Prior mean and ridge regression are transparent anchors.  A mask-conditioned 1-D U-Net represents a
+flexible learned family.  Stage~15 also requires at least one reproducible public strong-method
+adapter; ECGrecover and ImputeECG are prioritized subject to artifact, license, and protocol
+compatibility \cite{lence2025ecgrecover,fang2026imputeecg}.  All reconstructors receive the same
+observed samples and mask.  Seeds, checkpoints, preprocessing, failures, and unavailable-method
+reasons are retained.
+
+\paragraph{Primary endpoint and test.}
+The primary outcome is patient-level target-lead normalized RMSE within segment.  For
+$(S,s,\ell,\text{reconstructor})$ cells, we first report rank association with the frozen map.  We
+then compare a baseline predictive model containing lead count, configuration rank, target RMS,
+maximum pairwise correlation, and global conditioning against the same model plus $q$.  Incremental
+out-of-sample fit, coefficient direction, and patient-cluster bootstrap intervals are co-primary
+evidence.  Segment- and model-specific contrasts are secondary and multiplicity controlled.
+External validation tests the frozen score--error relationship; subspace-angle agreement alone is
+insufficient.
+
+\begin{table}[t]
+\centering
+\caption{Primary claim--evidence matrix before the Stage~15 decision.}
+\label{tab:primary-evidence-long}
+\begin{tabular}{p{0.43\linewidth}p{0.22\linewidth}p{0.24\linewidth}}
+\toprule
+Evidence item & Gate value & Failure consequence \\
+\midrule
+Held-out score--error association & \ResultPrimaryAssociation & No positive primary claim \\
+Increment beyond simple covariates & \ResultIncrementalValue & Recast as descriptive map \\
+Rank/weight/bootstrap stability & \ResultRankWeightStability & Narrow supported scope \\
+External-cohort association & \ResultExternalAssociation & No transfer language \\
+Coverage across model families & \ResultModelCoverage & Model-specific conclusion \\
+Patient-level uncertainty & \ResultBootstrapUncertainty & Evidence gate fails \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Evidence gates, reproducibility, and decision policy}
+Stage~5 requires a verified literature ledger and a novelty statement that distinguishes the map
+from reconstruction methods.  Stage~9 freezes splits, endpoints, covariates, reconstructors,
+perturbations, exclusions, seeds, and decision rules.  Stage~15 permits \textsc{Proceed} only after
+a real non-simulated run provides immutable run identifiers, clean source state, dataset and split
+hashes, checkpoint hashes, leakage tests, patient-cluster uncertainty, a strong public baseline,
+external validation, and a completed claim--evidence matrix.  Stage~20 additionally requires no
+pending macros, verified citations, readable figures, a clean manuscript build, and a strict release
+audit.  \textsc{Refine} and \textsc{Pivot} are valid outcomes; negative and failed runs remain in the
+record.  The detailed contract is maintained in \texttt{docs/research\_protocol.md}.
+
+\section{Limitations and current status}
+The map is built from a fitted linear representation, while flexible models may exploit nonlinear
+population regularities.  Delineation, pathology mix, devices, noise, and lead placement can change
+both geometry and error.  One external cohort is not deployment validation, and waveform similarity
+is not diagnostic or clinical equivalence.  The current empirical status is deliberately
+\ResultPrimaryAssociation: the protocol is ready for gated execution, but it does not yet support a
+numerical abstract or a positive performance conclusion.
+
+\section{Conclusion}
+The intended contribution is a narrow, falsifiable diagnostic: a robust target-specific map that
+predicts held-out reconstruction difficulty beyond simple baselines and complements direct model
+benchmarking.  Its headline is conditional on the Stage~15 evidence decision.  The following pages
+retain earlier branches for auditability, separated from the primary narrative and evidence chain.
+
+\clearpage
+\appendix
+\section{Legacy supplement: conditional fixed-rank analysis}
+\label{app:legacy-theory}
+\LegacyBanner
+The material in this section assumes a fixed low-rank representation and studies conditional
+algebraic properties.  It is retained to preserve research history, not to justify the robust
+map--error hypothesis in the main paper.
 \input{theorem_corrected}
 \input{theorem_floor}
 \input{theorem_transfer}
 
-\section{Distribution-Free Calibration}
+\section{Legacy supplement: calibration branch}
 \label{sec:calib}
+\LegacyBanner
+The earlier conformal-calibration branch addresses a different estimand from the robust score and is
+outside the primary claim.
 \input{results_v2_calib}
 
-\section{Experiments}
+\section{Legacy supplement: PTB-XL map, event, and baseline studies}
 \label{sec:exp}
-\textbf{Data.} PTB-XL \cite{wagner2020ptbxl} (21{,}799 twelve-lead records, 100/500\,Hz,
-10-fold split) with P/QRS/ST/T delineation by NeuroKit2 \cite{makowski2021neurokit}; the map is a
-deterministic function of the estimated $\bm\mu_s,\bm M_s$ (record-level bootstrap CIs), not a
-held-out evaluation. All table numbers regenerate from result JSON via
-\texttt{paper/emit\_baseline\_table.py}.
+\LegacyBanner
+These analyses use the earlier fixed-rank formulation.  Their values are historical artifacts and
+must not populate the refactored manuscript without a new Stage~9 freeze and Stage~15 decision.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{../results/certificate_validation.png}
-  \caption{\textbf{The certificate is operational.} Across $\CertValNcells$ (config, segment,
-  target-lead) cells on held-out fold-10 records, the theoretical per-lead expected ambiguity
-  $a_{s,\ell}(S)$ predicts the \emph{measured} per-lead dipolar-projection error of the dipolar,
-  ridge, and OLS reconstructors. (a) $a_{s,\ell}(S)$ strongly predicts and ranks the measured error
-  (Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$). The minimax floor $a_{s,\ell}(S)$
-  (Prop.~\ref{thm:floor}, $y{=}x$) is a \emph{worst-case-prior} lower bound, not an empirical envelope:
-  on the true
-  (non-Gaussian) prior, estimators that exploit predictable population structure beat it on a fraction
-  of the $\CertValNetaPos$ non-trivial ($\eta{>}0$) cells (the pure-dipolar reconstructor on
-  $\CertValViolDip$, ridge/OLS on $\CertValViolRidge$)---exactly the Tier-II residual the calibrated
-  intervals of Sec.~\ref{sec:calib} meter, with the below-floor gap measuring how much structure each
-  exploits. (b) The binary verdict separates recoverability: median dipolar error $\CertValMedIdent$\,mV
-  for identifiable ($\eta{=}0$) vs $\CertValMedUnident$\,mV for unidentifiable ($\eta{>}0$) leads (AUC
-  $\CertValAUC$). Regenerated from \texttt{results/certificate\_validation.json}.}
+  \includegraphics[width=0.92\linewidth]{../results/certificate_validation.png}
+  \caption{Legacy diagnostic retained for traceability.  It is not evidence for the robust
+  map--error claim and is excluded from the short submission.}
   \label{fig:certval}
 \end{figure}
-
-\textbf{The certificate predicts measured error.} On held-out records the theoretical expected
-ambiguity $a_{s,\ell}$ and the measured per-lead dipolar-projection RMSE are strongly rank- and
-value-correlated (Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$; Fig.~\ref{fig:certval}a),
-the identifiability verdict $\eta{>}0$ predicts a large measured error with AUC $\CertValAUC$, and
-$\kappa$ predicts the residual error \emph{within} the identifiable regime---so the map is not a
-formal artifact but an operational predictor of what each reconstructor can and cannot recover.
 \input{results_v2_maps}
 \input{results_v2_baseline}
 
-\paragraph{An exploratory prescriptive use.} Because $a_{s,\ell}(S)$ is a function of the chosen
-leads, one can also \emph{select} them: minimising the total ambiguity
-$J(S)=\sum_{s,\ell}a_{s,\ell}(S)^2$ over an \emph{abstract lead-channel budget} $k$, choosing among
-the eight independent measured lead channels (we do \emph{not} model physical electrode placement or
-Wilson-terminal constraints, so this is a channel-selection abstraction, not an electrode-placement
-recommendation). As an \emph{exploratory} result on this single fitted cohort, greedy forward
-selection matches the exhaustive optimum at every budget, and the ambiguity reduction satisfies the
-diminishing-returns inequality in $\ActiveSubmod$ of $200$ randomized tests---an empirical check, not
-a submodularity proof, so we claim \emph{no} approximation guarantee. Descriptively the most
-informative single channel is $\ActiveKoneLead$, the best pair $\{\ActiveKtwoSet\}$
-($J{=}\ActiveKtwoJ$ vs $\ActiveKtwoRand$\,mV$^2$ for a random pair), and three chosen channels
-$\{\ActiveKthreeSet\}$ suffice to reach $J{=}0$ (they span the rank-3 dipole). Cross-cohort and
-bootstrap stability of the selection would be needed before any placement recommendation
-(\texttt{experiments/active\_selection.py}).
-
+\section{Legacy supplement: sensitivity and cross-cohort branches}
+\label{sec:limits}
+\LegacyBanner
+Earlier subspace-angle and cross-cohort summaries are exploratory sensitivity analyses.  The new
+protocol instead requires external validation of the score--error relationship.
 \input{results_long_crossdata}
 
+\section{Legacy supplement: active lead-selection branch}
+\label{app:legacy-selection}
+\LegacyBanner
+The earlier greedy lead-selection analysis optimized a score fitted on one cohort and did not model
+electrode placement constraints.  It is not part of the current contribution and makes no selection
+or approximation claim.  A future prescriptive study would require a separate Stage~9 protocol,
+bootstrap and cross-cohort stability, and physical acquisition constraints.
+
+\section{Legacy supplement: diffusion and null-space branch}
+\label{app:legacy-generative}
+\LegacyBanner
+The following negative-result record concerns a different generative-model question.  It is retained
+for transparency and cannot be used to support the primary robust-map claim.
 \input{results_long_generative}
 
-\section{Limitations}
-\label{sec:limits}
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{../results/ablations.png}
-  \caption{Sensitivities of the certificate. (a) Rank sweep: cumulative explained variance of the
-  per-segment dipolar subspace; the \emph{a-priori} rank-3 choice (the cardiac dipole is 3-D)
-  captures the bulk (QRS/ST). (b) $\varrho$-stability: global conditioning $\kappa_s(S)$ is flat in
-  the truncation tolerance for the deployed observed-lead sets (near-rank-deficient sets, reported
-  in \texttt{results/recoverability\_maps.json}, are $\varrho$-sensitive). (c) Estimated-subspace
-  sensitivity: max principal angle per segment under a NORM$\to$MI diagnosis shift and under the
-  12-vs-8-lead weighting; the low-amplitude ST/T subspaces move most (near/above $45^\circ$ for the
-  weighting), which is why we make no fine ST/T ordering claim. (d) Rank-3 contingency of the exact
-  limb-6 verdict: at retained rank~2 the limb-6 observation is itself rank-2, so all precordial
-  $\tilde\eta{=}0$ (a spurious ``identifiable'' collapse); the precordial non-identifiability appears
-  only at rank~$\ge$3, so the exact verdict is exact \emph{given} the a-priori rank-3 dipole model.}
-  \label{fig:ablation}
-\end{figure}
-The subspace $\bm M_s$ is estimated, so $\eta/\kappa$ inherit its estimation error (reported via
-record-bootstrap CIs and the rank/$\varrho$/subspace-angle sensitivities of
-Fig.~\ref{fig:ablation}) and its cohort dependence (Sec.~\ref{sec:cross}); the ST/T third
-direction is cohort-specific. Since $\eta$ depends on $\bm M_s$ only through its column space, cross-cohort
-drift is governed by the principal angle between the cohorts' dipolar subspaces (Sec.~\ref{sec:transfer});
-empirically this angle is small for QRS ($\TransferAngleQRS^\circ$, measured drift $\TransferDriftQRS$)
-and near-orthogonal for ST ($\TransferAngleST^\circ$, uncertain drift)---an empirical two-cohort
-sensitivity, not a certified transfer guarantee (the $\sin\Theta$ inequality is vacuous at the observed
-conditioning). Identifiability is stated for the low-rank (dipolar) coordinate:
-a reconstructor may still recover predictable non-dipolar structure (Sec.~\ref{sec:exp}), so
-$\eta{>}0$ bounds the dipolar component, not every waveform detail. Conformal coverage is
-within-$(S,s,\ell)$-group marginal under exchangeability, not conditional on diagnosis; rare
-diagnostic subgroups are under-covered (Sec.~\ref{sec:calib}). Delineation uses NeuroKit2 and
-inherits its errors, but the ST-safety endpoint is robust to it: across a delineator$\times$rate
-grid (\texttt{dwt}/\texttt{cwt} $\times$ 100/500\,Hz) the precordial-not-recoverable verdict is
-sign-stable ($\eta{>}0$ at every setting, as forced by the structural rank-2 limb subspace), the
-per-lead recoverability ordering is preserved (Spearman $\ge\RobOrderRhoMin$), the rate axis is
-tight (strong-lead $|\Delta\eta|\le\RobRateDetaStrong$), and the endpoint stays FN-dominated
-(under-warning, the conservative direction) in every setting
-(\texttt{results/delineator\_robustness.json}). The certificate is a pre-reconstruction screen, not
-a substitute for clinical validation.
+\input{compliance}
 
-\section{Conclusion}
-Reduced-lead ECG reconstruction has a known low-rank structure per segment. Exploiting it gives
-a graded, per-target-lead recoverability map---what is identifiable, how well-conditioned, and
-(via calibration) what interval the predictable residual admits---before and independent of any
-reconstructor, plus a total ST-threshold error rate whose point estimates range
-$\TotWrongLo$--$\TotWrongHi\%$ across the evaluated reconstructors. It converts ``trust the
-reconstruction'' into a per-feature, per-lead, calibrated statement, and it told us honestly
-when one of our own earlier claims was not supported.
-
-\appendix
-\section{Proof of Proposition~\ref{thm:perlead}}
-\label{app:proof}
-We work with the \emph{exact} $\bm M_{s,S}=\bm{\mathrm{Sel}}_S\bm M_s$, its exact Moore--Penrose
-inverse $\bm M_{s,S}^{+}$, and the exact orthogonal row-space projector
-$\bm P_{\mathrm{obs}}=\bm M_{s,S}^{+}\bm M_{s,S}$ (projecting onto $\operatorname{row}(\bm
-M_{s,S})=\ker(\bm M_{s,S})^{\perp}$).
-
-\textbf{(i) Identifiability.} The dipolar part of lead $\ell$ is the linear functional
-$f_\ell(\bm d)=\bm e_\ell^{\top}\bm M_s\bm d$. From $S$ we observe $\bm M_{s,S}\bm d$, which fixes
-$\bm P_{\mathrm{obs}}\bm d$ exactly; the exact kernel component $(\bm I-\bm P_{\mathrm{obs}})\bm
-d$ is unobserved. Decompose $\bm e_\ell^{\top}\bm M_s=\bm e_\ell^{\top}\bm M_s\bm
-P_{\mathrm{obs}}+\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})$. If
-$\eta_{s,\ell}(S)=\|\bm e_\ell^{\top}\bm M_s(\bm I-\bm P_{\mathrm{obs}})\|_2=0$ then $f_\ell(\bm
-d)=\bm e_\ell^{\top}\bm M_s\bm P_{\mathrm{obs}}\bm d$ depends on $\bm d$ only through the observed
-$\bm P_{\mathrm{obs}}\bm d$, hence is determined by $\bm M_{s,S}\bm d$: identifiable. Conversely
-if $\eta_{s,\ell}(S)>0$ there is a unit $\bm\delta\in\ker\bm M_{s,S}$ with $\bm e_\ell^{\top}\bm
-M_s\bm\delta\neq0$; then $\bm d$ and $\bm d+t\bm\delta$ give identical observations for all $t$
-but change $f_\ell$ by $t\,\bm e_\ell^{\top}\bm M_s\bm\delta$, so no estimator recovers $f_\ell$
-at any SNR. This is the exact estimability criterion \cite{scheffe1959anova} for $f_\ell$.
-
-\textbf{Exact vs.\ $\varrho$-truncated verdict (numerical check).} The deployed heatmap replaces
-$\bm P_{\mathrm{obs}}$ by the rank-$r$ truncation $\bm P_{\mathrm{obs}}^{(\varrho)}=\bm V_r\bm
-V_r^{\top}$ (singular directions with $\sigma_i\le\varrho\,\sigma_{\max}$ dropped). This can
-disagree with the exact verdict only near a truncation boundary, and only in the
-\emph{conservative} direction: $\eta^{(\varrho)}_{s,\ell}\ge0$ can be positive where
-$\eta_{s,\ell}=0$ (a tiny-but-nonzero singular value is exactly identifiable yet not stably
-recoverable at resolution $\varrho$), but not vice versa. We verify all three regimes in code
-(\texttt{tests/test\_exact\_vs\_rho.py}): (a) an exactly rank-deficient $\bm M_{s,S}$ gives
-$\eta=\eta^{(\varrho)}>0$; (b) $\bm M_{s,S}=\operatorname{diag}(1,1,10^{-6})$ gives $\eta=0$ but
-$\eta^{(\varrho)}>0$ at $\varrho=10^{-2}$; (c) a full-rank well-conditioned $\bm M_{s,S}$ gives
-$\eta=\eta^{(\varrho)}=0$. The limb-6 flagship falls in regime (a) exactly (rank~2), so its
-verdict is $\varrho$-independent.
-
-\textbf{(ii) Conditioning.} The mean-centred estimate is
-$\widehat{\bm L}_s-\bm\mu_s=\bm M_s\bm M_{s,S}^{+}(\bm y_S-\bm\mu_{s,S})$ with
-$\bm y_S-\bm\mu_{s,S}=\bm M_{s,S}\bm d+\bm{\mathrm{Sel}}_S\bm r_s+\bm n$. On the identifiable
-part its lead-$\ell$ error from the observed non-dipolar residual and noise is
-$\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}(\bm{\mathrm{Sel}}_S\bm r_s+\bm n)$, and by
-Cauchy--Schwarz
-$|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}(\bm{\mathrm{Sel}}_S\bm r_s+\bm n)|
-\le\|\bm e_\ell^{\top}\bm M_s\bm M_{s,S}^{+}\|_2(\|\bm{\mathrm{Sel}}_S\bm r_s\|_2+\|\bm n\|_2)
-=\kappa_{s,\ell}(S)(\|\bm{\mathrm{Sel}}_S\bm r_s\|_2+\|\bm n\|_2)$, using Cauchy--Schwarz and the
-triangle inequality. Each per-lead conditioning is a row norm of $\bm A=\bm M_s\bm M_{s,S}^{+}$,
-so $\kappa_{s,\ell}(S)=\|\bm e_\ell^{\top}\bm A\|_2\le\|\bm A\|_2=\kappa_s(S)$; the global
-$\kappa_s$ upper-bounds every per-lead value but is not their maximum. \hfill$\square$
-
-\section{Reproducibility}
-\label{app:repro}
-Code, fixed seeds, an exact environment lock (\texttt{env.lock.txt}), and a one-command
-pipeline (\texttt{experiments/run\_all.py}) are released; every table number is regenerated
-from result JSON (\texttt{paper/emit\_baseline\_table.py}), and a CI workflow runs the test
-suite on every push. The neural baseline is a 24$\to$12-channel 1-D U-Net (base width 64,
-residual GroupNorm blocks, 60 epochs, 3 deterministic seeds, Adam $2{\times}10^{-4}$, MSE on masked leads, random-mask
-training); the residual predictor is a gradient-boosted quantile regressor (pinball loss) with
-strict fold discipline (folds 1--7 train, 9 calibrate, 10 test).
-
-\bibliographystyle{IEEEtran}
+\bibliographystyle{IEEEbib}
 \bibliography{refs}
 \end{document}

@@ -75,9 +75,14 @@ theorem on those estimators, it does not re-prove it.
 identifiable/unidentifiable split is separated with AUC $\CertValAUC$. Because it is worst-case over
 $\mathcal P(\bm\Sigma_d)$, estimators exploiting the true (non-Gaussian) population structure fall
 \emph{below} it on a fraction of the $\CertValNetaPos$ non-trivial ($\eta{>}0$) cells (the pure-dipolar
-reconstructor on $\CertValViolDip$, ridge/OLS on $\CertValViolRidge$); this below-floor gap is exactly
-the Tier-II predictable residual the calibrated intervals of Sec.~\ref{sec:calib} cover, and is fully
-consistent with the theorem, which bounds the worst case and not the risk on any single true prior.
+reconstructor on $\CertValViolDip$, ridge/OLS on $\CertValViolRidge$). This below-floor gap and the
+Tier-II residual used by the calibration analysis in Sec.~\ref{sec:calib} are \emph{different
+objects}: the former compares an estimator's empirical-population risk with a worst-case-prior
+benchmark, whereas the latter is a record-level prediction error under a specified reconstructor and
+feature definition. No equality, decomposition, or coverage relationship follows between them. Any
+empirical association would require a separately frozen held-out analysis. The observed below-floor
+cases remain consistent with the theorem, which concerns the worst case rather than the risk under a
+single empirical population.
 The $\eta$-split likewise predicts a trained diffusion model's error (median $\FloorDiffEtaZero$ vs
 $\FloorDiffEtaPos$\,mV for $\eta{=}0$ vs $\eta{>}0$;
 \texttt{experiments/certificate\_floor\_diffusion.py}).

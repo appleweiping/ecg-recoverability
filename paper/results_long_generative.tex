@@ -8,8 +8,8 @@ be exactly the failure the certificate is meant to prevent.
 \textbf{Setup.} An arbitrary-mask conditional DDPM (12-channel binary mask $+$ observed values;
 random-mask training so one model serves any configuration, with explicit leakage tests)
 reconstructs $\{$V2,V4,V6$\}$ from $\{$I,II,V1,V3,V5$\}$ under classifier-free-style guidance
-weight $w\in\{1,2,4,6\}$ (\texttt{results/gpu\_deficit\_ci.json},
-\texttt{realism\_metrics.json}, \texttt{gpu\_oracle\_gate.json}; all lineage-stamped, numbers
+weight $w\in\{1,2,4,6\}$ (\path{results/gpu_deficit_ci.json},
+\path{realism_metrics.json}, \path{results/gpu_oracle_gate.json}; all lineage-stamped, numbers
 auto-generated).
 
 \textbf{(1) The original effect was a configuration-leakage artifact.} The earlier exhibit

@@ -18,7 +18,21 @@ _SCRIPT_DIRS = ["experiments", "scripts", "paper", "."]
 
 def _lineage(n):
     p = ROOT / "results" / f"{n}.json"
-    return (json.loads(p.read_text()).get("lineage") or {}) if p.exists() else {}
+    assert p.exists(), f"strict release missing result: {n}.json"
+    value = json.loads(p.read_text()).get("lineage")
+    assert isinstance(value, dict) and value, f"{n}: missing/null lineage"
+    return value
+
+
+def test_strict_all_lineage_fields_complete():
+    from ecgcert import lineage
+    failures = []
+    for n in CITED_JSON:
+        try:
+            lineage.validate_strict_lineage(_lineage(n), require_checkpoint=n in MODEL_JSON)
+        except (AssertionError, ValueError) as exc:
+            failures.append(f"{n}: {exc}")
+    assert not failures, "strict lineage failures:\n" + "\n".join(failures)
 
 
 def test_strict_all_git_dirty_false():

@@ -1,14 +1,48 @@
-"""Shared evaluation protocol so every baseline uses the SAME train/test IDs and
-normalization (P0-5/P0-6). Both neural_baseline.py and fair_baselines.py import this;
-lineage ID hashes then match and fair_baselines can assert consistency before merging.
+"""Compatibility helpers for the locked ICASSP 2027 protocol.
+
+New experiments should import constants and split/configuration builders from
+``ecgcert.protocol``.  The legacy helpers below remain so historical experiments
+can still be reproduced, but their NORM-only 100 Hz protocol is not a main-paper
+profile.
 """
 from __future__ import annotations
 
 import numpy as np
 
+from ecgcert.protocol import (  # re-export the canonical protocol
+    BOOTSTRAP_REPLICATES,
+    CONFIG_PANEL_SALT,
+    PRIMARY_RATE_HZ,
+    PRIMARY_SEGMENTS,
+    RANK_GRID,
+    StudyProtocol,
+    all_independent_configurations,
+    configuration_panel_sha256,
+    deep_configuration_panel,
+    patient_hash_split,
+    ptbxl_split,
+)
+
 RATE = 100
 WINDOW = 1000               # samples (10 s at 100 Hz)
 NORMALIZATION = "per-lead 95th-percentile |amp| from train, clipped>=0.05 mV"
+
+__all__ = [
+    "BOOTSTRAP_REPLICATES",
+    "CONFIG_PANEL_SALT",
+    "PRIMARY_RATE_HZ",
+    "PRIMARY_SEGMENTS",
+    "RANK_GRID",
+    "StudyProtocol",
+    "all_independent_configurations",
+    "configuration_panel_sha256",
+    "deep_configuration_panel",
+    "patient_hash_split",
+    "ptbxl_split",
+    "standard_split",
+    "fold8_ids",
+    "load_windows",
+]
 
 
 def standard_split(db, n_train, n_test, seed=0):

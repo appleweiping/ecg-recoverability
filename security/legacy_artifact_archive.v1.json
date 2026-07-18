@@ -1,0 +1,36 @@
+{
+  "schema_version": "ecgcert-legacy-artifact-archive-v1",
+  "created_at": "2026-07-19T00:00:00+08:00",
+  "source_commit": "9cb384ff42a511ce345131b45f665415fdacfd48",
+  "policy": "read-only pre-refactor preservation; never primary evidence",
+  "local_archive": {
+    "path": "D:\\Project\\ecg-recoverability-archive\\20260719-9cb384f-pre-refactor\\results",
+    "copied": true,
+    "source_files_left_untouched": true,
+    "artifacts": [
+      {"path": "active_selection.json", "size_bytes": 5722, "sha256": "02d4ecedcf367599f0e8205fcae11d79605562661fa11e70d409dc81238aa827"},
+      {"path": "baselines_physics.json", "size_bytes": 19570, "sha256": "3a11bede54a142a9d5765223de6df9b1b010e02b36a2933dc2dd9047bd9b5c68"},
+      {"path": "certificate_validation.json", "size_bytes": 60630, "sha256": "3f09e6e2faf52a260bd5e4f44099013d297bdbefa2853853602c2bc3082e6901"},
+      {"path": "delineator_robustness.json", "size_bytes": 5868, "sha256": "2f064f8325650b879dbf1212eca2bb0ed2225e51d172cfcfa84cf02876937f76"},
+      {"path": "fabrication_audit.json", "size_bytes": 8103, "sha256": "1ee92d29f6e8b343e5390e6d2c15902dcf94f1afb6dd0f76f96c4720d685cca9"},
+      {"path": "lead_weighting.json", "size_bytes": 9172, "sha256": "f985ea93d51d335474904294d8f53838117ec337d098900a738cdf95619949a6"},
+      {"path": "precheck_dipolarity.json", "size_bytes": 3422, "sha256": "33817fb0a8068e23f2fe8a8ad6aa0928c08a89ee9c8fdb6805588bcbe3db1168"},
+      {"path": "precheck_dipolarity.png", "size_bytes": 30103, "sha256": "dfb63a94c1154d085266980b2827c64a6daa72f94b0bc5738cdf723f59769021"},
+      {"path": "recoverability_map.png", "size_bytes": 124709, "sha256": "e150034ec876fef1fdf166ec28957ec3908c74a7d59e5a88b278e75738b6cce7"},
+      {"path": "recoverability_maps.json", "size_bytes": 150867, "sha256": "4176bde174ae045a73a97764a8476e8ef19bfc18b3758c41609c8c4043813a97"},
+      {"path": "st_safety.json", "size_bytes": 316640, "sha256": "f5baf3a2cb4573a72ab2cc4ae4c22921229880cdd19fcd15e1fc7e69f3a95971"},
+      {"path": "synthetic.json", "size_bytes": 2669, "sha256": "7d749f840ecc411d6bf8115f4eeb806857c759ae58aa11b2d4639328cd149895"},
+      {"path": "synthetic_validation.png", "size_bytes": 93839, "sha256": "011768c7b7d01a287e30dfcb4642c4a79afd8278dd05396725d76fc2ee06b53b"},
+      {"path": "tier2_conformal.json", "size_bytes": 15954, "sha256": "943081cbc2af6578beeea3805cac75749af464e328c4b574e1ab5720c273ada5"},
+      {"path": "transfer_bound.json", "size_bytes": 2699, "sha256": "3d76b9e4f672be7e1acb52941728f10201b55a5a86aecbcc574fff51d48c09f1"}
+    ]
+  },
+  "remote_checkpoint": {
+    "path": "/root/autodl-tmp/ecg-recoverability/results/gpu_ddpm.pt",
+    "size_bytes": 9695605,
+    "sha256": "9aad8b6f601ed9e4bfda76e22b8758c7655438e299ba3742bd6206b9d22bc37a",
+    "hash_verified": true,
+    "copied": false,
+    "reason": "key-only SSH and pinned known_hosts are not yet provisioned; password fallback is prohibited"
+  }
+}

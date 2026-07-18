@@ -25,6 +25,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ecgcert.data.audit import AuditTrail, SignalAudit
+from ecgcert.data.common import canonicalize_wfdb_record
+
 # PTB-XL diagnostic superclasses (scp_statements.diagnostic_class).
 SUPERCLASSES = ("NORM", "MI", "STTC", "CD", "HYP")
 
@@ -65,14 +68,44 @@ class PTBXL:
         return np.asarray(m.index[sel])
 
     # ---------------------------------------------------------------------- signal
-    def signal(self, ecg_id: int, rate: int = 100) -> np.ndarray:
-        """Return the (T, 12) lead array for ``ecg_id`` at 100 or 500 Hz."""
+    def patient_id(self, ecg_id: int) -> str:
+        """Stable patient identifier used for clustering and leakage checks."""
+
+        value = self.meta.loc[ecg_id, "patient_id"] if "patient_id" in self.meta else ecg_id
+        return str(value)
+
+    def signal_with_audit(self, ecg_id: int, rate: int = 100) -> tuple[np.ndarray, SignalAudit]:
+        """Load, reorder and convert one record to canonical twelve-lead mV."""
+
+        if rate not in {100, 500}:
+            raise ValueError("PTB-XL provides only 100 or 500 Hz records")
         import wfdb
 
         col = "filename_lr" if rate == 100 else "filename_hr"
         rel = self.meta.loc[ecg_id, col]
         rec = wfdb.rdrecord(str(self.root / rel))
-        return rec.p_signal.astype(float)  # (T, 12), standard lead order, mV
+        signal, conversion = canonicalize_wfdb_record(rec)
+        if not np.isclose(float(rec.fs), rate):
+            raise ValueError(f"record {ecg_id} reports {rec.fs} Hz, expected {rate} Hz")
+        audit = SignalAudit(
+            cohort="PTB-XL",
+            record_id=str(ecg_id),
+            patient_id=self.patient_id(ecg_id),
+            status="included",
+            reason=None,
+            requested_rate_hz=rate,
+            source_rate_hz=conversion["source_rate_hz"],
+            n_samples=int(signal.shape[0]),
+            input_leads=conversion["input_leads"],
+            input_units=conversion["input_units"],
+            unit_scales_to_mv=conversion["unit_scales_to_mv"],
+        )
+        return signal, audit
+
+    def signal(self, ecg_id: int, rate: int = 100) -> np.ndarray:
+        """Return canonical ``(T,12)`` mV in ``[I,II,III,aVR,aVL,aVF,V1..V6]``."""
+
+        return self.signal_with_audit(ecg_id, rate=rate)[0]
 
     # --------------------------------------------------------------- delineation
     @staticmethod
@@ -194,6 +227,73 @@ class PTBXL:
             else:
                 out[s] = (np.zeros((0, 12)), np.zeros(0, dtype=np.int64))
         return out
+
+    def collect_all_segments_audited(
+        self,
+        ecg_ids,
+        rate: int = 500,
+        max_per_record: int = 40,
+        max_records: int | None = None,
+        seed: int = 0,
+    ):
+        """Collect samples with record/patient clusters and explicit exclusions.
+
+        Returns ``({segment: (X, record_ids, patient_ids)}, AuditTrail)``.
+        """
+
+        rng = np.random.default_rng(seed)
+        ids = list(ecg_ids)
+        if max_records is not None:
+            ids = ids[:max_records]
+        rows = {segment: [] for segment in ("P", "QRS", "ST", "T")}
+        record_groups = {segment: [] for segment in rows}
+        patient_groups = {segment: [] for segment in rows}
+        trail = AuditTrail()
+        for eid in ids:
+            patient_id = self.patient_id(int(eid))
+            try:
+                signal, base_audit = self.signal_with_audit(int(eid), rate=rate)
+                segments = self.segment_indices(signal, fs=rate)
+                counts = {segment: int(index.size) for segment, index in segments.items()}
+                if not any(counts.values()):
+                    raise ValueError("no valid delineated segments")
+                trail.append(SignalAudit(**{**base_audit.__dict__, "segment_counts": counts}))
+            except Exception as exc:
+                trail.append(
+                    SignalAudit(
+                        cohort="PTB-XL",
+                        record_id=str(eid),
+                        patient_id=patient_id,
+                        status="excluded",
+                        reason=f"{type(exc).__name__}: {exc}",
+                        requested_rate_hz=rate,
+                    )
+                )
+                continue
+            for segment, index in segments.items():
+                if index.size == 0:
+                    continue
+                if index.size > max_per_record:
+                    index = rng.choice(index, max_per_record, replace=False)
+                rows[segment].append(signal[index])
+                record_groups[segment].append(np.full(index.size, int(eid), dtype=np.int64))
+                patient_groups[segment].append(np.full(index.size, patient_id, dtype=object))
+
+        out = {}
+        for segment in rows:
+            if rows[segment]:
+                out[segment] = (
+                    np.vstack(rows[segment]),
+                    np.concatenate(record_groups[segment]),
+                    np.concatenate(patient_groups[segment]),
+                )
+            else:
+                out[segment] = (
+                    np.zeros((0, 12)),
+                    np.zeros(0, dtype=np.int64),
+                    np.zeros(0, dtype=object),
+                )
+        return out, trail
 
     def collect_segment_samples(self, ecg_ids, segment: str, rate: int = 100,
                                 max_per_record: int = 40, max_records: int | None = None,

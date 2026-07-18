@@ -22,6 +22,12 @@ from ecgcert.physics.dipolar_subspace import (
     inverse_dower_matrix,
     DipolarModel,
 )
+from ecgcert.physics.spatial_subspace import (
+    BASIS_VARIANTS,
+    BasisVariant,
+    SpatialSubspaceModel,
+    fit_spatial_subspace,
+)
 
 __all__ = [
     "RECON_RCOND",
@@ -46,4 +52,8 @@ __all__ = [
     "reconstruct_dipolar",
     "inverse_dower_matrix",
     "DipolarModel",
+    "BASIS_VARIANTS",
+    "BasisVariant",
+    "SpatialSubspaceModel",
+    "fit_spatial_subspace",
 ]

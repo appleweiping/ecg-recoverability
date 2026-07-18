@@ -1,195 +1,243 @@
 # ecg-recoverability
 
-**Target-Specific Recoverability Maps for Reduced-Lead ECG Reconstruction** — a per-lead,
-per-feature *identifiability + conditioning* certificate, with distribution-free calibrated
-intervals for the predictable residual. Targeting **IEEE ICASSP** (Biomedical Signal
-Processing). Real public data (PTB-XL); every theorem is cross-checked by simulation.
+Robust, target-specific, **model-conditional** recoverability maps for reduced-lead ECG
+reconstruction.
 
-> **What this is (and an honest note on what it is not).** Reconstructing missing ECG leads
-> from a reduced set is ill-posed, and a scalar error says nothing about *which* named
-> feature, on *which* lead, a clinician can trust. We give, per waveform segment (P/QRS/ST/T),
-> observed lead set `S`, and **target lead `ℓ`**, two closed-form numbers from one truncated
-> SVD of the segment's empirical rank-3 spatial basis `M_s`: an **identifiability**
-> `η_{s,ℓ}(S)` (zero ⇔ the target's low-rank component is recoverable from `S`) and a
-> **conditioning** `κ_{s,ℓ}(S)`. Plus a calibrated interval for the empirically predictable
-> residual. This project began with a stronger "certified hallucination / fabrication is the
-> objective" claim; **rigorous re-analysis (see [Honest history](#8-honest-history)) showed
-> that claim did not survive**, and the paper was rebuilt around the parts that do.
+> **Research status — fail closed.** Stage 15 has no reviewed decision. Final empirical values,
+> model rankings, external-transfer conclusions, and manuscript effect sizes are **PENDING**. The
+> repository currently provides the frozen question, implementation, validation design, and evidence
+> gate; it does not yet provide an empirical conclusion.
 
----
+The project is being rebuilt around one falsifiable question:
 
-## 1. The problem
+> Does a robust target-specific recoverability score add held-out predictive value for per-lead ECG
+> reconstruction error beyond simple configuration and signal-scale variables, across reconstruction
+> methods and on external cohorts?
 
-A 12-lead ECG is expensive; wearables record one, three, or six leads, and *lead
-reconstruction* fills in the rest. A low average error certifies nothing about which
-morphological features are trustworthy — a reconstruction that gets the mean right but
-invents an ST deviation invents a finding. We ask a reconstructor-independent question:
-**for a given observed lead set, which target lead's morphology is even identifiable, and
-how well-conditioned is its recovery?**
+The score is evaluated as a property of a fitted spatial model and its assumptions. It is not a
+model-free impossibility result, a guarantee for every reconstructor, or a clinical conclusion.
 
-## 2. The certificate (per target lead)
+## Scientific scope
 
-Each segment's instantaneous potential is approximately low rank across leads. We estimate a
-per-segment rank-3 spatial basis `M_s` (top-3 singular vectors of the population lead
-covariance). For observed leads `S` (sub-matrix `M_{s,S}`), from a **single** truncated SVD
-at relative tolerance `ϱ`:
+### Primary object
 
-| quantity | meaning |
-|---|---|
-| `η_{s,ℓ}(S) = ‖eₗᵀ M_s (I − M_{s,S}⁺M_{s,S})‖` | **identifiability**: `η=0` ⇒ lead `ℓ`'s dipolar component is recoverable from `S`; `η>0` ⇒ an unobserved direction changes lead `ℓ` (unrecoverable at any SNR) |
-| `κ_{s,ℓ}(S) = ‖eₗᵀ M_s M_{s,S}⁺‖` | **conditioning**: noise / observed-residual gain into the identifiable part of lead `ℓ` |
+For each waveform segment, observed-lead configuration, and target lead, the primary pipeline fits a
+bank of empirical spatial models over the preregistered rank grid `{2, 3, 4, 5}`. It evaluates two
+basis definitions:
 
-The global `κ_s(S) = ‖M_s M_{s,S}⁺‖₂` (spectral norm) is a *configuration-level worst case*
-that **upper-bounds** every per-lead conditioning — `κ_{s,ℓ}(S) ≤ κ_s(S)` (a row norm never
-exceeds the spectral norm) — it is **not** their maximum. It is not a per-lead certificate. All quantities come from one truncated SVD (unified numerics),
-so a lead is either observed or not, everywhere.
+- `independent8_lifted`: fit the eight algebraically independent measured channels and lift them to
+  the displayed 12 leads; this is the primary definition;
+- `raw12_pca`: fit the displayed 12 channels directly; this is a weighting and acquisition
+  sensitivity analysis.
 
-**On real PTB-XL** (`results/recoverability_map.png`): a single lead leaves every other lead
-unidentifiable; a dipole-spanning triplet `{I,II,V2}` or `{I,II,V1,V3,V5}` makes all targets
-**exactly** identifiable (η=0). The map is **graded**, not binary. Since absolute η conflates
-lead amplitude with observation geometry, we grade the shortfall by **normalized identifiability**
-`η̃ = η/‖eₗᵀ Mₛ‖` (the *fraction* of a lead's dipolar content that is unobservable) and by the
-**prior-conditional expected ambiguity in mV** — the residual a Bayes reconstructor still
-incurs after conditioning the unobserved dipole coordinate on the observed one through the
-fitted Gaussian dipole prior (a marginal footprint would ignore that correlation). For limb-6 **no
-precordial lead is exactly identifiable** (η>0 for all) — the robust, exact claim. The *fine*
-ordering among precordial leads (e.g. anterior V1–V4 vs. lateral V5/V6) is **sensitive to the
-limb-lead weighting** for the low-amplitude ST/T segments (duplicated-limb sensitivity analysis), so
-we report it with that caveat rather than as a robust graded ordering. A physiological "precordial
-vs. limb" split cannot even make the exact call; the empirical map does. (Exact numbers:
-`results/recoverability_maps.json`, `results/st_safety.json`.)
+Each fitted model produces target-specific geometry and a Gaussian posterior ambiguity in mV. That
+ambiguity is **model-conditional**: it depends on the fitted subspace, coordinate covariance,
+observation model, and fold-8 regularization. The primary `ambiguity_robust_mv` score takes a
+conservative envelope over ranks and patient-cluster bootstrap uncertainty instead of selecting a
+favorable rank after seeing test outcomes.
 
-**Truncation-tolerance sensitivity.** Rank/`κ` of well-posed configurations are stable across
-`ϱ∈{1e-4,…,1e-1}`; near-rank-deficient sets are `ϱ`-sensitive (synthetic `{V1,V2,V3}`: rank 2
-at `ϱ=1e-2` vs rank 3, `κ~200` at `ϱ=1e-4`). We report a single `κ` only for well-conditioned
-sets and give the `ϱ`-sweep + bootstrap CIs otherwise — a single `10⁴`/`10⁵` figure for a
-degenerate set is not meaningful.
+The primary analysis asks whether that score predicts patient-level held-out reconstruction error
+after accounting for:
 
-## 3. Calibrated intervals (predictable residual)
+- number of observed leads;
+- observed-configuration rank and global conditioning;
+- target RMS;
+- maximum observed-to-target correlation;
+- reconstruction method, waveform segment, and target lead.
 
-For the empirically predictable non-dipolar residual we train a **real quantile regressor**
-(gradient-boosted pinball loss) of each target lead's off-dipole residual on the observed
-leads, and apply conformalized quantile regression per Mondrian group `(S,s,ℓ)` with **strict
-fold discipline** (basis+model on folds 1–7, conformal calibration on fold 9, a single
-evaluation on fold 10). We report **within-group marginal coverage under exchangeability**
-(not per-example conditional coverage): on PTB-XL, fold-10 coverage clusters near the nominal
-0.90 (e.g. `{I,II,V1,V3,V5}` QRS/V2: 0.92, bootstrap CI [0.89,0.95], width 0.165 mV).
+The comparison is the out-of-sample change in predictive fit between a simple meta-model and the same
+model augmented with `ambiguity_robust_mv`. Direct reconstruction benchmarking remains necessary;
+the map complements it rather than replacing it.
 
-## 4. Baselines and safety
+### Validation design
 
-**Baselines** (`results/fair_baselines.json`, one identical per-timepoint waveform-RMSE
-protocol for all methods — same shared split (train folds 1–7, ridge λ chosen on fold 8, test
-on NORM fold-10), same test records, **paired** record-bootstrap CIs on the step-to-step
-deltas, and a **representative** arbitrary-mask 1-D U-Net (3 seeds)): on a spanning set the
-methods form a ladder prior-mean → dipolar → ridge → U-Net (the neural margin over a simple
-ridge is small), so there is recoverable non-dipolar content. On **limb-6 the U-Net still lowers
-error substantially** by recovering the predictable structure, but **plateaus well above its
-spanning-set error and no reconstructor closes that gap** — a residual **consistent with** the
-unobserved dipolar coordinate `η>0` flags (we do not decompose the error into projected
-components, so we claim consistency, not equality). Capacity recovers the predictable part, not
-the missing coordinate; we scope the identifiability claim to the dipolar component, not a
-blanket "not recoverable". (Exact values + paired-Δ CIs: `results/fair_baselines.json`.)
+The primary protocol is encoded in `src/ecgcert/protocol.py`:
 
-**ST safety across reconstructors** (`results/st_safety.json`): we reconstruct the full
-10-second waveform with three real continuous reconstructors (observed leads kept exact; ST
-measured at J+60 ms vs. a PR baseline on fiducials located once on the observed Lead II and
-shared between truth and reconstruction; event = `|ST| ≥ 0.1 mV`, absolute). The **total**
-wrong-event rate (false-positive + false-negative crossings) has **point estimates ranging ~51–54%
-across the evaluated reconstructors** (paired record-bootstrap Δ on FP, FN, and the total in
-`results/st_safety.json`; we make **no equivalence claim**); all three **miss more true crossings
-than they invent** (FN > FP — limb→precordial reconstruction smooths ST toward the population), and
-the FP/FN balance shifts with the reconstructor (dipolar has the largest false-positive share, OLS
-the smallest). Because we do not derive a minimax/Bayes lower bound we report only the **range of
-total-error point estimates**, **not** a certified lower bound. The PR-segment baseline fell back to the
-pre-QRS window in ~14% of beats, a delineation limitation the exact ST magnitudes inherit. We report
-ST-threshold events, not diagnoses.
+- primary segments: QRS, ST, and T; P is supplementary;
+- primary sampling rate: 500 Hz;
+- rank grid: `{2, 3, 4, 5}`;
+- primary uncertainty: at least 2,000 patient-cluster bootstrap replicates;
+- primary basis: eight independent leads lifted to the displayed 12-lead system;
+- sensitivity basis: direct 12-channel PCA;
+- observed configurations: an outcome-independent, hashed panel over the independent leads.
 
-## 5. `M_s` is an *empirical* subspace, not the physical dipole
+PTB-XL uses patient-disjoint official fold roles:
 
-On real PTB-XL the estimated `M_s` has **three graded principal angles** to the classical
-inverse-Dower vectorcardiographic space: one **close** (≈2–6°), one **moderate**, and one
-**substantially different** (max ≈43–55°, bootstrap CIs excluding small angles). We therefore
-call `M_s` an **empirical rank-3 spatial subspace**, not a physical cardiac dipole. (An earlier
-synthetic "matches inverse-Dower" check *generated* the data with inverse-Dower — self-
-consistency, not evidence on real ECG.)
+| Role | Fold(s) | Permitted use |
+|---|---:|---|
+| Train | 1–7 | fit spatial models and reconstructors |
+| Tune | 8 | select regularization and other frozen hyperparameters |
+| Calibration/meta-fit | 9 | fit the frozen comparison model |
+| Test | 10 | one held-out primary evaluation |
 
-## 6. Repository layout
+Patient identity is the split and resampling unit. Beat- or window-level resampling is not accepted
+as primary uncertainty.
 
-```
+External validation is zero-transfer on Chapman–Shaoxing–Ningbo and CPSC 2018. The PTB-XL score
+definition, preprocessing contract, comparison variables, and outcome direction remain frozen.
+External cohort-specific map refits are sensitivity analyses; they do not substitute for the
+zero-transfer score–error test.
+
+### Reconstruction panel
+
+All methods share the same observed masks, patient splits, units, sample rate, and per-patient scorer:
+
+- low-rank Gaussian conditional mean;
+- ridge regression;
+- mask-conditioned 1-D U-Net;
+- official-method adapters for ImputeECG and ECGrecover when their pinned upstream artifacts and
+  protocol requirements are satisfied.
+
+Unavailable or failed public methods remain in the run ledger with a reason. They are not silently
+replaced by an easier in-house surrogate.
+
+## Stage 15 decision gate
+
+`src/ecgcert/evaluation.py::stage15_decision` implements a nondiscretionary, fail-closed decision.
+`PROCEED` requires all of the following:
+
+1. the PTB-XL fold-10 incremental `ΔR²` patient-bootstrap interval has a positive lower bound;
+2. at least one external zero-transfer cohort has a positive lower bound for the same comparison;
+3. at least three reconstruction methods have a positive method-specific point estimate.
+
+If any condition fails, the coded decision is `PIVOT`, with machine-readable reasons. Every
+automatic decision then requires a signed author review within 24 hours. A failed automatic gate
+cannot be reviewed as `PROCEED`, and there is no override that turns incomplete, unstable,
+single-method, or internal-only evidence into a positive headline. The broader artifact, leakage,
+citation, and submission requirements are defined
+in [the evidence-gated protocol](docs/research_protocol.md) and
+[the stage-gate register](arc_audit/STAGE_GATES.md).
+
+A signed `PROCEED` releases the positive result macros; a signed `PIVOT` releases the actual effects
+with a transparent negative-result headline and conclusion. Until one of those reviewed decisions is
+bound to the artifacts, the project-level and paper-level status remains `PENDING`.
+
+## What is not claimed
+
+- No single spatial rank is treated as the true cardiac representation.
+- No fitted row-space result is promoted to a model-free statement about all waveform information.
+- No result is assumed to hold independently of the reconstruction method.
+- No reconstruction metric is treated as diagnostic equivalence, clinical utility, or patient
+  safety evidence.
+- No ST-event, conformal-calibration, active-selection, or generative-model branch supports the
+  primary headline.
+- No current JSON, plot, checkpoint, or historical manuscript value is a final submission result.
+
+## Repository map
+
+```text
 src/ecgcert/
-  physics/dipolar_subspace.py   # unified SVD: observed_dipole, kappa/kappa_per_lead, eta_per_lead
-  certify/tier_decomposition.py # off_dipole_projector/energy, per-lead tier_report (eta)
-  conformal/mondrian_cqr.py     # CQR, Mondrian (tuple-safe), conformal risk control
-  estimators/diffusion.py       # arbitrary-mask conditional DDPM (application study)
-  lineage.py                    # result provenance (commit/dataset/id-hash) + assert_consistent
+  protocol.py                 frozen ranks, segments, patient splits, configuration panel
+  physics/spatial_subspace.py rank-generic empirical spatial models and basis variants
+  recoverability/
+    gaussian.py               model-conditional posterior ambiguity and conditional mean
+    model_bank.py             reusable patient-cluster bootstrap model banks
+    rank_path.py              per-rank paths and robust cross-rank envelopes
+  estimators/                 shared reconstructor API, baselines, U-Net, official adapters
+  evaluation.py               held-out meta-model comparison and Stage 15 decision
+  data/                       manifests, cohort adapters, and patient-level audit checks
+  execution/                  isolated artifact and execution-envelope primitives
+
 experiments/
-  protocol.py                   # shared train/test split + loader (identical across methods)
-  recoverability_maps.py        # per-lead eta/eta_tilde/ambiguity + record-level bootstrap CI
-  tier2_conformal.py            # real quantile model + fold discipline (1-7 / tune 8 / cal 9 / test 10)
-  baselines_physics.py          # baselines + physics-vs-PCA (empirical subspace)
-  fair_baselines.py             # like-for-like per-timepoint baselines + PAIRED delta CIs
-  st_safety.py                  # continuous ST-threshold-event safety across reconstructors
-  neural_baseline.py            # representative neural (arbitrary-mask U-Net) baseline, 3 seeds
-  lead_weighting.py             # 8-independent-lead vs 12-lead fit sensitivity
-  maps_figure.py                # the recoverability-map figure
-tests/                          # 57 checks (17 cited JSONs) incl. per-lead certificate, rcond sensitivity,
-                                #   graded/lineage units, paper-number consistency
-paper/main_v2.tex               # ICASSP 4-page draft (target-specific recoverability)
-paper/arxiv_long.tex            # extended version: full proofs, cross-dataset transfer,
-                                #   the abandoned-hypothesis negative result (8 pp)
-paper/emit_baseline_table.py    # regenerate all paper numbers from results/*.json
-env.lock.txt                    # exact environment used for results/*.json
+  robust_maps_v3.py           primary rank-robust target map
+  reconstruction_candidates_v3.py
+                               fold-8-only candidate training and checkpoint traces
+  tune_reconstructors_v3.py   frozen candidate selection
+  reconstruction_benchmark_v3.py
+  stage_gates_v3.py           Stage 5, 9, and 20 fail-closed quality gates
+  external_validation_v3.py  external zero-transfer analysis
+  meta_analysis_v3.py         incremental comparison and Stage 15 artifact
+
+scripts/experiment_manifest.yaml  primary, extended, and legacy DAG profiles
+scripts/dag_runner.py              profile-aware DAG validation and execution
+scripts/prepare_official_baselines_v3.py
+                                   audited official-method data preparation
+scripts/claim_sync_v3.py           reviewed Stage-15 values to paper/registry binding
+paper/main_v2.tex                  evidence-gated short-paper source
+paper/arxiv_long.tex               extended protocol plus quarantined legacy supplement
 ```
 
-**Two paper versions.** `paper/main_v2.tex` is the four-page IEEE ICASSP submission (only the
-rigorously-supported core). `paper/arxiv_long.tex` is the extended preprint: full statement and
-proof of the certificate, the cross-dataset transfer study (QRS subspace transfers PTB-XL↔
-Chapman; ST/T third direction does not), and a complete account of the abandoned
-"fabrication-objective" claim (§8). Both compile clean; every table number is auto-generated
-from result JSON (no hand-typed values).
+## Setup and checks
 
-## 7. Reproduce
+Windows PowerShell:
+
+```powershell
+uv venv --python 3.11.2 .venv
+uv pip install --python .venv/Scripts/python.exe --require-hashes -r environments/cpu.lock.txt
+uv pip install --python .venv/Scripts/python.exe -e . --no-deps
+
+# Unit and static checks; these do not create scientific evidence.
+.venv/Scripts/python.exe -m pytest -q
+.venv/Scripts/python.exe paper/check_submission_claims.py
+
+# Validate the primary DAG without running experiments.
+.venv/Scripts/python.exe scripts/dag_runner.py --profile icassp --validate-only
+```
+
+The validation-only command should list the primary lineage from dataset manifests through robust
+maps, reconstruction benchmarks, external validation, meta-analysis, `stage15_gate`, claim sync, and
+submission compilation. Real execution requires the public datasets, pinned upstream methods, and
+the declared CPU/GPU environment. A successful command is not sufficient by itself: claim-bearing
+artifacts must also satisfy the lineage and human-gate contract.
+
+GPU workers install the self-contained Linux/CUDA 12.8 lock into a fresh Python 3.11.2
+environment. The runner records that lock's SHA-256 together with the actual driver, CUDA runtime,
+GPU UUID, and memory in every result envelope:
 
 ```bash
-uv venv --python 3.11 .venv && uv pip install --python .venv/Scripts/python.exe -e ".[dev,torch]"
-.venv/Scripts/python.exe -m pytest -q                         # 51 tests (CPU, no data); 57 with ECG_RELEASE=1
-.venv/Scripts/python.exe scripts/download_data.py --dataset ptbxl   # PTB-XL via HF mirror
-.venv/Scripts/python.exe experiments/recoverability_maps.py   # the map (CPU)
-.venv/Scripts/python.exe experiments/tier2_conformal.py       # calibrated intervals (CPU)
-.venv/Scripts/python.exe experiments/baselines_physics.py     # baselines + physics (CPU)
-.venv/Scripts/python.exe experiments/st_safety.py             # ST safety (CPU)
-# GPU (server): experiments/neural_baseline.py, experiments/diffusion.py-based study
+uv venv --python 3.11.2 .venv
+uv pip install --python .venv/bin/python --require-hashes -r environments/gpu.lock.txt
+uv pip install --python .venv/bin/python -e . --no-deps
 ```
-CI (`.github/workflows/tests.yml`) runs the test suite on every push.
 
-## 8. Honest history
+Four additional DAG nodes wait for hash-authenticated official AutoResearchClaw v0.5.0 co-pilot
+receipt bundles at Stages 5, 9, 15, and 20. A configured checkout, console log, failed probe, or
+project-authored review cannot satisfy those nodes. The official receipt and the separately signed
+author decision are both required.
 
-This project first claimed a diffusion model proves "fabrication is a property of the
-objective" (a "certified hallucination" flagged with a false-flag guarantee). A rigorous
-pre-submission rebuild found three things that did **not** survive scrutiny and removed them:
+The review nodes do not accept a JSON field that merely says `signed`. They verify an Ed25519
+signature against [the repository-pinned reviewer public key](security/reviewer_ed25519.pub). The
+private key must remain outside the repository, and approval signs the exact gate and evidence
+hashes. See [the security gate](security/README.md) for the record/review command.
 
-1. **Configuration leakage** in the generative exhibit (one model, fixed observed set, was
-   reused to score a different configuration) inflated the effect. Fixed via an arbitrary-mask
-   model with explicit leakage tests.
-2. With leakage fixed and **5 training seeds**, the "achievability gap" is monotone but
-   **marginal** (+0.058 ± 0.044 at high guidance, ~1.3σ) — the old "4.3σ" was a leakage
-   artifact.
-3. **Realism did not improve with guidance** (PSD and amplitude distances *worsen*), so the
-   causal "realism → fabrication" premise is false; high guidance simply degrades the model
-   on every axis.
+## Current execution blockers
 
-So the fabrication-objective story was **deleted**, and "physical cardiac dipole" was
-**downgraded** to "empirical rank-3 subspace" (§5). What remains is the honest core above.
+The implementation is deliberately ahead of the claim-bearing run. As of 2026-07-19, the following
+conditions still fail closed:
 
-The old "fabrication ratio φ" is renamed the **null-space dipolar energy ratio `R_Q`** and demoted to
-an **exploratory descriptor** in the arXiv supplement: `R_Q>0` (energy a reconstruction places in the
-unidentifiable subspace) does **not** by itself prove fabrication — the true dipole can carry that
-energy, and under correlated coordinates the Bayes posterior mean `E[Qd|Pd]` is generally nonzero, so
-`R_Q=0` is a choice, not "correct abstention." A calibrated standardized-assertion score (standardizing
-`Qd̂ − E[Qd|Pd]` by `Σ_{Q|P}`) is left to future work.
+- the exposed server password must be rotated; the project SSH public key must be installed and a
+  separately verified host key written to a fixed `known_hosts` file before any new remote command;
+- the exact-commit ECGrecover checkout is incomplete because its upstream GitLab blobs were
+  unavailable, so the reviewed `config/ecgrecover.integration.v3.json` is intentionally absent;
+- the three public datasets and five-method checkpoints have not yet produced a clean primary
+  artifact tree, and Stage 15 therefore has no decision to review;
+- a real bounded AutoResearchClaw v0.5.0 co-pilot probe reached Stage 01 but failed with
+  `Queue owner disconnected before prompt completion`, producing no ARC artifact. This is recorded
+  in [the ARC status](arc_audit/ARC_STATUS.md). Consequently all four official ARC receipt nodes
+  remain blocked, and the paper does not claim that ARC reviewed it.
 
-## 9. Citation & license
+The 15 pre-refactor local result files were copied without altering their originals and recorded by
+SHA-256 in [the legacy archive inventory](security/legacy_artifact_archive.v1.json). The previously
+observed remote checkpoint is hash-recorded there but has not been copied because password fallback
+and automatic host-key acceptance are prohibited.
 
-Preprint in preparation (target IEEE ICASSP). MIT License. Built with
-[NeuroKit2](https://github.com/neuropsychology/NeuroKit) and
-[PTB-XL](https://physionet.org/content/ptb-xl/).
+## Legacy policy
+
+The repository retains earlier fixed-subspace theory, calibration, ST-event, active-selection, and
+generative-model branches for provenance and negative-result transparency. They are isolated in the
+`legacy` DAG profile and the labeled legacy supplement.
+
+Legacy artifacts are not primary evidence, are not inputs to the Stage 15 decision, and **do not
+block the primary submission** merely because a legacy-only experiment or maintenance test is
+unavailable. A legacy issue becomes blocking only if it contaminates primary artifacts, breaks the
+declared primary build, violates licensing or security, or makes a claim-bearing result
+unreproducible.
+
+This separation prevents two opposite errors: reviving an unsupported historical claim, and allowing
+non-claim-bearing historical code to hold the refactored submission hostage.
+
+## Citation and license
+
+Preprint in preparation for a conference-quality submission. Final empirical values are **PENDING**
+the Stage 15 decision. Code is released under the MIT License; each dataset and upstream model keeps
+its own license and citation requirements.
