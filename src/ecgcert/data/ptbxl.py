@@ -76,7 +76,8 @@ class PTBXL:
 
     # --------------------------------------------------------------- delineation
     @staticmethod
-    def segment_indices(sig: np.ndarray, fs: int, rpeak_lead: int = 1) -> dict[str, np.ndarray]:
+    def segment_indices(sig: np.ndarray, fs: int, rpeak_lead: int = 1,
+                        method: str | None = None) -> dict[str, np.ndarray]:
         """P/QRS/ST/T time indices via NeuroKit2 delineation.
 
         Delineation runs on one lead (default II) to locate fiducials shared across
@@ -95,7 +96,9 @@ class PTBXL:
         x = sig[:, rpeak_lead]
         try:
             _, rpeaks = nk.ecg_peaks(x, sampling_rate=fs)
-            _, waves = nk.ecg_delineate(x, rpeaks, sampling_rate=fs, method="dwt")
+            import os
+            meth = method or os.environ.get("ECG_DELINEATOR", "dwt")   # robustness: ECG_DELINEATOR=peak
+            _, waves = nk.ecg_delineate(x, rpeaks, sampling_rate=fs, method=meth)
         except Exception:
             return {s: np.array([], dtype=int) for s in ("P", "QRS", "ST", "T")}
 

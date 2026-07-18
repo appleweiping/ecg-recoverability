@@ -16,7 +16,8 @@ pytestmark = pytest.mark.skipif(not RELEASE, reason="release-only (set ECG_RELEA
 CITED_JSON = ["fair_baselines", "st_safety", "recoverability_maps", "tier2_conformal",
               "baselines_physics", "cross_dataset", "lead_weighting", "gpu_deficit_ci",
               "realism_metrics", "gpu_oracle_gate", "neural_baseline", "certificate_validation",
-              "fabrication_audit", "fabrication_diffusion"]
+              "fabrication_audit", "fabrication_diffusion", "transfer_bound",
+              "delineator_robustness"]
 MACROS = ["paper/auto/fair_baselines_macros.tex", "paper/auto/fair_baselines_table.tex",
           "paper/auto/long_results_macros.tex"]
 PDFS = ["paper/main_v2.pdf", "paper/arxiv_long.pdf"]

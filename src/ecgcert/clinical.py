@@ -39,7 +39,9 @@ def fiducials(lead_signal: np.ndarray, fs: int):
 
     try:
         _, rpeaks = nk.ecg_peaks(lead_signal, sampling_rate=fs)
-        _, waves = nk.ecg_delineate(lead_signal, rpeaks, sampling_rate=fs, method="dwt")
+        import os
+        _meth = os.environ.get("ECG_DELINEATOR", "dwt")               # robustness: ECG_DELINEATOR=peak
+        _, waves = nk.ecg_delineate(lead_signal, rpeaks, sampling_rate=fs, method=_meth)
     except Exception:
         return None
 

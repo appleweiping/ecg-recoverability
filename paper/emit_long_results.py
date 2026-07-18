@@ -17,7 +17,8 @@ ROOT = Path(__file__).resolve().parent.parent
 AUTO = ROOT / "paper" / "auto"
 NEED_LINEAGE = ("cross_dataset.json", "gpu_deficit_ci.json", "realism_metrics.json",
                 "gpu_oracle_gate.json", "lead_weighting.json", "certificate_validation.json",
-                "fabrication_audit.json", "fabrication_diffusion.json")
+                "fabrication_audit.json", "fabrication_diffusion.json",
+                "transfer_bound.json", "delineator_robustness.json")
 
 
 def _load(name):
@@ -183,6 +184,32 @@ def main():
         if lb:
             allphi = [v for w in ws for v in lb.get(w, {}).values()]
             m.append(r"\newcommand{\FabDiffLimbSix}{" + f"{(max(allphi) if allphi else 0):.2f}" + "}")
+
+    # ---------- cross-cohort transfer bound (Thm transfer) ----------
+    tb = srcs["transfer_bound.json"]
+    if tb:
+        seg = tb["segments"]
+        q, st = seg["QRS"], seg["ST"]
+        lo, hi = tb["summary"]["realized_lipschitz_range"]
+        m += [r"\newcommand{\TransferAngleQRS}{" + f"{q['theta_star_deg']:.1f}" + "}",
+              r"\newcommand{\TransferAngleST}{" + f"{st['theta_star_deg']:.1f}" + "}",
+              r"\newcommand{\TransferDriftQRS}{" + f"{q['empirical_drift']:.3f}" + "}",
+              r"\newcommand{\TransferDriftST}{" + f"{st['empirical_drift']:.3f}" + "}",
+              r"\newcommand{\TransferLipLo}{" + f"{lo:.2f}" + "}",
+              r"\newcommand{\TransferLipHi}{" + f"{hi:.2f}" + "}"]
+
+    # ---------- delineator x rate robustness of the ST-safety endpoint ----------
+    rb = srcs["delineator_robustness.json"]
+    if rb:
+        rho = rb["verdict_ordering_spearman_vs_ref"]["rho"]
+        rho_min = min(rho.values()) if rho else 1.0
+        rate = rb.get("rate_stability") or {}
+        m += [r"\newcommand{\RobOrderRhoMin}{" + f"{rho_min:.2f}" + "}",
+              r"\newcommand{\RobStrongSpread}{" + f"{rb['verdict_strong_lead_max_spread']:.3f}" + "}",
+              r"\newcommand{\RobRateDetaStrong}{" + f"{rate.get('max_abs_deta_strong', 0):.3f}" + "}",
+              r"\newcommand{\RobSignStable}{" + ("yes" if rb["verdict_sign_stable"] else "no") + "}",
+              r"\newcommand{\RobFNdominated}{"
+              + ("yes" if rb["endpoint_fn_dominated_all_settings"] else "no") + "}"]
 
     # NOTE: lead-weighting macros used by the papers (\LWspear*/\LWantlat*) are emitted by
     # emit_baseline_table.py from the segment-level lead_weighting.json schema. The former

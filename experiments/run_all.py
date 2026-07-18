@@ -32,6 +32,8 @@ CPU_STEPS = [
     ("experiments/lead_weighting.py", "8-independent-lead vs 12-lead fit sensitivity"),
     ("experiments/certificate_validation.py", "per-lead certificate validation vs measured dipolar error"),
     ("experiments/fabrication_audit.py", "null-space dipolar fabrication audit (linear reconstructors)"),
+    ("experiments/transfer_bound.py", "cross-cohort transfer bound (sinTheta) from committed cross_dataset.json"),
+    ("experiments/delineator_robustness.py", "delineator x rate robustness from committed st_safety_* JSONs"),
     ("experiments/maps_figure.py", "recoverability-map figure"),
     ("experiments/ablation_figures.py", "rank / rho / subspace-angle ablation figures"),
     ("experiments/certificate_validation_figure.py", "certificate-validation figure"),

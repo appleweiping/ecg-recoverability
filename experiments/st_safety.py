@@ -100,7 +100,7 @@ def _reconstruct(sig, dip, maps):
     return out
 
 
-def run(n_train=1500, n_test=1500, rate=100, seed=0, per_record_pts=80):
+def run(n_train=1500, n_test=1500, rate=100, seed=0, per_record_pts=80, out_name="st_safety.json"):
     db = PTBXL()
     rng = np.random.default_rng(seed)
     tr_ids = rng.permutation(db.ids_with_superclass("NORM", exclusive=False, folds=range(1, 9)))[:n_train]
@@ -203,9 +203,9 @@ def run(n_train=1500, n_test=1500, rate=100, seed=0, per_record_pts=80):
     print(f"[baseline] fallback_frac={out['baseline_fallback_frac']} n_common={len(common_ids)}", flush=True)
 
     RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "st_safety.json").write_text(json.dumps(out, indent=2))
+    (RESULTS / out_name).write_text(json.dumps(out, indent=2))
     print("[cert] ST precordial (limb-6):", cert, flush=True)
-    print("[json] results/st_safety.json", flush=True)
+    print(f"[json] results/{out_name}", flush=True)
 
 
 if __name__ == "__main__":
@@ -213,5 +213,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-train", type=int, default=1500)
     ap.add_argument("--n-test", type=int, default=1500)
+    ap.add_argument("--rate", type=int, default=100)
+    ap.add_argument("--out", default="st_safety.json")
     args = ap.parse_args()
-    run(n_train=args.n_train, n_test=args.n_test)
+    run(n_train=args.n_train, n_test=args.n_test, rate=args.rate, out_name=args.out)

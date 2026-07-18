@@ -1,0 +1,83 @@
+{
+  "lineage": {
+    "commit": "f0003f6442921fdd2d083d444214540a788fefc6",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "transfer_bound.py",
+    "experiment_script_sha256": "eb679ccab67f8bc0",
+    "seed": 0,
+    "targets": [
+      "V2"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV (no per-record scaling)",
+    "dataset": null,
+    "n_train": null,
+    "n_test": null,
+    "train_ids_sha256": null,
+    "test_ids_sha256": null,
+    "checkpoint_sha256": null,
+    "kind": "cross-cohort transfer bound (sin-Theta) validation",
+    "source": "cross_dataset.json",
+    "source_commit": "2370ee266167f960de92d833908b070ba85adfe6"
+  },
+  "bound": "|eta_A - eta_B| <= 2 sin(theta*/2) (1 + 2 kappa_S)",
+  "segments": {
+    "QRS": {
+      "theta_star_deg": 13.77,
+      "theta_star_ci_deg": [
+        9.59,
+        24.59
+      ],
+      "sin_theta_star": 0.238,
+      "chordal_delta": 0.2398,
+      "eta_ptbxl": 0.6539,
+      "eta_chapman": 0.687,
+      "eta_chapman_ci": [
+        0.6507,
+        0.7203
+      ],
+      "kappa_used": 2.347,
+      "empirical_drift": 0.0331,
+      "certified_rhs": 1.3652,
+      "bound_holds": true,
+      "realized_lipschitz": 0.1381,
+      "transfer_flag": "shared"
+    },
+    "ST": {
+      "theta_star_deg": 85.73,
+      "theta_star_ci_deg": [
+        57.29,
+        89.62
+      ],
+      "sin_theta_star": 0.9972,
+      "chordal_delta": 1.3605,
+      "eta_ptbxl": 0.7136,
+      "eta_chapman": 0.4672,
+      "eta_chapman_ci": [
+        0.0217,
+        0.7112
+      ],
+      "kappa_used": 11.321,
+      "empirical_drift": 0.2464,
+      "certified_rhs": 32.166,
+      "bound_holds": true,
+      "realized_lipschitz": 0.1811,
+      "transfer_flag": "divergent"
+    }
+  },
+  "summary": {
+    "target": "V2",
+    "observed_set": "limb-6",
+    "all_bounds_hold": true,
+    "realized_lipschitz_range": [
+      0.1381,
+      0.1811
+    ],
+    "qrs_flag": "shared",
+    "st_flag": "divergent",
+    "drift_ratio_st_over_qrs": 7.44,
+    "chordal_ratio_st_over_qrs": 5.67
+  }
+}

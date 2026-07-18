@@ -100,6 +100,7 @@ distribution-free intervals under exchangeability; we apply Mondrian CQR per $(S
 \label{sec:cert}
 \input{theorem_corrected}
 \input{theorem_floor}
+\input{theorem_transfer}
 
 \section{Distribution-Free Calibration}
 \label{sec:calib}
@@ -163,13 +164,24 @@ formal artifact but an operational predictor of what each reconstructor can and 
 The subspace $\bm M_s$ is estimated, so $\eta/\kappa$ inherit its estimation error (reported via
 record-bootstrap CIs and the rank/$\varrho$/subspace-angle sensitivities of
 Fig.~\ref{fig:ablation}) and its cohort dependence (Sec.~\ref{sec:cross}); the ST/T third
-direction is cohort-specific. Identifiability is stated for the low-rank (dipolar) coordinate:
+direction is cohort-specific. That cohort dependence is itself bounded: Thm.~\ref{thm:transfer}
+shows the verdict drifts across cohorts only as fast as the two cohorts' dipolar subspaces separate
+($\sin\Theta$), and empirically the PTB-XL$\to$Chapman drift is Lipschitz in that distance with a
+small stable constant---so a large principal angle \emph{flags} non-transfer (ST,
+$\TransferAngleST^\circ$, drift $\TransferDriftST$) versus transfer (QRS, $\TransferAngleQRS^\circ$,
+drift $\TransferDriftQRS$) in advance. Identifiability is stated for the low-rank (dipolar) coordinate:
 a reconstructor may still recover predictable non-dipolar structure (Sec.~\ref{sec:exp}), so
 $\eta{>}0$ bounds the dipolar component, not every waveform detail. Conformal coverage is
 within-$(S,s,\ell)$-group marginal under exchangeability, not conditional on diagnosis; rare
 diagnostic subgroups are under-covered (Sec.~\ref{sec:calib}). Delineation uses NeuroKit2 and
-inherits its errors. The certificate is a pre-reconstruction screen, not a substitute for
-clinical validation.
+inherits its errors, but the ST-safety endpoint is robust to it: across a delineator$\times$rate
+grid (\texttt{dwt}/\texttt{cwt} $\times$ 100/500\,Hz) the precordial-not-recoverable verdict is
+sign-stable ($\eta{>}0$ at every setting, as forced by the structural rank-2 limb subspace), the
+per-lead recoverability ordering is preserved (Spearman $\ge\RobOrderRhoMin$), the rate axis is
+tight (strong-lead $|\Delta\eta|\le\RobRateDetaStrong$), and the endpoint stays FN-dominated
+(under-warning, the conservative direction) in every setting
+(\texttt{results/delineator\_robustness.json}). The certificate is a pre-reconstruction screen, not
+a substitute for clinical validation.
 
 \section{Conclusion}
 Reduced-lead ECG reconstruction has a known low-rank structure per segment. Exploiting it gives
