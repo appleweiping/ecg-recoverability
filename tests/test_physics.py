@@ -13,6 +13,9 @@ from ecgcert.physics import (
     fit_dipolar_subspace,
     inverse_dower_matrix,
     kappa,
+    kappa_per_lead,
+    eta_per_lead,
+    observed_dipole,
     lead_transform_T,
     reconstruct_dipolar,
 )
@@ -64,22 +67,53 @@ def test_tier1_exact_recovery_noiseless():
 
 
 def test_kappa_geometry_not_leadcount():
-    """The Tier I/III boundary is the dipole RANK; kappa ranks conditioning among
-    dipole-spanning sets. Both together are the "geometry, not lead count" story."""
+    """Geometry, not lead count, sets identifiability and conditioning."""
     L = _synthetic_dipolar_population()
     M_s, _, _ = fit_dipolar_subspace(L, rank=3)
-    # (a) A coplanar limb triplet cannot span the dipole: rank 2 => a direction is
-    #     provably unrecoverable (Tier III), regardless of how many limb leads.
-    _, r_span = kappa(M_s, ["I", "II", "V2"])        # spans the dipole
-    _, r_limb = kappa(M_s, ["I", "II", "III"])       # III = II - I => coplanar
-    assert r_span == 3
+    # (a) A coplanar limb triplet is EXACTLY rank 2 at any tolerance (III = II - I).
+    _, r_limb = kappa(M_s, ["I", "II", "III"])
     assert r_limb == 2
-    # (b) Among dipole-spanning triplets, geometry sets the conditioning: three
-    #     well-spread leads condition far better than three adjacent precordials.
-    k_good, rg = kappa(M_s, ["I", "II", "V2"])
-    k_bad, rb = kappa(M_s, ["V1", "V2", "V3"])       # nearly collinear directions
-    assert rg == 3 and rb == 3
-    assert k_good < k_bad
+    # (b) A well-spread 5-lead set is robustly rank 3 and well conditioned; a spread
+    #     triplet spans too but conditions worse -> geometry, not count.
+    k5, r5 = kappa(M_s, ["I", "II", "V1", "V3", "V5"])
+    k3, r3 = kappa(M_s, ["I", "II", "V2"])
+    assert r5 == 3 and r3 == 3
+    assert k5 < k3
+
+
+def test_kappa_rank_is_rcond_sensitive_for_near_deficient():
+    """A near-rank-deficient config's rank/kappa DEPEND on the truncation tolerance:
+    {V1,V2,V3}'s third dipole direction is ~0.5% of the first, so it is treated as
+    unobserved (rank 2) at the deployment tolerance but observed-yet-wildly-amplified
+    (rank 3, kappa ~ 200) at a tight tolerance. This is why a single kappa number for
+    such configs is not meaningful (report rcond sensitivity / bootstrap CIs)."""
+    L = _synthetic_dipolar_population()
+    M_s, _, _ = fit_dipolar_subspace(L, rank=3)
+    k_loose, r_loose = kappa(M_s, ["V1", "V2", "V3"], rcond=1e-2)   # deployment
+    k_tight, r_tight = kappa(M_s, ["V1", "V2", "V3"], rcond=1e-4)   # tight
+    assert r_loose == 2 and r_tight == 3
+    assert k_tight > 100 and k_loose < 10
+
+
+def test_per_lead_eta_and_kappa_certificate():
+    """eta_{s,ell} certifies per-lead identifiability; kappa_{s,ell} its noise gain."""
+    L = _synthetic_dipolar_population()
+    M_s, _, _ = fit_dipolar_subspace(L, rank=3)
+    # Spanning config: every lead's dipolar component is identifiable (eta ~ 0).
+    eta_span = eta_per_lead(M_s, ["I", "II", "V2"])
+    assert np.max(eta_span) < 1e-6
+    # Coplanar limb triplet: precordial leads depend on the unobserved transverse
+    # dipole direction -> eta > 0 for them, but ~0 for the observed limb leads.
+    eta_limb = eta_per_lead(M_s, ["I", "II", "III"])
+    assert eta_limb[LEAD_INDEX["V3"]] > 1e-3
+    assert eta_limb[LEAD_INDEX["I"]] < 1e-6
+    # Per-lead kappa is finite; the global spectral kappa upper-bounds every per-lead
+    # kappa (>= max_ell kappa_{s,ell}), it is NOT equal to their maximum in general.
+    kpl = kappa_per_lead(M_s, ["I", "II", "V2"])
+    kglob, _ = kappa(M_s, ["I", "II", "V2"])
+    assert np.all(np.isfinite(kpl))
+    # Global kappa (spectral norm) is the per-lead worst case: >= max_ell kappa_{s,ell}.
+    assert kglob >= np.max(kpl) - 1e-9
 
 
 def test_tier1_noise_amplification_matches_kappa():

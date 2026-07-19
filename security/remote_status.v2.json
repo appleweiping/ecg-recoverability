@@ -1,0 +1,22 @@
+{
+  "schema_version": "ecgcert-security-status-v2",
+  "exposed_password_rotated": false,
+  "exposed_password_risk_accepted": true,
+  "key_only_auth_verified": true,
+  "known_hosts_pinned": true,
+  "automatic_host_key_acceptance_disabled": true,
+  "password_fallback_disabled": true,
+  "repository_secret_scan_passed": true,
+  "known_hosts_sha256": "e89686f64c44bbaaca02feaa285eccff0f4178927b82baf660999448cd7ed501",
+  "public_key_sha256": "3cd4ef151680cacc64443503a80637285ef3092c4803ff308ba6c29819aaf5c4",
+  "host_key_fingerprint": "SHA256:liZ36vNCsNcNdXeWs4f+g5ZIhPM/ZihP834vxs8Ulqc",
+  "host_key_verification_method": "strict-known-hosts-key-only-probe",
+  "risk_acceptance": {
+    "decision": "ACCEPT_UNROTATED_PASSWORD_RISK",
+    "accepted_at": "2026-07-19T11:24:26+08:00",
+    "accepted_by": "project-owner via explicit Codex task instruction",
+    "rationale": "The project owner explicitly declined password rotation; automation remains key-only and never consumes the password."
+  },
+  "verified_at": "2026-07-19T17:39:51+08:00",
+  "verified_by": "Codex automated strict key-only login verification"
+}

@@ -1,6 +1,7 @@
 # --- Data (never commit raw datasets; download via scripts) ---
 # Anchor to repo root so this does NOT match the source package src/ecgcert/data/.
 /data/
+/upstreams
 *.npy
 *.npz
 !results/*.npz
@@ -12,6 +13,7 @@ __pycache__/
 venv/
 *.egg-info/
 .pytest_cache/
+.pytest-e2e-*/
 .ruff_cache/
 build/
 dist/
@@ -22,6 +24,7 @@ results/**/*.ckpt
 results/cache/
 
 # --- LaTeX ---
+/texput.log
 paper/*.aux
 paper/*.bbl
 paper/*.blg
@@ -30,9 +33,15 @@ paper/*.out
 paper/*.synctex.gz
 paper/*.fdb_latexmk
 paper/*.fls
+# Paper PDFs are immutable evidence outputs, never source-controlled build products.
+paper/*.pdf
 
 # --- OS / editor ---
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+scratchpad_review_*.md
+scratchpad_review_*.json
+scratchpad_*
+.researchclaw_cache/

@@ -25,7 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ecgcert.certify import hallucination_energy
+from ecgcert.certify import off_dipole_energy
 from ecgcert.conformal import conformal_quantile, cqr_calibrate, cqr_interval, empirical_coverage
 from ecgcert.estimators import BayesianDipolarReconstructor, LinearDipolarReconstructor
 from ecgcert.physics import (
@@ -174,7 +174,7 @@ def experiment_flag_roc():
     # Faithful hallucination energies; split into calibration and a HELD-OUT test set
     # so the reported false-flag rate is out-of-sample (not tautological).
     h_faithful = np.array([
-        hallucination_energy(M, mu, OBS, rec.predict(L[Sel_idx, i:i+1])).max()
+        off_dipole_energy(M, mu, OBS, rec.predict(L[Sel_idx, i:i+1])).max()
         for i in range(0, 2000)
     ])
     h_cal, h_test = h_faithful[:1000], h_faithful[1000:2000]
@@ -191,7 +191,7 @@ def experiment_flag_roc():
             base = rec.predict(L[Sel_idx, i:i+1])            # faithful dipolar recon
             # a hallucinating reconstructor adds independent non-dipolar content
             hall = base + delta * (B[:, 3:4] @ rng.standard_normal((1, 1)))
-            h = hallucination_energy(M, mu, OBS, hall).max()
+            h = off_dipole_energy(M, mu, OBS, hall).max()
             det += int(h > tau)
         power.append(det / 1000.0)
     return {"alpha": alpha, "tau": float(tau), "deltas": deltas, "power": power,

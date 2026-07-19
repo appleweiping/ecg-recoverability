@@ -1,0 +1,50 @@
+{
+  "schema_version": "arc-bounded-probe-v1",
+  "probe_date": "2026-07-19",
+  "autoresearchclaw": {
+    "version": "0.5.0",
+    "commit": "e2e23c93b4943fd21cc531deb09850d8fda55357",
+    "checkout": "D:\\Project\\ecg-recoverability-tools\\AutoResearchClaw-v0.5.0",
+    "git_clean": true
+  },
+  "acp": {
+    "acpx_version": "0.12.0",
+    "claude_adapter_version": "0.37.0",
+    "codex_adapter_version": "0.0.44",
+    "package_lock_sha256": "34ba9fc3bb03cb39861f689bb9da88ca037fa5596b27567f6fcf98ae879c39e8"
+  },
+  "command_contract": {
+    "mode": "co-pilot",
+    "to_stage": "TOPIC_INIT",
+    "auto_approve": false,
+    "remote_experiment_started": false
+  },
+  "result": {
+    "run_id": "rc-20260718-192411-e2683e",
+    "stage": "01-topic_init",
+    "status": "failed",
+    "decision": "retry",
+    "duration_sec": 211.24,
+    "artifacts_count": 0,
+    "error": "Queue owner disconnected before prompt completion",
+    "arc_review_claim_permitted": false
+  },
+  "external_artifacts": {
+    "doctor": {
+      "path": "D:\\Project\\ecg-recoverability-tools\\arc-probe-20260719\\doctor.json",
+      "sha256": "ac60282c83e7f150d0f412c1e69976fffda87994b2e20a900c779015b0fb8013"
+    },
+    "stage1_decision": {
+      "path": "D:\\Project\\ecg-recoverability-tools\\arc-probe-20260719\\stage1-after-adapter\\stage-01\\decision.json",
+      "sha256": "00ae3e73ccedc94b97e7fdf535927cdc791959f5a7b66becae3fd0a90821bf5b"
+    },
+    "stage1_health": {
+      "path": "D:\\Project\\ecg-recoverability-tools\\arc-probe-20260719\\stage1-after-adapter\\stage-01\\stage_health.json",
+      "sha256": "c792f3e30ad04057709ea52c6130204b48e2f61402e1b3555582d3fe548f0c1d"
+    },
+    "hitl_session": {
+      "path": "D:\\Project\\ecg-recoverability-tools\\arc-probe-20260719\\stage1-after-adapter\\hitl\\session.json",
+      "sha256": "dc86c6ea4a641572b6af9ce59313d51037af545308b6becfb66bc78b1ae520ea"
+    }
+  }
+}

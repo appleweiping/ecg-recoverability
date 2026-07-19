@@ -1,0 +1,20 @@
+{
+  "run_id": "rc-20260718-121523-df77a9",
+  "stages_executed": 1,
+  "stages_done": 0,
+  "stages_paused": 0,
+  "stages_blocked": 0,
+  "stages_failed": 1,
+  "degraded": false,
+  "from_stage": 1,
+  "final_stage": 1,
+  "final_status": "failed",
+  "generated": "2026-07-18T12:15:25+00:00",
+  "content_metrics": {
+    "template_ratio": null,
+    "citation_verify_score": null,
+    "total_citations": null,
+    "verified_citations": null,
+    "degraded_sources": []
+  }
+}

@@ -1,0 +1,430 @@
+{
+  "metric": "R_Q = ||M_s Q d_hat||^2 / ||M_s d_hat||^2, fraction of a reconstruction's dipolar energy in the UNIDENTIFIABLE subspace Q. EXPLORATORY DESCRIPTOR ONLY: R_Q>0 does NOT prove fabrication (E[Qd|Pd] is generally nonzero under coordinate correlation).",
+  "note": "R_Q=0 means the reconstruction sets Q d_hat=0; since the Bayes posterior mean E[Qd|Pd] is generally nonzero, R_Q=0 is a specific choice, NOT 'correct abstention'. A calibrated score would standardize Q d_hat - E[Qd|Pd] by Sigma_{Q|P} (future work).",
+  "configs": {
+    "Lead-I": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.5025,
+        "ols": 0.5025
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.13085,
+        "ols": 0.13085
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.34382,
+        "ols": 0.34382
+      }
+    },
+    "Lead-II": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.28133,
+        "ols": 0.28133
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.26178,
+        "ols": 0.26178
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.42764,
+        "ols": 0.42764
+      }
+    },
+    "{I,II,V2}": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      }
+    },
+    "{I,II,V1,V3,V5}": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      }
+    },
+    "limb-6": {
+      "QRS": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "ST": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      },
+      "T": {
+        "dipolar": 0.0,
+        "prior_mean": 0.0,
+        "ridge": 0.0,
+        "ols": 0.0
+      }
+    }
+  },
+  "segments": [
+    "QRS",
+    "ST",
+    "T"
+  ],
+  "lineage": {
+    "commit": "8e46ae99acdf7aa376cd066cb3ca0451f2bf1c58",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "fabrication_audit.py",
+    "experiment_script_sha256": "8c9669f0d8396fef",
+    "seed": 0,
+    "targets": [
+      "I",
+      "II",
+      "III",
+      "aVR",
+      "aVL",
+      "aVF",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV segment samples",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
+    },
+    "n_train": 1500,
+    "n_test": 963,
+    "train_ids_sha256": "4fd528172c55d714",
+    "test_ids_sha256": "3876ca031f65c258",
+    "checkpoint_sha256": null,
+    "metric": "null_space_dipolar_energy_ratio_exploratory"
+  },
+  "configs_ci": {
+    "Lead-I": {
+      "QRS": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.5025,
+          0.5025
+        ],
+        "ols": [
+          0.5025,
+          0.5025
+        ]
+      },
+      "ST": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.13085,
+          0.13085
+        ],
+        "ols": [
+          0.13085,
+          0.13085
+        ]
+      },
+      "T": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.34382,
+          0.34382
+        ],
+        "ols": [
+          0.34382,
+          0.34382
+        ]
+      }
+    },
+    "Lead-II": {
+      "QRS": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.28133,
+          0.28133
+        ],
+        "ols": [
+          0.28133,
+          0.28133
+        ]
+      },
+      "ST": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.26178,
+          0.26178
+        ],
+        "ols": [
+          0.26178,
+          0.26178
+        ]
+      },
+      "T": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.42764,
+          0.42764
+        ],
+        "ols": [
+          0.42764,
+          0.42764
+        ]
+      }
+    },
+    "{I,II,V2}": {
+      "QRS": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      },
+      "ST": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      },
+      "T": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "{I,II,V1,V3,V5}": {
+      "QRS": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      },
+      "ST": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      },
+      "T": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "limb-6": {
+      "QRS": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      },
+      "ST": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      },
+      "T": {
+        "dipolar": [
+          0.0,
+          0.0
+        ],
+        "prior_mean": [
+          0.0,
+          0.0
+        ],
+        "ridge": [
+          0.0,
+          0.0
+        ],
+        "ols": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  }
+}

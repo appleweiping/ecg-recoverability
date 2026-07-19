@@ -1,0 +1,101 @@
+{
+  "n_test": 300,
+  "guidances": [
+    1.0,
+    2.0,
+    4.0,
+    6.0
+  ],
+  "obs": [
+    "I",
+    "II",
+    "V1",
+    "V3",
+    "V5"
+  ],
+  "targets": [
+    "V2",
+    "V4",
+    "V6"
+  ],
+  "per_w": {
+    "1.0": {
+      "psd_logdist": {
+        "V2": 1.8837966267267863,
+        "V4": 1.6277097221215566,
+        "V6": 1.6948050530751546
+      },
+      "amp_wasserstein": {
+        "V2": 0.4537245497107505,
+        "V4": 0.24098820666472115,
+        "V6": 0.21883983969688375
+      }
+    },
+    "2.0": {
+      "psd_logdist": {
+        "V2": 1.8296787440776825,
+        "V4": 1.5621779696146647,
+        "V6": 1.6343257729212444
+      },
+      "amp_wasserstein": {
+        "V2": 0.39631250828504566,
+        "V4": 0.19335179587205253,
+        "V6": 0.16798823058605153
+      }
+    },
+    "4.0": {
+      "psd_logdist": {
+        "V2": 1.9935498515764871,
+        "V4": 1.7201719760894776,
+        "V6": 1.7453945656617482
+      },
+      "amp_wasserstein": {
+        "V2": 0.5435402976473173,
+        "V4": 0.20634222467740376,
+        "V6": 0.14328156212965604
+      }
+    },
+    "6.0": {
+      "psd_logdist": {
+        "V2": 2.247546592553457,
+        "V4": 1.8986652048428854,
+        "V6": 1.9270491667588552
+      },
+      "amp_wasserstein": {
+        "V2": 0.8313525566458702,
+        "V4": 0.3022977163394292,
+        "V6": 0.18626855015754654
+      }
+    }
+  },
+  "lineage": {
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "realism_metrics.py",
+    "experiment_script_sha256": "d342fac4872c44f3",
+    "seed": 0,
+    "targets": [
+      "V2",
+      "V4",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "per-lead 95th-pct |amp| (train)",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
+    },
+    "n_train": null,
+    "n_test": 300,
+    "train_ids_sha256": null,
+    "test_ids_sha256": "c7e45c2c072e9f22",
+    "checkpoint_sha256": "9aad8b6f601ed9e4",
+    "experiment": "diffusion realism vs guidance (abandoned pre-submission hypothesis)",
+    "kept_record_ids_sha256": "c7e45c2c072e9f22"
+  },
+  "metric_note": "Realism is measured on the TARGET (unobserved) leads only (PSD log-distance, amplitude Wasserstein). The prior QRS-width metric on the observed Lead II was vacuous and is removed."
+}

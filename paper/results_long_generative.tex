@@ -1,0 +1,88 @@
+\section{A Negative Result: the Generative ``Fabrication-Objective'' Story Did Not Survive}
+\label{sec:generative}
+This project began with a stronger claim---that a diffusion reconstructor would demonstrate
+``fabrication is a property of the objective.'' A pre-submission re-analysis abandoned it. We document the abandonment in full because the negative result is
+itself informative and because selective reporting of the earlier (favourable) numbers would
+be exactly the failure the certificate is meant to prevent.
+
+\textbf{Setup.} An arbitrary-mask conditional DDPM (12-channel binary mask $+$ observed values;
+random-mask training so one model serves any configuration, with explicit leakage tests)
+reconstructs $\{$V2,V4,V6$\}$ from $\{$I,II,V1,V3,V5$\}$ under classifier-free-style guidance
+weight $w\in\{1,2,4,6\}$ (\path{results/gpu_deficit_ci.json},
+\path{realism_metrics.json}, \path{results/gpu_oracle_gate.json}; all lineage-stamped, numbers
+auto-generated).
+
+\textbf{(1) The original effect was a configuration-leakage artifact.} The earlier exhibit
+reused one model trained on a fixed observed set to score a \emph{different} configuration.
+With leakage removed (arbitrary-mask model $+$ leakage guards) and $\NegSeeds$ training seeds,
+the generative reconstructor does \emph{not} outperform a simple held-out \emph{ridge
+achievability comparator} (a ridge fit on the observed leads, used as an achievability
+reference---\emph{not} a Bayes-optimal oracle, since the model can and does exceed it at low
+guidance). The deficit $\Delta\rho=\rho_{\text{ridge}}-\rho_{\text{model}}$---how far the model's
+target-lead correlation falls below the ridge comparator $\rho_{\text{ridge}}$---is
+\emph{monotone} in $w$: mean $\Delta\rho=\NegDrhoone,\NegDrhotwo,\NegDrhofour,\NegDrhosix$ for
+$w=1,2,4,6$ (mean over $\NegSeeds$ seeds; SD $\pm\NegStdsix$ at $w{=}6$). It is small and
+negative at $w{=}1$ (the model marginally beats the comparator) and grows to a modest but
+seed-\emph{significant} $\NegDrhosix$ at $w{=}6$ (95\% $t$-interval $[\NegCIlo,\NegCIhi]$,
+\emph{excludes zero}; the model now falls short of the comparator). Guidance thus moves the gap
+the \emph{wrong} way for the fabrication story: it does not buy achievability beyond a plain
+ridge, it erodes the model's small low-guidance edge and drives it significantly below the
+comparator. The previously reported large diffusion advantage does not reproduce.
+
+\textbf{(2) Realism does not improve with guidance---the causal premise is false.} The story
+required higher guidance to buy realism at the cost of fidelity. Instead realism is \emph{no
+better} at high guidance: from $w{=}1$ to $w{=}6$ the target-lead PSD log-distance rises (V2:
+$\RealPSDVtwoLo\!\to\!\RealPSDVtwoHi$; a small dip at $w{=}2$ then a clear rise, so worsening
+but not monotone) and the amplitude-Wasserstein distance rises (V2:
+$\RealAmpVtwoLo\!\to\!\RealAmpVtwoHi$). The trend is toward \emph{worse} realism on essentially
+every target-lead axis (both PSD log-distance and amplitude-Wasserstein rise from $w{=}1$ to
+$w{=}6$); there is no monotone realism/fidelity trade to exploit. This is consistent with
+fundamental limits on hallucination in inverse problems~\cite{gottschling2026hallucinations} and
+the perception--distortion tradeoff~\cite{blau2018perception}: raising perceptual pressure
+(guidance) cannot manufacture target-lead information the observed leads do not carry.
+
+\textbf{(3) What is true instead.} The predictable non-dipolar residual is real but modest:
+ridge-comparator correlations (\texttt{gpu\_oracle\_gate.json}) are
+$\rho\!\approx\!\RidgeRhoVtwoLo$--$\RidgeRhoVtwoHi$ for V2 (QRS/ST) and
+$\RidgeRhoLatLo$--$\RidgeRhoLatHi$ for V4/V6---consistent with the calibrated Tier-II
+intervals of Sec.~\ref{sec:calib}. So the honest statement is a \emph{graded predictability} of
+the residual, calibrated per feature and lead, not a proof of fabrication. We removed the
+fabrication-objective claim and rebuilt the paper around the parts that withstand scrutiny.
+
+\textbf{(4) An exploratory null-space energy diagnostic.} The certificate isolates the dipole
+subspace $\bm Q=\bm I-\bm P_{\mathrm{obs}}$ the observed leads cannot constrain. As a
+\emph{descriptive, exploratory} diagnostic we measure the fraction of a reconstruction's dipolar
+energy placed there---the \emph{null-space dipolar energy ratio}
+$R_Q=\|\bm M_s\bm Q\hat{\bm d}\|^2/\|\bm M_s\hat{\bm d}\|^2$ (Fig.~\ref{fig:fab}). We are explicit
+about what $R_Q$ is \emph{not}: $R_Q{>}0$ means a reconstruction asserts energy in the unidentifiable
+subspace, but it does \emph{not} by itself demonstrate fabrication. The true dipole can carry
+$\bm Q$-energy, and under correlated observed/unobserved dipole coordinates the Bayes posterior mean
+$\mathbb E[\bm Q\bm d\mid\bm P\bm d]$ is generally \emph{nonzero}; hence a reconstruction with
+$R_Q{=}0$ (which sets $\bm Q\hat{\bm d}{=}0$) is \emph{not} the posterior mean and $R_Q{=}0$ is not
+``correct abstention.'' A defensible metric would instead standardize the deviation
+$\bm Q\hat{\bm d}-\mathbb E[\bm Q\bm d\mid\bm P\bm d]$ by $\bm\Sigma_{Q\mid P}$ (Sec.~\ref{sec:floor});
+we leave that calibrated assertion score to future work and report $R_Q$ only as an exploratory
+descriptor. Descriptively: reconstructors that leave the unobserved coordinate near zero have
+$R_Q\!\approx\!0$ ($\le\FabAbstainMax$); on a heavily under-determined single lead ridge/OLS put
+$R_Q\!=\!\FabRidgeLeadIQRS$ (Lead-I QRS) into $\bm Q$, and the diffusion model places most of its
+dipolar content there ($R_Q\!\approx\!\FabDiffLeadIlo$), \emph{increasing} with guidance
+($\FabDiffLeadIlo\!\to\!\FabDiffLeadIhi$ QRS, $\to\!\FabDiffLeadISThi$ ST as $w{:}1\to6$). The
+rank-2 limb-6 set does \emph{not} span the rank-3 dipole, yet $R_Q\!\le\!\FabDiffLimbSix$ there for
+these reconstructors---an empirical observation that the fitted linear/generative maps do not excite
+the one unobserved limb-6 direction, \emph{not} evidence that limb-6 is dipole-spanning. We do
+\emph{not} read any of this as certified fabrication.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{../results/fabrication_audit_figure.png}
+  \caption{\textbf{Null-space dipolar energy diagnostic} (exploratory, ground-truth-free).
+  $R_Q$ = fraction of a reconstruction's dipolar energy in the unidentifiable subspace $\bm Q$;
+  $R_Q{>}0$ is a descriptor, \emph{not} proof of fabrication (Sec.~\ref{sec:generative}). (a) Linear
+  reconstructors leave the unobserved coordinate near zero ($R_Q{\approx}0$) except on a heavily
+  under-determined single lead, where ridge/OLS place energy in $\bm Q$. (b) The diffusion model
+  places most of its dipolar content in $\bm Q$ on a single lead, increasing with classifier-free
+  guidance $w$; on the rank-2 limb-6 set (which does \emph{not} span the dipole) the fitted maps
+  happen not to excite the one unobserved direction, so $R_Q{\approx}0$. Regenerated from
+  \texttt{results/fabrication\_audit.json}, \texttt{fabrication\_diffusion.json}.}
+  \label{fig:fab}
+\end{figure}

@@ -1,0 +1,128 @@
+### cert-floor (18)
+- README.md:85  «and stated on a **reconstructor-invariant** quantity.»
+- README.md:87-88  «is near-invariant across reconstructors (47–50%, at 0.059–0.081 mV ST error) — this floor »
+- README.md:90  «We report the whole matrix and anchor the certificate on the invariant floor,»
+- paper/main_v2.tex:35  «a reconstructor-\emph{invariant} safety certificate: the total ST-threshold error floor is»
+- paper/main_v2.tex:78  «reconstructor-invariant safety certificate on PTB-XL---the total ST-threshold error floor »
+- paper/main_v2.tex:124  «reports the reconstructor-invariant error floor that any recovery must pay.»
+- paper/arxiv_long.tex:30  «the distribution-free calibrated intervals we attach to it, and a reconstructor-\emph{inva»
+- paper/arxiv_long.tex:32-33  «the total ST-threshold error floor is near-invariant across reconstructors ($\TotWrongLo$-»
+- paper/arxiv_long.tex:122  «reconstructor, plus a reconstructor-invariant error floor.»
+- paper/results_v2_maps.tex:27  «\textbf{Certificate-level safety is reconstructor-invariant at the floor.} The warning is»
+- paper/results_v2_maps.tex:28  «actionable but must be stated on a reconstructor-\emph{invariant} quantity.»
+- paper/results_v2_maps.tex:32-33  «The \emph{total} wrong-event rate is near-invariant across reconstructors ($\TotWrongLo$--»
+- paper/results_v2_maps.tex:34  «this floor is the cost of the certified unidentifiability.»
+- paper/results_v2_maps.tex:37-38  «We therefore report the whole matrix and anchor the certificate on the invariant floor, no»
+- paper/results_v2_maps.tex:37  «a design trade-off, not a certified number.»
+- paper/results_v2_maps.tex:44  «near-invariant---the certified floor; the split is a reconstructor choice.»
+- paper/results_v2_baseline.tex:21  «We therefore scope the certified claim to»
+- paper/results_v2_baseline.tex:41  «all certificate quantities are stated with respect to this estimated subspace.»
+### stemi-lang (67)
+- src/ecgcert/clinical.py:1  «"""Clinical ST-segment measurement and the STEMI safety endpoint.»
+- src/ecgcert/clinical.py:3-4  «PTB-XL provides MI / STTC diagnostic labels but no per-lead ST-elevation millivolt annotat»
+- src/ecgcert/clinical.py:8-10  «does the reconstruction *fabricate* a significant ST deviation the true signal does not ha»
+- src/ecgcert/clinical.py:81  «def stemi_positive(dev: np.ndarray, leads=None, thr: float = ST_THRESHOLD_MV) -> bool:»
+- src/ecgcert/clinical.py:82-83  «A (very simplified) ST-elevation positivity rule: any monitored lead with ST elevation >= »
+- src/ecgcert/clinical.py:89  «def count_stemi_flips(true_sig: np.ndarray, recon_sig: np.ndarray, fs: int,»
+- src/ecgcert/clinical.py:93-94  «Returns dict with ``fabricated`` (recon positive, truth negative) and ``masked`` (truth po»
+- src/ecgcert/clinical.py:101-102  «pos_t = stemi_positive(dt, leads, thr)     pos_r = stemi_positive(dr, leads, thr)»
+- src/ecgcert/clinical.py:106  «"fabricated": (pos_r and not pos_t), "masked": (pos_t and not pos_r),»
+- experiments/st_safety.py:14  «an "ST-threshold event" = |ST deviation| crossing 0.1 mV in a precordial lead;»
+- experiments/st_safety.py:15-16  «fabricated event = threshold crossed in reconstruction but not truth; masked event = cross»
+- experiments/st_safety.py:19-20  «Language is "ST-threshold event", never "phantom/missed STEMI" or "fabricated diagnosis".»
+- experiments/st_safety.py:35  «from ecgcert.clinical import count_stemi_flips»
+- experiments/st_safety.py:113  «flip = count_stemi_flips(sig, full[r].T, rate, leads=PRECORDIAL_IDX)»
+- experiments/st_safety.py:126  «fab = np.array([x["fabricated"] for x in R], float)»
+- experiments/st_safety.py:131  «"fabricated_event_rate": round(float(fab.mean()), 4), "fabricated_ci": _boot_ci(fab),»
+- experiments/ptbxl_stemi_safety.py:1  «"""M5: STEMI safety case -- fabricated / masked ST elevation, and abstention.»
+- experiments/ptbxl_stemi_safety.py:6-7  «*fabricates* precordial ST deviation (phantom STEMI); a dipolar / OLS reconstructor *blurs»
+- experiments/ptbxl_stemi_safety.py:11  «Outputs: results/ptbxl_stemi.json»
+- experiments/ptbxl_stemi_safety.py:21  «from ecgcert.clinical import count_stemi_flips, st_deviation, stemi_positive»
+- experiments/ptbxl_stemi_safety.py:94  «flip = count_stemi_flips(sig, recon[rname].T, rate, leads=PRECORDIAL_IDX)»
+- experiments/ptbxl_stemi_safety.py:105  «fab = np.array([r["fabricated"] for r in R])»
+- experiments/ptbxl_stemi_safety.py:110-111  «reconstructor's own faithful (not fabricated/masked) records, and evaluate the flag on the»
+- experiments/ptbxl_stemi_safety.py:130-131  «"fabricated_stemi": int(fab.sum()),             "masked_stemi": int(msk.sum()),»
+- experiments/ptbxl_stemi_safety.py:134  «"fabricated_prevented_by_flag": fab_prevented,»
+- experiments/ptbxl_stemi_safety.py:140  «print(f"[{rname:11s}] fabricated={d['fabricated_stemi']:3d} masked={d['masked_stemi']:3d} »
+- paper/main.tex:15  «\newcommand{\stFab}{263}        % generative fabricated STEMIs»
+- paper/main.tex:16  «\newcommand{\stMask}{360}       % OLS masked STEMIs»
+- paper/main.tex:17  «\newcommand{\stDipFab}{226}     % dipolar fabricated STEMIs (inside R_s)»
+- paper/main.tex:26  «What Is Recoverable, and What Is Fabricated}»
+- paper/main.tex:52  «morphology---invisible to scalar error: fabrication is a property of the»
+- paper/main.tex:72  «cosmetic artifact: a fabricated ST-segment deviation is a fabricated diagnosis.»
+- paper/main.tex:101  «model against a held-out recoverability oracle---shows that fabrication is chosen by»
+- paper/main.tex:163  «scalar (no ground truth). It detects fabrication \emph{in the null space}; error»
+- paper/main.tex:166  «fabricated we also report an oracle diagnostic---the correlation $\rho$ of»
+- paper/main.tex:186  «$\alpha$ against the clinical loss (a missed STEMI $\gg$ a false alarm). Detection»
+- paper/main.tex:215  «can support---and shows that fabrication is a choice of \emph{objective}, not an»
+- paper/results_stemi.tex:6  «(Table~\ref{tab:stemi}), all methods have $\sim\!0.075$\,mV ST error, yet the»
+- paper/results_stemi.tex:7  «generative reconstructor \emph{fabricates} $\stFab$ phantom STEMIs and the conservative»
+- paper/results_stemi.tex:9  «dipolar reconstructor---blessed with $h{\equiv}0$---fabricates $\stDipFab$ STEMIs,»
+- paper/results_stemi.tex:12  «generative fabrications ($18/263$, held-out threshold). The dependable safety signal is th»
+- paper/results_stemi.tex:18  «\caption{Limb-6$\to$precordial STEMI failures (PTB-XL fold 10, $799$ records; ST at»
+- paper/results_stemi.tex:21  «\label{tab:stemi}»
+- paper/results_stemi.tex:25  «method & fabricated & masked & ST err (mV) \\»
+- paper/results_ptbxl.tex:17  «it never fabricates, but recovers only Tier~I. The learned linear (OLS) reconstructor»
+- paper/results_ptbxl.tex:22  «separate blur from fabrication when energies match---the deployable guarantee is the»
+- paper/results_ptbxl.tex:56  «\input{results_stemi}»
+- paper/main_v2.tex:9  «% target-specific certificate + calibration + baselines; NO fabrication/hallucination.»
+- paper/arxiv_long.tex:12  «calibrated intervals, and an honest account of a retracted fabrication claim}»
+- paper/arxiv_long.tex:37  «reconstructor proves ``fabrication is a property of the objective''---which a leakage-corr»
+- paper/results_gpu.tex:1  «\subsection{A real diffusion model fabricates recoverable morphology}»
+- paper/results_gpu.tex:4  «measures the definition, not fabrication. We therefore build a \emph{held-out oracle}: a»
+- paper/results_gpu.tex:31  «($\dRhoCIfour{\pm}\dRhoCIfoursd$, $\dRhoCIfoursigma\sigma$): the fabrication is invisible »
+- paper/results_gpu.tex:34  «$\rho_{\rm recoverable}{\to}\RhoRec$) --- by then the fabrication is severe enough to move»
+- paper/results_neural.tex:1  «\subsection{The fabrication is the objective, not the network}»
+- paper/results_neural.tex:8  «not fabricate. The moment realism enters the objective the correlation collapses»
+- paper/results_neural.tex:11  «tradeoff \cite{blau2018perception} on the ECG. Fabrication is a property of the»
+- paper/results_neural.tex:21  «(peak $h{=}0.30$\,mV at $\lambda{=}2$). Fabrication is chosen by the objective.}»
+- paper/results_long_generative.tex:1  «\section{A Negative Result: the Generative ``Fabrication-Objective'' Story Did Not Survive»
+- paper/results_long_generative.tex:4  «``fabrication is a property of the objective,'' a certified hallucination. A pre-submissio»
+- paper/results_long_generative.tex:35  «residual, calibrated per feature and lead, not a proof of fabrication. We removed the»
+- paper/results_long_generative.tex:36  «fabrication-objective claim and rebuilt the paper around the parts that withstand scrutiny»
+- README.md:15  «This project began with a stronger "certified hallucination / fabrication is the»
+- README.md:130  «"fabrication-objective" claim (§8). Both compile clean; every table number is auto-generat»
+- README.md:149  «This project first claimed a diffusion model proves "fabrication is a property of the»
+- README.md:160  «causal "realism → fabrication" premise is false; high guidance simply degrades the model»
+- README.md:163  «So the fabrication-objective story was **deleted**, and "physical cardiac dipole" was»
+### st-threshold (7)
+- src/ecgcert/clinical.py:17  «ST_THRESHOLD_MV = 0.1        # classic significance threshold for ST deviation»
+- src/ecgcert/clinical.py:82-83  «"""A (very simplified) ST-elevation positivity rule: any monitored lead with ST elevation »
+- src/ecgcert/clinical.py:86  «return bool(np.any(d >= thr))»
+- experiments/st_safety.py:14  «an "ST-threshold event" = |ST deviation| crossing 0.1 mV in a precordial lead;»
+- paper/results_v2_maps.tex:30  «count ST-threshold events ($|$ST$|{>}0.1$\,mV crossings)»
+- README.md:86-87  «the *total* wrong-event rate (false-positive + false-negative |ST|>0.1 mV crossings)»
+- paper/results_stemi.tex:18-19  «ST at J$+$60\,ms vs.\ PR baseline, $0.1$\,mV threshold). RMSE-invisible, bidirectional, an»
+### map-eval (3)
+- D:/project/ecg-recoverability/paper/results_v2_maps.tex:2-3  «We estimate $\bm M_s$ (rank 3) per segment on the training folds and evaluate the map on $»
+- D:/project/ecg-recoverability/paper/main_v2.tex:112-113  «The map is evaluated on records disjoint from the folds used to estimate $\bm\mu_s,\bm M_s»
+- D:/project/ecg-recoverability/paper/arxiv_long.tex:96-97  «the map is evaluated on records disjoint from the folds used to estimate $\bm\mu_s,\bm M_s»
+### near-ident (9)
+- README.md:50  «V4 0.27) to **near-identifiable** lateral leads (V5 0.084, V6 0.027). So the honest a-prio»
+- README.md:49  «smoothly from strongly unidentifiable anterior leads (`η_ST`: V2 0.71, V3 0.55, V1 0.33,»
+- paper/main_v2.tex:30  «not identifiable while lateral V5/V6 are near-identifiable---a call a physiological»
+- paper/main_v2.tex:123  «e.g.\ that anterior precordial ST cannot be read from limb leads while lateral V5/V6 can»
+- paper/arxiv_long.tex:32  «unidentifiable while lateral V5/V6 are near-identifiable---and the total ST-threshold erro»
+- paper/results_v2_maps.tex:12  «\emph{near-identifiable} lateral leads (V5\,$\EtaSTVfive$, V6\,$\EtaSTVsix$). So the hones»
+- paper/results_v2_maps.tex:10-11  «falls smoothly from strongly unidentifiable anterior leads\n(V2\,$\eta{=}\EtaSTVtwo$, V3\,»
+- paper/results_v2_maps.tex:23  «precordial leads are unidentifiable while lateral V5/V6 grade toward identifiable.»
+- paper/auto/fair_baselines_macros.tex:17-18  «\newcommand{\EtaSTVfive}{0.084}\n\newcommand{\EtaSTVsix}{0.027}»
+### gap-exact (5)
+- paper/results_v2_baseline.tex:18-22  «The residual gap is exactly the \emph{unobserved dipolar coordinate} the map's $\eta{>}0$ »
+- paper/results_v2_baseline.tex:29-31  «On limb-6 even the neural baseline plateaus far above its identifiable-set error, the gap »
+- README.md:79-82  «and no reconstructor closes that gap** — the residual gap is exactly the unobserved dipola»
+- paper/main_v2.tex:116  «\input{results_v2_baseline}»
+- paper/arxiv_long.tex:100  «\input{results_v2_baseline}»
+### fold8-kappa (12)
+- experiments/tier2_conformal.py:11  «fold  8    : hyperparameter selection (max_iter via a small grid);»
+- experiments/tier2_conformal.py:10  «folds 1-7  : fit M_s AND train the quantile regressor;»
+- experiments/tier2_conformal.py:94  «out = {"alpha": ALPHA, "fold_discipline": "train 1-7 / cal 9 / test 10",»
+- paper/results_v2_calib.tex:5  «(basis and model on folds 1--7, calibration on fold~9, a single evaluation on fold~10;»
+- paper/main_v2.tex:93  «leakage-free: basis and quantile model on folds 1--7, conformal calibration on fold 9, a»
+- paper/main_v2.tex:94  «single evaluation on fold 10. We report \emph{within-group marginal} coverage under»
+- paper/arxiv_long.tex:175  «strict fold discipline (folds 1--7 train, 9 calibrate, 10 test).»
+- README.md:66  «fold discipline** (basis+model on folds 1–7, conformal calibration on fold 9, a single»
+- README.md:42  «The global `κ_s(S) = ‖M_s M_{s,S}⁺‖ = maxₗ κ_{s,ℓ}` is a *configuration-level worst case*,»
+- paper/arxiv_long.tex:164  «so $\kappa_{s,\ell}(S)=\|\bm e_\ell^{\top}\bm A\|_2\le\|\bm A\|_2=\kappa_s(S)$; the global»
+- paper/arxiv_long.tex:165  «$\kappa_s$ upper-bounds every per-lead value but is not their maximum. \hfill$\square$»
+- paper/main_v2.tex:27  «$\kappa_{s,\ell}(S)$ (its noise/observed-residual gain). The per-lead criterion is the»

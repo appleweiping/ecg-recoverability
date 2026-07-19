@@ -1,0 +1,567 @@
+{
+  "alpha": 0.1,
+  "fold_discipline": "train 1-7 / tune 8 / cal 9 / test 10",
+  "target": "record-level segment-mean off-dipole residual of the target lead",
+  "maxiter_grid": [
+    100,
+    200,
+    400
+  ],
+  "n_train": 2000,
+  "configs": {
+    "{I,II,V1,V3,V5}": {
+      "observed": [
+        "I",
+        "II",
+        "V1",
+        "V3",
+        "V5"
+      ],
+      "groups": {
+        "QRS/V2": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 100,
+          "coverage": 0.9095477386934674,
+          "coverage_ci": [
+            0.890929648241206,
+            0.9256281407035176
+          ],
+          "mean_width_mV": 0.1498988482038953,
+          "target_off_dipole_rms_mV": 0.05946150765997311,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9313725490196079
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9047619047619048
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9345794392523364
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.8771186440677966
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8823529411764706
+            }
+          }
+        },
+        "QRS/V4": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 200,
+          "coverage": 0.9266331658291457,
+          "coverage_ci": [
+            0.9095477386934674,
+            0.9417085427135679
+          ],
+          "mean_width_mV": 0.14574317787242771,
+          "target_off_dipole_rms_mV": 0.05867960761907792,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.946078431372549
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9251700680272109
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9345794392523364
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.902542372881356
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8941176470588236
+            }
+          }
+        },
+        "QRS/V6": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 400,
+          "coverage": 0.9125628140703518,
+          "coverage_ci": [
+            0.8944723618090452,
+            0.9276381909547738
+          ],
+          "mean_width_mV": 0.09565017182065087,
+          "target_off_dipole_rms_mV": 0.08760507453241109,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9779411764705882
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9047619047619048
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9439252336448598
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.847457627118644
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.7647058823529411
+            }
+          }
+        },
+        "ST/V2": {
+          "n_cal": 495,
+          "n_test": 995,
+          "max_iter": 200,
+          "coverage": 0.9437185929648241,
+          "coverage_ci": [
+            0.928643216080402,
+            0.9577889447236181
+          ],
+          "mean_width_mV": 0.11732328846130177,
+          "target_off_dipole_rms_mV": 0.04841540124400136,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9558823529411765
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9591836734693877
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9439252336448598
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.9322033898305084
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8941176470588236
+            }
+          }
+        },
+        "ST/V4": {
+          "n_cal": 495,
+          "n_test": 995,
+          "max_iter": 100,
+          "coverage": 0.907537688442211,
+          "coverage_ci": [
+            0.8904522613065327,
+            0.9266331658291457
+          ],
+          "mean_width_mV": 0.09641986022146433,
+          "target_off_dipole_rms_mV": 0.043639080146408236,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9338235294117647
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.8707482993197279
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9439252336448598
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.902542372881356
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8823529411764706
+            }
+          }
+        },
+        "ST/V6": {
+          "n_cal": 495,
+          "n_test": 995,
+          "max_iter": 400,
+          "coverage": 0.9396984924623115,
+          "coverage_ci": [
+            0.9230904522613065,
+            0.9542964824120603
+          ],
+          "mean_width_mV": 0.010714708956490227,
+          "target_off_dipole_rms_mV": 0.009334812703292592,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9681372549019608
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9523809523809523
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9532710280373832
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.902542372881356
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8823529411764706
+            }
+          }
+        },
+        "T/V2": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 200,
+          "coverage": 0.9165829145728643,
+          "coverage_ci": [
+            0.9005025125628141,
+            0.9326633165829146
+          ],
+          "mean_width_mV": 0.20617025522001942,
+          "target_off_dipole_rms_mV": 0.09113943505620592,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9166666666666666
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9455782312925171
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9439252336448598
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.8940677966101694
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8941176470588236
+            }
+          }
+        },
+        "T/V4": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 200,
+          "coverage": 0.8964824120603015,
+          "coverage_ci": [
+            0.8753768844221106,
+            0.9155778894472362
+          ],
+          "mean_width_mV": 0.131819683407521,
+          "target_off_dipole_rms_mV": 0.05815702665016945,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9240196078431373
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9047619047619048
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9252336448598131
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.864406779661017
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8235294117647058
+            }
+          }
+        },
+        "T/V6": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 400,
+          "coverage": 0.9055276381909547,
+          "coverage_ci": [
+            0.8884422110552764,
+            0.9226130653266331
+          ],
+          "mean_width_mV": 0.009385231157696818,
+          "target_off_dipole_rms_mV": 0.008459048113924108,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9485294117647058
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9387755102040817
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9439252336448598
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.826271186440678
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8
+            }
+          }
+        }
+      }
+    },
+    "{I,II,V2}": {
+      "observed": [
+        "I",
+        "II",
+        "V2"
+      ],
+      "groups": {
+        "QRS/V4": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 100,
+          "coverage": 0.9226130653266331,
+          "coverage_ci": [
+            0.9045226130653267,
+            0.9396984924623115
+          ],
+          "mean_width_mV": 0.16614093231649155,
+          "target_off_dipole_rms_mV": 0.05867960761907792,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9485294117647058
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9047619047619048
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9626168224299065
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.8813559322033898
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8941176470588236
+            }
+          }
+        },
+        "QRS/V6": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 200,
+          "coverage": 0.9175879396984925,
+          "coverage_ci": [
+            0.9005025125628141,
+            0.9326633165829146
+          ],
+          "mean_width_mV": 0.11282680283815358,
+          "target_off_dipole_rms_mV": 0.08760507453241106,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9705882352941176
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9115646258503401
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9719626168224299
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.8516949152542372
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8
+            }
+          }
+        },
+        "ST/V4": {
+          "n_cal": 495,
+          "n_test": 995,
+          "max_iter": 100,
+          "coverage": 0.893467336683417,
+          "coverage_ci": [
+            0.876859296482412,
+            0.91356783919598
+          ],
+          "mean_width_mV": 0.09588205389205745,
+          "target_off_dipole_rms_mV": 0.043639080146408236,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9240196078431373
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.8843537414965986
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.897196261682243
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.885593220338983
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.8352941176470589
+            }
+          }
+        },
+        "ST/V6": {
+          "n_cal": 495,
+          "n_test": 995,
+          "max_iter": 400,
+          "coverage": 0.8723618090452261,
+          "coverage_ci": [
+            0.8502512562814071,
+            0.892462311557789
+          ],
+          "mean_width_mV": 0.009726989804273051,
+          "target_off_dipole_rms_mV": 0.009334812703292618,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9338235294117647
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.8775510204081632
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.8317757009345794
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.8347457627118644
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.7647058823529411
+            }
+          }
+        },
+        "T/V4": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 100,
+          "coverage": 0.9005025125628141,
+          "coverage_ci": [
+            0.8804020100502512,
+            0.9201256281407035
+          ],
+          "mean_width_mV": 0.15108683461823555,
+          "target_off_dipole_rms_mV": 0.05815702665016948,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9411764705882353
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.9183673469387755
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9439252336448598
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.8559322033898306
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.7764705882352941
+            }
+          }
+        },
+        "T/V6": {
+          "n_cal": 496,
+          "n_test": 995,
+          "max_iter": 400,
+          "coverage": 0.8874371859296483,
+          "coverage_ci": [
+            0.8688190954773869,
+            0.9055276381909547
+          ],
+          "mean_width_mV": 0.008824737699473903,
+          "target_off_dipole_rms_mV": 0.008459048113924101,
+          "subgroup_coverage": {
+            "NORM": {
+              "n": 408,
+              "coverage": 0.9583333333333334
+            },
+            "MI": {
+              "n": 147,
+              "coverage": 0.8979591836734694
+            },
+            "STTC": {
+              "n": 107,
+              "coverage": 0.9345794392523364
+            },
+            "CD": {
+              "n": 236,
+              "coverage": 0.8050847457627118
+            },
+            "HYP": {
+              "n": 85,
+              "coverage": 0.7176470588235294
+            }
+          }
+        }
+      }
+    }
+  },
+  "lineage": {
+    "commit": "44091359597ebcec91996933a1a8a44677152526",
+    "protocol": "recoverability-v2-2026-07",
+    "seed": 0,
+    "targets": [
+      "V2",
+      "V4",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV segment means",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd"
+    },
+    "n_train": 2000,
+    "n_test": null,
+    "train_ids_sha256": "07275c47a33813fe",
+    "test_ids_sha256": null,
+    "cal_fold": 9,
+    "test_fold": 10,
+    "tune_fold": 8
+  }
+}

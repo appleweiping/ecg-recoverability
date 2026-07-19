@@ -19,27 +19,33 @@ Exact (deterministic) facts
 Estimated (physical) object
 ---------------------------
 2. Within the 8 independent leads, the instantaneous potential is *approximately*
-   a rank-3 cardiac **dipole** plus a **non-dipolar residual**.  Per waveform
-   segment ``s in {P, QRS, ST, T}`` we estimate the dipolar subspace
-   ``M_s in R^{12x3}`` as the top-3 left singular vectors of the population,
-   segment-``s`` lead covariance.  We never assume exact rank 3; ``M_s`` is a
-   *coordinate system* and everything non-dipolar is pushed to the calibration
-   residual (Tier II / Tier III).
+   low rank plus a **non-dipolar residual**.  Per waveform segment
+   ``s in {P, QRS, ST, T}`` we estimate a spatial subspace
+   ``M_s in R^{12 x q}`` from the leading left singular vectors of the population,
+   segment-``s`` lead covariance.  Rank 3 is the legacy cardiac-dipole model; the
+   rank-generic API evaluates a pre-registered path instead of assuming it is exact.
 
-The certificate
----------------
+The certificate (per target lead)
+---------------------------------
 For an observed lead subset ``S`` with dipolar sub-matrix ``M_{s,S}`` (rows ``S``
-of ``M_s``):
+of ``M_s``), the mean-centred dipolar estimate is
+``L_hat = mu_s + M_s M_{s,S}^+ (y_S - mu_{s,S})``.  Per target lead ``ell`` we report
+two closed-form numbers, both from a single truncated SVD of ``M_{s,S}``:
 
-* if ``rank(M_{s,S}) = 3`` the population-dipolar projection of **every** lead is
-  recovered exactly by ``L_hat = M_s M_{s,S}^+ y_S`` with error ``M_s M_{s,S}^+ n``
-  and closed-form noise-amplification constant ``kappa_s(S) = ||M_s M_{s,S}^+||_2``;
-* if ``rank(M_{s,S}) < 3`` the unobserved dipolar directions are unrecoverable.
+* ``eta_{s,ell}(S) = ||e_ell^T M_s (I - M_{s,S}^+ M_{s,S})||_2`` -- sensitivity of
+  lead ``ell`` to dipole directions the observation cannot see.  ``eta=0`` means the
+  dipolar component of lead ``ell`` is *identifiable* from ``S``; ``eta>0`` means an
+  observation-indistinguishable dipole direction changes lead ``ell`` (its dipolar
+  component is not identifiable at any SNR).
+* ``kappa_{s,ell}(S) = ||e_ell^T M_s M_{s,S}^+||_2`` -- amplification of observation
+  noise / observed non-dipolar residual into the *identifiable* part of lead ``ell``.
 
-``kappa_s(S)`` is the object that distinguishes a *dipole-spanning* 3-lead set
-(low ``kappa``) from a near-coplanar limb triplet (rank-deficient / huge ``kappa``)
--- the "geometry, not lead count" story.  Generic inverse-problem theory cannot
-produce it because it has no ``M``.
+The global spectral ``kappa_s(S) = ||M_s M_{s,S}^+||_2`` is kept only as a
+*configuration-level worst-case summary*; it is not a per-lead certificate and the
+coarse rule "global rank < 3 => every unobserved lead is unrecoverable" is replaced by
+the per-lead ``eta_{s,ell}``.  Generic inverse-problem theory cannot produce these
+because it has no ``M``.  NOTE: ``M_s`` is a *population-estimated* (PCA) object, not a
+first-principles physical dipole; these numbers depend on the estimated basis.
 """
 from __future__ import annotations
 
@@ -149,38 +155,279 @@ def dipolar_projector(M_s: np.ndarray) -> np.ndarray:
 
 
 def _observed_idx(observed_leads) -> np.ndarray:
-    return np.array([LEAD_INDEX[l] if isinstance(l, str) else int(l) for l in observed_leads])
+    idx = np.array(
+        [
+            LEAD_INDEX[lead] if isinstance(lead, str) else int(lead)
+            for lead in observed_leads
+        ],
+        dtype=int,
+    )
+    if np.any((idx < 0) | (idx >= len(LEADS))):
+        raise IndexError(f"observed lead indices must be in [0, {len(LEADS) - 1}]; got {idx}")
+    if np.unique(idx).size != idx.size:
+        raise ValueError(f"observed leads must be unique; got {list(observed_leads)!r}")
+    return idx
 
 
-def kappa(M_s: np.ndarray, observed_leads, rcond: float = 1e-10) -> tuple[float, int]:
-    """Closed-form noise-amplification constant ``kappa_s(S)`` and dipole rank.
+@dataclass
+class ObservedDipole:
+    """Everything derived from a SINGLE truncated SVD of ``M_{s,S}``.
 
-    Returns ``(kappa, r)`` where ``kappa = ||M_s M_{s,S}^+||_2`` (spectral norm)
-    and ``r = rank(M_{s,S})``.  If ``r < 3`` the observed leads do not span the
-    dipole and ``kappa`` is reported for the pseudo-inverse on the observed
-    directions (finite, but the missing directions are unrecoverable -- Tier III).
+    All rank/pseudo-inverse/projector/kappa/eta quantities share one relative
+    truncation ``threshold = rcond * sigma_max(M_{s,S})`` so the certificate is
+    numerically self-consistent (a dipole direction is either observed or not,
+    everywhere).
+
+    Attributes
+    ----------
+    idx : (|S|,)      observed lead indices
+    M_S : (|S|, q)    observed rows of ``M_s``
+    pinv : (q, |S|)   pseudo-inverse ``M_{s,S}^+``
+    P_obs : (q, q)    ``M_{s,S}^+ M_{s,S}`` -- projector onto the *observed* spatial
+                      coordinate directions (rank ``r``)
+    rank : int        number of dipole directions the observation constrains
+    sv : (min(|S|,q),) singular values of ``M_{s,S}``
+    threshold : float truncation level ``rcond * sv[0]``
     """
+
+    idx: np.ndarray
+    M_S: np.ndarray
+    pinv: np.ndarray
+    P_obs: np.ndarray
+    rank: int
+    sv: np.ndarray
+    threshold: float
+
+
+def observed_dipole(
+    M_s: np.ndarray,
+    observed_leads,
+    rcond: float | None = RECON_RCOND,
+) -> ObservedDipole:
+    """Single SVD of ``M_{s,S}``; source of every downstream quantity.
+
+    ``rcond`` is a relative truncation tolerance. Passing ``None`` requests the
+    full-precision numerical row space, using the standard matrix-rank threshold
+    ``eps * max(shape) * sigma_max``. This makes exact/full-precision diagnostics
+    explicit and keeps deployed truncation (normally :data:`RECON_RCOND`) distinct.
+    """
+    M_s = np.asarray(M_s, dtype=float)
+    if M_s.ndim != 2 or M_s.shape[0] != len(LEADS):
+        raise ValueError(f"M_s must be (12, q); got {M_s.shape}")
+    if M_s.shape[1] < 1:
+        raise ValueError("M_s must contain at least one spatial direction")
     idx = _observed_idx(observed_leads)
-    M_S = M_s[idx]                       # (|S|, 3)
-    r = int(np.linalg.matrix_rank(M_S, tol=rcond * max(M_S.shape)))
-    G = M_s @ np.linalg.pinv(M_S, rcond=rcond)   # (12, |S|)
-    k = float(np.linalg.norm(G, 2))
-    return k, r
+    M_S = M_s[idx]                                          # (|S|, q)
+    U, sv, Vt = np.linalg.svd(M_S, full_matrices=False)     # U:(|S|,k) sv:(k,) Vt:(k,q)
+    smax = float(sv[0]) if sv.size else 0.0
+    if rcond is None:
+        thr = np.finfo(float).eps * max(M_S.shape) * smax
+    else:
+        if not np.isfinite(rcond) or rcond < 0:
+            raise ValueError(f"rcond must be non-negative and finite, or None; got {rcond!r}")
+        thr = float(rcond) * smax
+    keep = sv > thr
+    r = int(keep.sum())
+    sv_inv = np.zeros_like(sv)
+    sv_inv[keep] = 1.0 / sv[keep]
+    pinv = (Vt.T * sv_inv) @ U.T                            # (q, |S|) truncated M_S^+
+    P_obs = Vt.T[:, keep] @ Vt[keep, :]                    # (q, q) M_S^+ M_S
+    return ObservedDipole(idx=idx, M_S=M_S, pinv=pinv, P_obs=P_obs, rank=r,
+                          sv=sv, threshold=float(thr))
+
+
+def kappa(M_s: np.ndarray, observed_leads, rcond: float | None = None,
+          lead=None) -> tuple[float, int]:
+    """Noise / observed-residual amplification of the dipolar estimate, and rank.
+
+    Global (``lead=None``): ``kappa_s(S) = ||M_s M_{s,S}^+||_2`` -- a
+    *configuration-level worst-case* summary, NOT a per-lead certificate.
+
+    Per target lead ``ell`` (``lead=ell``): ``kappa_{s,ell}(S) =
+    ||e_ell^T M_s M_{s,S}^+||_2`` -- how much observation noise / observed
+    non-dipolar residual is amplified into the dipolar estimate of lead ``ell``.
+
+    Returns ``(kappa, rank)`` with ``rank = rank(M_{s,S})`` under the shared
+    truncation. ``rcond=None`` (the default) means full-precision numerical rank;
+    pass :data:`RECON_RCOND` for the deployed, stability-truncated value. All
+    quantities come from one :func:`observed_dipole` SVD.
+    """
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    G = np.asarray(M_s, float) @ od.pinv                    # (12, |S|)
+    if lead is None:
+        k = float(np.linalg.norm(G, 2))
+    else:
+        li = LEAD_INDEX[lead] if isinstance(lead, str) else int(lead)
+        k = float(np.linalg.norm(G[li], 2))
+    return k, od.rank
+
+
+def kappa_per_lead(
+    M_s: np.ndarray,
+    observed_leads,
+    rcond: float | None = RECON_RCOND,
+) -> np.ndarray:
+    """Per-lead amplification ``kappa_{s,ell}(S)`` for all 12 leads -> (12,)."""
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    G = np.asarray(M_s, float) @ od.pinv                    # (12, |S|)
+    return np.linalg.norm(G, axis=1)
+
+
+def eta_exact_per_lead(M_s: np.ndarray, observed_leads) -> np.ndarray:
+    """EXACT per-lead unidentifiability using the exact Moore--Penrose pseudo-inverse.
+
+    ``eta^{exact}_{s,ell}(S) = ||e_ell^T M_s (I - M_{s,S}^+ M_{s,S})||_2`` with
+    ``M_{s,S}^+`` evaluated at the standard machine-precision matrix-rank cutoff. This is
+    the full-precision identifiability diagnostic for the linear functional
+    ``e_ell^T M_s d`` from ``M_{s,S} d``:
+
+    * ``eta^{exact}=0`` iff ``e_ell^T M_s`` lies in the exact row space of ``M_{s,S}``; then the
+      functional is determined by the observation -- identical observations for identical
+      functional value, at ANY SNR.
+    * ``eta^{exact}>0`` iff there is an exact kernel direction of ``M_{s,S}`` that changes lead
+      ``ell`` -- not identifiable at any SNR.
+
+    This depends only on the exact matrix, not on a truncation tolerance. Contrast with the
+    rho-truncated :func:`eta_per_lead`. Returns a (12,) array.
+    """
+    M_s = np.asarray(M_s, float)
+    od = observed_dipole(M_s, observed_leads, rcond=None)
+    q = M_s.shape[1]
+    return np.linalg.norm(M_s @ (np.eye(q) - od.P_obs), axis=1)
+
+
+def eta_per_lead(
+    M_s: np.ndarray,
+    observed_leads,
+    rcond: float | None = RECON_RCOND,
+) -> np.ndarray:
+    """rho-truncated per-lead unidentifiability ``eta^{(rho)}_{s,ell}(S)``.
+
+    Same form as :func:`eta_exact_per_lead` but with the pseudo-inverse/row-space projector
+    from a truncated SVD of ``M_{s,S}`` at relative tolerance ``rho=rcond`` (singular values
+    below ``rho * sigma_max`` are treated as unobserved). So:
+
+    * ``eta^{(rho)}=0``: lead ``ell``'s dipolar component is recoverable within the RETAINED
+      numerical row space at resolution ``rho``;
+    * ``eta^{(rho)}>0``: it is not stably recoverable at resolution ``rho`` (a direction is
+      observed only through a singular value below ``rho*sigma_max``). This does NOT by itself
+      imply the exact matrix has a null direction -- a tiny-but-nonzero singular value is
+      exactly identifiable yet rho-unidentifiable. Use :func:`eta_exact_per_lead` for the exact
+      verdict. We call the ``eta^{(rho)}`` map "rho-identifiability" in the paper.
+
+    Returns a (12,) array.
+    """
+    M_s = np.asarray(M_s, float)
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    q = M_s.shape[1]
+    unobs = M_s @ (np.eye(q) - od.P_obs)                    # (12, q)
+    return np.linalg.norm(unobs, axis=1)
+
+
+def lead_dipolar_norm(M_s: np.ndarray) -> np.ndarray:
+    """Per-lead total dipolar gain ``||e_ell^T M_s||_2`` (12,).
+
+    The denominator for the *normalized* identifiability ``eta_tilde``: how much of
+    lead ``ell``'s signal lives in the dipolar subspace at all. A lead with tiny
+    dipolar norm (e.g. a low-amplitude precordial lead in a flat segment) can have a
+    small absolute ``eta`` yet a large *fraction* unobserved.
+    """
+    return np.linalg.norm(np.asarray(M_s, float), axis=1)
+
+
+def eta_normalized_per_lead(M_s: np.ndarray, observed_leads, rcond: float | None = RECON_RCOND,
+                            eps: float = 1e-9) -> np.ndarray:
+    """Normalized identifiability ``eta_tilde_{s,ell}(S) = eta_{s,ell} / ||e_ell^T M_s||_2``.
+
+    In ``[0, 1]``: the *fraction* of lead ``ell``'s dipolar content lying in dipole
+    directions unobserved by ``S``. ``eta_tilde ~ 0`` => the identifiable part is nearly
+    all of the lead's dipolar signal; ``eta_tilde ~ 1`` => almost none is identifiable.
+    This is the honest graded measure: absolute ``eta`` alone conflates ``S``-geometry with
+    lead amplitude. Returns a (12,) array (``nan`` where the dipolar norm is ~0).
+    """
+    eta = eta_per_lead(M_s, observed_leads, rcond=rcond)
+    denom = lead_dipolar_norm(M_s)
+    out = np.full(12, np.nan)
+    ok = denom > eps
+    out[ok] = eta[ok] / denom[ok]
+    return out
+
+
+def dipole_coord_cov(M_s: np.ndarray, mu_s: np.ndarray, X_seg: np.ndarray) -> np.ndarray:
+    """Coordinate covariance ``Sigma_d`` (q x q) for ``d = M_s^T (L - mu_s)``."""
+    X = np.asarray(X_seg, float)
+    M_s = np.asarray(M_s, float)
+    d = (X - np.asarray(mu_s, float)) @ M_s                       # (N, q)
+    covariance = np.atleast_2d(np.cov(d, rowvar=False))
+    return 0.5 * (covariance + covariance.T)
+
+
+def unobserved_footprint_per_lead(M_s: np.ndarray, observed_leads, Sigma_d: np.ndarray,
+                                  rcond: float | None = RECON_RCOND) -> np.ndarray:
+    """MARGINAL RMS footprint (mV) of the unobserved dipole coordinate on each lead.
+
+    ``sqrt( e_ell^T M_s (I-P_obs) Sigma_d (I-P_obs) M_s^T e_ell )`` -- the prior RMS amplitude
+    of the component of the dipole in directions unobserved by ``S``. This is an UPPER BOUND
+    on the Bayes-irreducible ambiguity (:func:`expected_ambiguity_per_lead`): it ignores that
+    the unobserved coordinate may be predictable from the observed one via the prior
+    correlation. Returns a (12,) array.
+    """
+    M_s = np.asarray(M_s, float)
+    Sd = np.asarray(Sigma_d, float)
+    q = M_s.shape[1]
+    if Sd.shape != (q, q):
+        raise ValueError(f"Sigma_d must be ({q}, {q}) for M_s with rank {q}; got {Sd.shape}")
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    A = M_s @ (np.eye(q) - od.P_obs)                               # (12, q)
+    cov = A @ Sd @ A.T                                             # (12, 12)
+    return np.sqrt(np.clip(np.diag(cov), 0.0, None))
+
+
+def expected_ambiguity_per_lead(M_s: np.ndarray, observed_leads, Sigma_d: np.ndarray,
+                                rcond: float | None = RECON_RCOND) -> np.ndarray:
+    """Prior-conditional expected ambiguity in mV per lead: the residual error a Bayes
+    reconstructor still incurs on the dipolar component under a Gaussian dipole prior.
+
+    Observing ``S`` fixes the observed dipole coordinate ``P d`` (``P=P_obs``); the unobserved
+    ``Q d`` (``Q=I-P``) is only irreducible AFTER conditioning on ``P d`` through the prior
+    ``d ~ (0, Sigma_d)``. The Gaussian posterior covariance of ``d`` given ``P d`` is the Schur
+    complement
+    ``Sigma_{Q|P} = Q Sigma_d Q - Q Sigma_d P (P Sigma_d P)^+ P Sigma_d Q``,
+    and the lead-``ell`` ambiguity is
+    ``a_ell = sqrt( e_ell^T M_s Sigma_{Q|P} M_s^T e_ell )``. For a dipole-spanning ``S`` (``Q=0``)
+    this is 0; it is <= the marginal :func:`unobserved_footprint_per_lead`. Returns a (12,)
+    array. NOTE: this uses the fitted (Gaussian) prior; it is not distribution-free.
+    """
+    M_s = np.asarray(M_s, float)
+    Sd = np.asarray(Sigma_d, float)
+    q = M_s.shape[1]
+    if Sd.shape != (q, q):
+        raise ValueError(f"Sigma_d must be ({q}, {q}) for M_s with rank {q}; got {Sd.shape}")
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    P = od.P_obs                                                  # (q,q) projector onto observed dirs
+    Q = np.eye(q) - P
+    QSdQ = Q @ Sd @ Q
+    QSdP = Q @ Sd @ P
+    PSdP = P @ Sd @ P
+    Sig_cond = QSdQ - QSdP @ np.linalg.pinv(PSdP, rcond=1e-10) @ QSdP.T
+    Sig_cond = 0.5 * (Sig_cond + Sig_cond.T)                      # symmetrize
+    cov = M_s @ Sig_cond @ M_s.T                                  # (12,12)
+    return np.sqrt(np.clip(np.diag(cov), 0.0, None))
 
 
 def reconstruct_dipolar(M_s: np.ndarray, mu_s: np.ndarray, observed_leads, y_S: np.ndarray,
                         rcond: float = RECON_RCOND) -> np.ndarray:
     """Recover the population-dipolar projection of the full 12-lead from ``y_S``.
 
-    ``L_hat = mu_s + M_s M_{s,S}^+ (y_S - mu_{s,S})``.  ``y_S`` may be a vector
-    ``(|S|,)`` or a batch ``(|S|, T)`` of time samples.
+    ``L_hat = mu_s + M_s M_{s,S}^+ (y_S - mu_{s,S})`` -- theorem and code use the
+    identical, mean-centred estimator. ``y_S`` may be ``(|S|,)`` or ``(|S|, T)``.
     """
-    idx = _observed_idx(observed_leads)
-    M_S = M_s[idx]
+    M_s = np.asarray(M_s, float)
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
     y = np.asarray(y_S, dtype=float)
-    resid = y - mu_s[idx][..., None] if y.ndim == 2 else y - mu_s[idx]
-    d = np.linalg.pinv(M_S, rcond=rcond) @ resid          # dipole coords
-    L_dip = M_s @ d
+    mu_S = mu_s[od.idx]
+    resid = y - mu_S[..., None] if y.ndim == 2 else y - mu_S
+    L_dip = M_s @ (od.pinv @ resid)                        # dipole coords -> 12-lead
     return (mu_s[..., None] + L_dip) if y.ndim == 2 else (mu_s + L_dip)
 
 
@@ -213,7 +460,7 @@ class DipolarModel:
 
     Attributes
     ----------
-    M : dict[str, (12, 3)]      dipolar basis per segment
+    M : dict[str, (12, rank)]   dipolar basis per segment
     mu : dict[str, (12,)]       population segment mean per segment
     evr : dict[str, (12,)]      variance-explained ratios per segment
     rank : int                  dipolar rank (default 3)
@@ -236,8 +483,21 @@ class DipolarModel:
         """Fraction of segment variance captured by the dipole (top-``rank``)."""
         return float(self.evr[seg][: self.rank].sum())
 
-    def kappa(self, seg: str, observed_leads) -> tuple[float, int]:
-        return kappa(self.M[seg], observed_leads)
+    def kappa(
+        self,
+        seg: str,
+        observed_leads,
+        lead=None,
+        rcond: float | None = RECON_RCOND,
+    ) -> tuple[float, int]:
+        """Legacy model conditioning, deployment-truncated by default."""
+        return kappa(self.M[seg], observed_leads, rcond=rcond, lead=lead)
+
+    def kappa_per_lead(self, seg: str, observed_leads) -> np.ndarray:
+        return kappa_per_lead(self.M[seg], observed_leads)
+
+    def eta_per_lead(self, seg: str, observed_leads) -> np.ndarray:
+        return eta_per_lead(self.M[seg], observed_leads)
 
     def reconstruct_dipolar(self, seg: str, observed_leads, y_S: np.ndarray) -> np.ndarray:
         return reconstruct_dipolar(self.M[seg], self.mu[seg], observed_leads, y_S)

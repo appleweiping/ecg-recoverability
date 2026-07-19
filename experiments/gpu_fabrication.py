@@ -27,7 +27,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ecgcert.certify import certified_unrecoverable_projector
+from ecgcert.certify import off_dipole_projector
 from ecgcert.data import PTBXL
 from ecgcert.models import fit_segment_models
 from ecgcert.physics import LEAD_INDEX
@@ -73,7 +73,12 @@ def oracle_gate(n_train=2000, n_test=800, rate=100, seed=0):
     te_samples = db.collect_all_segments(test_ids, rate=rate, max_per_record=60,
                                          max_records=n_test, seed=seed + 1)
 
-    out = {"n_train": n_train, "n_test": n_test, "configs": {}}
+    from ecgcert import lineage
+    out = {"n_train": n_train, "n_test": n_test, "configs": {},
+           "lineage": lineage.make(db, seed=seed, targets=["V2", "V4", "V6"],
+                                   normalization="raw mV segment samples",
+                                   train_ids=train_ids[:n_train], test_ids=test_ids[:n_test],
+                                   extra={"experiment": "ridge oracle predictability of off-dipole residual"})}
     for cname, cfg in CONFIGS.items():
         obs_idx = [LEAD_INDEX[l] for l in cfg["obs"]]
         out["configs"][cname] = {}
@@ -81,7 +86,7 @@ def oracle_gate(n_train=2000, n_test=800, rate=100, seed=0):
             m = models.get(seg)
             if m is None or tr_samples[seg].shape[0] < 200 or te_samples[seg].shape[0] < 200:
                 continue
-            U = certified_unrecoverable_projector(m.M, cfg["obs"])   # (12,12)
+            U = off_dipole_projector(m.M, cfg["obs"])   # (12,12)
             Xtr = tr_samples[seg]; Xte = te_samples[seg]             # (N,12) mV
             # observed-lead features (raw mV of observed leads)
             Ftr, Fte = Xtr[:, obs_idx], Xte[:, obs_idx]
@@ -171,7 +176,7 @@ def _score_recon(db, models, oracle_rho, recon_fn, test_ids, cfg, rate, tag):
             m = models.get(s); idx = segidx[s]
             if m is None or idx.size < 8:
                 continue
-            U = certified_unrecoverable_projector(m.M, cfg["obs"])
+            U = off_dipole_projector(m.M, cfg["obs"])
             R, _ = recoverable_dipole_projector(m.M, cfg["obs"])
             true_nd = U @ (sig[idx].T - m.mu[:, None])               # (12,Tseg)
             rec_nd = U @ (Lhat[:, idx] - m.mu[:, None])
@@ -226,7 +231,7 @@ def diffusion_exhibit(n_train=3000, n_test=400, rate=100, epochs=40, T=200,
         m = models.get(s)
         if m is None or tr_samples[s].shape[0] < 200 or te_samples[s].shape[0] < 200:
             continue
-        U = certified_unrecoverable_projector(m.M, cfg["obs"])
+        U = off_dipole_projector(m.M, cfg["obs"])
         Ftr = tr_samples[s][:, obs_idx]; Fte = te_samples[s][:, obs_idx]
         Rtr = (tr_samples[s] - m.mu) @ U.T; Rte = (te_samples[s] - m.mu) @ U.T
         oracle_rho[s] = {}

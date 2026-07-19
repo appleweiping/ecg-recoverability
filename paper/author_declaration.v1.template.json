@@ -1,0 +1,14 @@
+{
+  "affiliations": [],
+  "authors": [],
+  "compliance_statement": "",
+  "conflict_of_interest_statement": "",
+  "facts_verified_by_all_authors": false,
+  "funding_statement": "",
+  "schema_version": "paper-author-declaration-v1",
+  "signed_at": null,
+  "signer": null,
+  "signer_public_key_sha256": null,
+  "signature_algorithm": "Ed25519",
+  "status": "PENDING_AUTHOR_SIGNATURE"
+}

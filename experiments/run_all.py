@@ -1,41 +1,35 @@
-"""Reproduce every figure and JSON result in one command.
-
-    python experiments/run_all.py
-
-Assumes PTB-XL has been downloaded (scripts/download_data.py). The synthetic
-validation runs in seconds; the PTB-XL experiments are dominated by NeuroKit2
-delineation (a few minutes each on CPU).
-"""
+"""Compatibility wrapper for the single manifest-driven experiment DAG."""
 from __future__ import annotations
 
-import runpy
+import argparse
+import subprocess
 import sys
-import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-STEPS = [
-    ("scripts/precheck_dipolarity.py", "risk-2 dipolarity gate"),
-    ("experiments/synthetic_dipole_injection.py", "synthetic theorem validation"),
-    ("experiments/ptbxl_reduced_lead.py", "PTB-XL hallucination quantification"),
-    ("experiments/neural_baselines.py", "trained deep reconstructors (MSE vs adversarial)"),
-    ("experiments/ptbxl_stemi_safety.py", "STEMI safety case"),
-    ("experiments/cross_device.py", "cross-device coverage"),
-]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
-    for rel, desc in STEPS:
-        print(f"\n{'='*70}\n[run_all] {desc}\n         {rel}\n{'='*70}", flush=True)
-        t0 = time.time()
-        try:
-            runpy.run_path(str(ROOT / rel), run_name="__main__")
-        except SystemExit:
-            pass
-        print(f"[run_all] done in {time.time()-t0:.0f}s", flush=True)
-    print("\n[run_all] all results in results/. Now: pytest -q; then build paper/.")
-    return 0
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", choices=("icassp", "extended", "legacy"), default="icassp")
+    parser.add_argument("--run-root", default=str(ROOT.parent / "ecg-recoverability-runs"))
+    parser.add_argument("--run-id")
+    parser.add_argument("--environment-lock", choices=("cpu", "gpu"), required=True)
+    arguments = parser.parse_args()
+    command = [
+        sys.executable,
+        str(ROOT / "scripts" / "dag_runner.py"),
+        "--profile",
+        arguments.profile,
+        "--run-root",
+        arguments.run_root,
+        "--environment-lock",
+        arguments.environment_lock,
+    ]
+    if arguments.run_id:
+        command.extend(["--run-id", arguments.run_id])
+    return subprocess.run(command, cwd=ROOT).returncode
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

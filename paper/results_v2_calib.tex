@@ -1,0 +1,21 @@
+\subsection{Calibrated intervals for the predictable residual}
+The prediction target is the \emph{record-level segment-mean} off-dipole residual of the target
+lead (one scalar per record: the mean over the segment's samples). We train a gradient-boosted
+quantile regressor of it on the observed leads' segment means and apply Mondrian conformalized
+quantile regression \cite{romano2019cqr} per $(S,s,\ell)$ group, with strict fold discipline:
+basis and model on folds 1--7, the regressor's \texttt{max\_iter} selected by pinball loss on
+fold 8, conformal calibration on fold 9, and a single evaluation on fold 10 (nominal
+$1{-}\alpha{=}0.90$). This is a sound \emph{application} of established conformal machinery, not
+a new predictor; the contribution is attaching it, per feature and lead, to the recoverability
+map. Across the pre-registered $(S,s,\ell)$ groups, fold-10 within-group
+coverage clusters near nominal ($0.87$--$0.94$; e.g.\ $\{$I,II,V1,V3,V5$\}$ QRS/V2
+$\CalCov$, record-bootstrap CI $[\CalCovLo,\CalCovHi]$, mean width $\CalWidth$\,mV).
+
+\textbf{What is and is not guaranteed.} Mondrian CQR gives \emph{within-$(S,s,\ell)$-group
+marginal} coverage under exchangeability---\emph{not} coverage conditional on diagnosis, which
+is not a conditioning variable. Diagnostic subgroups are therefore not guaranteed and the
+smallest ones fall below nominal: the worst is the \WorstSubName{} subgroup at coverage
+$\WorstSubCov$ ($n{=}\WorstSubN$), the expected finite-sample behaviour when conditioning on
+a variable the calibration does not stratify on. We report worst-subgroup coverage rather than
+hide it under the aggregate band, and we make no distribution-free claim beyond exchangeability
+with the calibration fold.

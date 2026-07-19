@@ -67,6 +67,32 @@ def test_mondrian_group_conditional_coverage():
         assert empirical_coverage(lo[sel], hi[sel], y_t[sel]) >= 1 - alpha - 0.02
 
 
+def test_mondrian_tuple_groups_not_flattened():
+    """Regression: tuple groups (segment, lead) must be kept intact, not collapsed
+    into their elements by np.asarray. Two tuple groups -> exactly two corrections,
+    each covering its group."""
+    rng = np.random.default_rng(7)
+    alpha = 0.1
+    labels = [("QRS", "V2"), ("ST", "V4")]
+
+    def make(n):
+        gi = rng.integers(0, 2, n)
+        groups = [labels[i] for i in gi]
+        scale = np.where(gi == 0, 0.2, 1.5)
+        y = scale * rng.standard_normal(n)
+        return groups, y, -0.5 * scale, 0.5 * scale
+
+    gc, yc, lo_c, hi_c = make(4000)
+    m = MondrianCQR(alpha).fit(gc, yc, lo_c, hi_c)
+    assert set(m.Q.keys()) == {"QRS|V2", "ST|V4"}          # two tuple groups, not four strings
+    assert all(n > 100 for n in m.n_group.values())
+    gt, yt, lo_t, hi_t = make(8000)
+    lo, hi = m.interval(gt, lo_t, hi_t)
+    for lab in labels:
+        sel = np.array([g == lab for g in gt])
+        assert empirical_coverage(lo[sel], hi[sel], yt[sel]) >= 1 - alpha - 0.03
+
+
 def test_flag_false_flag_rate_controlled():
     """Flag threshold keeps false-flag rate <= alpha on faithful examples."""
     rng = np.random.default_rng(3)

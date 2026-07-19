@@ -3,17 +3,20 @@
 Two guarantees are provided, both finite-sample and distribution-free under
 exchangeability.
 
-* **Tier II intervals** -- conformalized quantile regression (CQR, Romano et al.
-  2019) applied *per group* ``g = (segment, lead)`` (Mondrian / group-conditional
-  conformal), so coverage holds conditional on the feature and lead, not merely
-  marginally.
+* **Predictable-residual intervals** -- conformalized quantile regression (CQR,
+  Romano et al. 2019) applied *per group* ``g = (segment, lead)`` (Mondrian). This
+  gives **within-group marginal coverage** under exchangeability of each group's
+  calibration and test points -- NOT per-example conditional coverage.
 
-* **Tier III flag** -- a threshold ``tau`` on the hallucination energy ``h`` chosen
-  so the false-flag rate on faithful reconstructions is ``<= alpha`` (a one-sided
-  conformal quantile; the monotone-risk generalisation is :func:`crc_threshold`).
+* **Off-dipole flag** -- a threshold ``tau`` on the off-dipole energy ``h`` chosen so
+  the false-flag rate on faithful reconstructions *exchangeable with the calibration
+  faithful set* is ``<= alpha`` (a one-sided conformal quantile; the monotone-risk
+  generalisation is :func:`crc_threshold`). This is NOT distribution-free under an
+  arbitrary shift; it holds under exchangeability with the calibration distribution.
 
-Covariate shift (e.g. PTB-XL calibration -> CinC-2021 test) is handled by
-:func:`weighted_conformal_quantile` with likelihood-ratio weights.
+Covariate shift is handled by :func:`weighted_conformal_quantile` with
+likelihood-ratio weights (a test-point-specific weighting; verify effective sample
+size and finite widths before relying on it).
 
 All functions are model-agnostic: they consume predicted quantiles / scores as
 arrays and never touch a network, so any base reconstructor can be wrapped.
@@ -88,36 +91,47 @@ def empirical_coverage(lo: np.ndarray, hi: np.ndarray, y: np.ndarray) -> float:
     return float(np.mean((y >= lo) & (y <= hi)))
 
 
+def _group_key(g):
+    """Stable hashable key for a group label (tuple like ``(segment, lead)``, str,
+    or int). Tuples are joined so ``np.asarray`` never collapses them into a 2-D
+    array of their elements (an earlier bug that mangled the groups)."""
+    if isinstance(g, (tuple, list, np.ndarray)):
+        return "|".join(str(x) for x in np.ravel(g))
+    if isinstance(g, np.generic):
+        return g.item()
+    return g
+
+
 @dataclass
 class MondrianCQR:
     """Group-conditional (Mondrian) CQR: one conformal correction per group.
 
-    Groups are arbitrary hashable keys (we use ``(segment, lead)``).  Coverage is
-    guaranteed conditional on the group, provided each group's calibration points
-    are exchangeable with its test points.
+    Groups are arbitrary labels (we use ``(segment, lead)`` tuples). Coverage is
+    *within-group marginal* under exchangeability of each group's calibration and
+    test points -- NOT per-example conditional coverage. Group labels are handled by
+    :func:`_group_key`, which keeps tuple groups intact.
     """
 
     alpha: float
     Q: dict = field(default_factory=dict)
+    n_group: dict = field(default_factory=dict)
     _fallback: float = np.inf
 
     def fit(self, groups, y_cal, q_lo, q_hi) -> "MondrianCQR":
-        groups = np.asarray(groups)
+        keys = [_group_key(g) for g in groups]
         y, lo, hi = map(lambda a: np.asarray(a, float), (y_cal, q_lo, q_hi))
         scores = np.maximum(lo - y, y - hi)
-        self.Q = {}
-        for g in np.unique(groups):
-            m = groups == g
-            self.Q[g if not isinstance(g, np.generic) else g.item()] = conformal_quantile(scores[m], self.alpha)
-        # Marginal fallback for unseen groups.
-        self._fallback = conformal_quantile(scores, self.alpha)
+        self.Q, self.n_group = {}, {}
+        for k in dict.fromkeys(keys):                      # unique, order-stable
+            m = np.array([kk == k for kk in keys])
+            self.Q[k] = conformal_quantile(scores[m], self.alpha)
+            self.n_group[k] = int(m.sum())
+        self._fallback = conformal_quantile(scores, self.alpha)  # marginal fallback
         return self
 
     def interval(self, groups, q_lo, q_hi) -> tuple[np.ndarray, np.ndarray]:
-        groups = np.asarray(groups)
         lo, hi = np.asarray(q_lo, float), np.asarray(q_hi, float)
-        Qv = np.array([self.Q.get(g.item() if isinstance(g, np.generic) else g, self._fallback)
-                       for g in groups])
+        Qv = np.array([self.Q.get(_group_key(g), self._fallback) for g in groups])
         return lo - Qv, hi + Qv
 
 

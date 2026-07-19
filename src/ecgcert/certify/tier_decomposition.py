@@ -1,25 +1,31 @@
-"""Tier I / II / III decomposition and the null-space hallucination energy.
+"""Per-target-lead recoverability decomposition (honest, three-layer).
 
-Given a per-segment dipolar model ``M_s`` (12x3 orthonormal) and an observed lead
-subset ``S``, we split the 12-lead space into
+Given a per-segment dipolar basis ``M_s`` (12x3, PCA-estimated) and an observed
+lead subset ``S``, we split each *target lead* into three layers:
 
-* the **recoverable dipole subspace** ``R_s`` -- the dipole directions the
-  observation actually constrains (Tier I, exact up to noise ``kappa_s(S)``), and
-* its orthogonal complement ``U_s = I - R_s`` -- the **certified-unrecoverable**
-  subspace containing (i) unobserved dipole directions and (ii) all non-dipolar
-  content.  Any energy a reconstruction places in ``U_s`` beyond the population
-  mean is unsupported by the observation; on the non-dipolar, observation-
-  independent part it is, by the non-identifiability lemma, *fabricated*.
+1. **Physics-identifiable dipolar component** -- the part of a lead's dipolar
+   projection the observation constrains.  ``R_s = M_s P_obs M_s^T`` projects onto
+   it (``P_obs = M_{s,S}^+ M_{s,S}``); per lead, identifiability is certified by
+   ``eta_{s,ell}(S)=0`` and its noise gain by ``kappa_{s,ell}(S)`` (see
+   :mod:`ecgcert.physics`).
 
-The scalar we monitor per (segment, lead) is the **hallucination energy**
+2. **Empirically predictable residual** -- non-dipolar content (and unobserved
+   dipole directions) that a predictor trained on ``S`` *can* recover on held-out
+   data.  This lives in the complement ``U_s = I - R_s`` and is calibrated with
+   distribution-free intervals (:mod:`ecgcert.conformal`).
 
-    h_{s,l} = RMS_t [ U_s ( L_hat(t) - mu_s ) ]_l ,
+3. **Unresolved residual / achievability gap** -- content that no predictor in the
+   evaluated family recovers on held-out data.  Only this layer is genuinely
+   unrecoverable *for that family*, and it is established by an achievability
+   analysis, NOT declared a priori.
 
-the projection of the reconstruction's deviation-from-prior onto the certified-
-unrecoverable subspace, read out at lead ``l``.  A distribution-free flag threshold
-is calibrated on faithful reconstructions in :mod:`ecgcert.conformal`.
-
-Geometry produces ``h``; calibration turns it into a guaranteed flag.
+IMPORTANT (corrected from an earlier version): the complement ``U_s = I - R_s`` is
+**not** "certified unrecoverable" and energy placed in it is **not** by itself
+fabrication.  ``U_s`` contains the empirically predictable residual (layer 2).  We
+therefore call it the *off-dipole* subspace and its energy the *off-dipole energy*;
+whether that energy is fabrication is decided by the held-out achievability
+experiment, not by geometry.  A strict Tier-III independence bound (``p(u|y)=p(u)``)
+holds only for explicitly-constructed synthetic data, not for real ECG.
 """
 from __future__ import annotations
 
@@ -27,14 +33,14 @@ from enum import Enum
 
 import numpy as np
 
-from ecgcert.physics.dipolar_subspace import LEAD_INDEX
+from ecgcert.physics.dipolar_subspace import (
+    LEAD_INDEX, LEADS, RECON_RCOND, observed_dipole, kappa_per_lead, eta_per_lead)
 
 
 class Tier(str, Enum):
-    OBSERVED = "observed"        # lead is measured directly
-    RECOVERABLE = "tier1"        # dipolar projection exactly recoverable
-    STATISTICAL = "tier2"        # non-dipolar, population-predictable
-    UNRECOVERABLE = "tier3"      # non-dipolar / unobserved-dipole, not identifiable
+    OBSERVED = "observed"                # lead is measured directly
+    IDENTIFIABLE = "dipole_identifiable"  # eta=0: dipolar component recoverable from S
+    UNIDENTIFIABLE = "dipole_unidentifiable"  # eta>0: an unobserved dipole direction changes this lead
 
 
 def _observed_idx(observed_leads) -> np.ndarray:
@@ -53,96 +59,100 @@ def recoverable_dipole_projector(M_s: np.ndarray, observed_leads,
                                  rcond: float | None = None) -> tuple[np.ndarray, int]:
     """Projector ``R_s`` onto the dipole subspace the observation constrains.
 
-    ``R_s = M_s P_obs M_s^T`` where ``P_obs = M_{s,S}^+ M_{s,S}`` projects the
-    3-D dipole coordinates onto the directions observable from ``S``.  Returns
-    ``(R_s, r)`` with ``r = rank(M_{s,S})`` the number of recoverable dipole
-    directions (``r = 3`` => the whole dipole is recoverable).
+    ``R_s = M_s P_obs M_s^T`` with ``P_obs = M_{s,S}^+ M_{s,S}`` (all from the shared
+    truncated SVD, :func:`observed_dipole`).  Returns ``(R_s, r)`` with
+    ``r = rank(M_{s,S})`` recoverable dipole directions.
     """
-    from ecgcert.physics.dipolar_subspace import RECON_RCOND
-
     rcond = RECON_RCOND if rcond is None else rcond
-    idx = _observed_idx(observed_leads)
-    M_S = M_s[idx]                                   # (|S|, 3)
-    P_obs = np.linalg.pinv(M_S, rcond=rcond) @ M_S    # (3, 3) projector on observable dipole
-    R_s = M_s @ P_obs @ M_s.T                         # (12, 12)
-    r = int(np.linalg.matrix_rank(M_S, tol=rcond * max(M_S.shape)))
-    return R_s, r
+    od = observed_dipole(M_s, observed_leads, rcond=rcond)
+    R_s = np.asarray(M_s, float) @ od.P_obs @ np.asarray(M_s, float).T
+    return R_s, od.rank
 
 
-def certified_unrecoverable_projector(M_s: np.ndarray, observed_leads) -> np.ndarray:
-    """``U_s = I - R_s`` -- non-dipolar plus unobserved-dipole directions."""
-    R_s, _ = recoverable_dipole_projector(M_s, observed_leads)
+def off_dipole_projector(M_s: np.ndarray, observed_leads,
+                         rcond: float | None = None) -> np.ndarray:
+    """``U_s = I - R_s`` -- the complement of the recoverable dipole subspace.
+
+    Contains unobserved dipole directions AND all non-dipolar content, part of
+    which is empirically predictable from ``S`` (layer 2).  This is NOT a
+    "certified-unrecoverable" subspace; energy here is not by itself fabrication.
+    """
+    R_s, _ = recoverable_dipole_projector(M_s, observed_leads, rcond=rcond)
     return np.eye(R_s.shape[0]) - R_s
 
 
-def supported_reconstruction(M_s: np.ndarray, mu_s: np.ndarray, observed_leads,
-                             L_hat: np.ndarray) -> np.ndarray:
-    """Strip unsupported content: ``mu_s + R_s (L_hat - mu_s)``.
+def dipole_supported_reconstruction(M_s: np.ndarray, mu_s: np.ndarray, observed_leads,
+                                    L_hat: np.ndarray, rcond: float | None = None) -> np.ndarray:
+    """The dipole-identifiable part of a reconstruction: ``mu_s + R_s (L_hat - mu_s)``.
 
-    The part of any reconstruction the certificate is willing to stand behind.
-    ``L_hat`` is ``(12,)`` or ``(12, T)``.
+    The part the *physics* layer stands behind (layers 2-3 are the calibration's
+    responsibility).  ``L_hat`` is ``(12,)`` or ``(12, T)``.
     """
-    R_s, _ = recoverable_dipole_projector(M_s, observed_leads)
+    R_s, _ = recoverable_dipole_projector(M_s, observed_leads, rcond=rcond)
     mu = mu_s[:, None] if L_hat.ndim == 2 else mu_s
     return mu + R_s @ (L_hat - mu)
 
 
-def hallucination_energy(M_s: np.ndarray, mu_s: np.ndarray, observed_leads,
-                         L_hat: np.ndarray) -> np.ndarray:
-    """Per-lead hallucination energy ``h_l`` of a reconstruction.
+def off_dipole_energy(M_s: np.ndarray, mu_s: np.ndarray, observed_leads,
+                      L_hat: np.ndarray, rcond: float | None = None) -> np.ndarray:
+    """Per-lead *off-dipole energy* of a reconstruction (renamed from hallucination).
 
-    ``L_hat`` is ``(12, T)`` (a segment window) or ``(12,)``.  Returns a length-12
-    vector: the RMS over time of the certified-unrecoverable component at each lead.
-    Observed leads are excluded (set to 0) since they are not reconstructed.
+    ``L_hat`` is ``(12, T)`` or ``(12,)``.  Returns a length-12 vector: the RMS over
+    time of the component of ``L_hat - mu_s`` lying off the recoverable dipole
+    subspace, read at each lead.  Observed leads are zeroed (not reconstructed).
+
+    This measures deviation-from-dipole that the observation does not pin down; it is
+    a *deployable scalar* (no ground truth), but it is NOT fabrication by itself --
+    it also contains empirically predictable non-dipolar content.  Whether it is
+    fabrication is decided by the held-out achievability analysis.
     """
-    U_s = certified_unrecoverable_projector(M_s, observed_leads)
+    U_s = off_dipole_projector(M_s, observed_leads, rcond=rcond)
     X = L_hat if L_hat.ndim == 2 else L_hat[:, None]
     resid = X - mu_s[:, None]
-    unsupported = U_s @ resid                          # (12, T)
-    h = np.sqrt(np.mean(unsupported**2, axis=1))       # (12,)
+    off = U_s @ resid                                     # (12, T)
+    h = np.sqrt(np.mean(off**2, axis=1))                  # (12,)
     h[_observed_idx(observed_leads)] = 0.0
     return h
 
 
-def tier_report(model, observed_leads, dipolar_threshold: float = 0.8) -> dict:
-    """Per (segment, lead) certificate summary for a lead configuration.
+def tier_report(model, observed_leads, rcond: float | None = None,
+                eta_tol: float = 1e-6) -> dict:
+    """Per (segment, lead) identifiability report.
 
-    Returns ``{segment: {lead: {tier, observed, dipole_rank, kappa,
-    seg_dipolar_fraction}}}``.  A reconstructed lead is labelled RECOVERABLE when
-    the observation spans the dipole (rank 3) and the segment is strongly dipolar
-    (fraction >= ``dipolar_threshold``); UNRECOVERABLE when the dipole is not
-    spanned (rank < 3); STATISTICAL otherwise (dipole spanned but the segment
-    carries material non-dipolar content that only a prior can fill).
+    Returns ``{segment: {lead: {tier, observed, eta, kappa, dipole_rank,
+    seg_dipolar_fraction}}}``.  A target lead is:
+
+    * OBSERVED           -- measured directly;
+    * IDENTIFIABLE       -- ``eta_{s,ell}(S) <= eta_tol`` (dipolar component
+                            recoverable from ``S``, with noise gain ``kappa_{s,ell}``);
+    * UNIDENTIFIABLE     -- ``eta_{s,ell}(S) > eta_tol`` (an unobserved dipole
+                            direction changes this lead).
+
+    This is per-lead; it replaces the coarse "global rank < 3 => everything
+    unobserved is unrecoverable" rule.
     """
-    from ecgcert.physics.dipolar_subspace import LEADS
-
+    rcond = RECON_RCOND if rcond is None else rcond
     obs = set(int(i) for i in _observed_idx(observed_leads))
     out: dict = {}
     for seg, M_s in model.M.items():
-        _, r = recoverable_dipole_projector(M_s, observed_leads)
-        kap, _ = _kappa(M_s, observed_leads)
+        eta = eta_per_lead(M_s, observed_leads, rcond=rcond)   # (12,)
+        kap = kappa_per_lead(M_s, observed_leads, rcond=rcond) # (12,)
+        _, r = recoverable_dipole_projector(M_s, observed_leads, rcond=rcond)
         frac = model.dipolar_fraction(seg)
         out[seg] = {}
         for li, lead in enumerate(LEADS):
             if li in obs:
                 tier = Tier.OBSERVED
-            elif r < 3:
-                tier = Tier.UNRECOVERABLE
-            elif frac >= dipolar_threshold:
-                tier = Tier.RECOVERABLE
+            elif eta[li] <= eta_tol:
+                tier = Tier.IDENTIFIABLE
             else:
-                tier = Tier.STATISTICAL
+                tier = Tier.UNIDENTIFIABLE
             out[seg][lead] = {
                 "tier": tier.value,
                 "observed": li in obs,
-                "dipole_rank": r,
-                "kappa": float(kap),
+                "eta": float(eta[li]),
+                "kappa": float(kap[li]),
+                "dipole_rank": int(r),
                 "seg_dipolar_fraction": float(frac),
             }
     return out
-
-
-def _kappa(M_s, observed_leads, rcond: float = 1e-10):
-    from ecgcert.physics.dipolar_subspace import kappa as _k
-
-    return _k(M_s, observed_leads, rcond=rcond)

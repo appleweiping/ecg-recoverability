@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ecgcert.certify import certified_unrecoverable_projector, hallucination_energy
+from ecgcert.certify import off_dipole_projector, off_dipole_energy
 from ecgcert.data import PTBXL
 from ecgcert.models import fit_segment_models
 from ecgcert.physics import LEAD_INDEX
@@ -52,11 +52,11 @@ def _score(db, model, models, test_ids, obs_idx, recon_leads, rate, n_test):
             idx = segidx[s]
             if m is None or idx.size < 4:
                 continue
-            U = certified_unrecoverable_projector(m.M, OBS)
+            U = off_dipole_projector(m.M, OBS)
             W = sig[idx].T                                           # (12, Tseg)
             Lh = Lhat_full[:, idx]                                   # (12, Tseg)
             rmse = np.sqrt(np.mean((Lh[recon_leads] - W[recon_leads]) ** 2))
-            h = hallucination_energy(m.M, m.mu, OBS, Lh)
+            h = off_dipole_energy(m.M, m.mu, OBS, Lh)
             rec_nd = U @ (Lh - m.mu[:, None])
             true_nd = U @ (W - m.mu[:, None])
             corr = _pearson(rec_nd[recon_leads].ravel(), true_nd[recon_leads].ravel())

@@ -1,0 +1,214 @@
+{
+  "lineage": {
+    "commit": "f0003f6442921fdd2d083d444214540a788fefc6",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "delineator_robustness.py",
+    "experiment_script_sha256": "d6ab54eebee423d9",
+    "seed": 0,
+    "targets": [
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV (no per-record scaling)",
+    "dataset": null,
+    "n_train": null,
+    "n_test": null,
+    "train_ids_sha256": null,
+    "test_ids_sha256": null,
+    "checkpoint_sha256": null,
+    "source_runs": {
+      "dwt-100": {
+        "file": "st_safety_dwt100.json",
+        "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+        "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff"
+      },
+      "cwt-100": {
+        "file": "st_safety_cwt100.json",
+        "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+        "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff"
+      },
+      "dwt-500": {
+        "file": "st_safety_dwt500.json",
+        "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+        "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff"
+      }
+    },
+    "kind": "delineator-x-rate robustness meta-analysis"
+  },
+  "settings": {
+    "dwt-100": {
+      "delineator": "dwt",
+      "rate": 100,
+      "n_valid_common": 799,
+      "baseline_fallback_frac": 0.1478
+    },
+    "cwt-100": {
+      "delineator": "cwt",
+      "rate": 100,
+      "n_valid_common": 60,
+      "baseline_fallback_frac": 1.0
+    },
+    "dwt-500": {
+      "delineator": "dwt",
+      "rate": 500,
+      "n_valid_common": 800,
+      "baseline_fallback_frac": 0.0798
+    }
+  },
+  "verdict_eta_ST_precordial": {
+    "dwt-100": {
+      "V1": 0.3302,
+      "V2": 0.7115,
+      "V3": 0.5526,
+      "V4": 0.2675,
+      "V5": 0.0843,
+      "V6": 0.0268
+    },
+    "cwt-100": {
+      "V1": 0.3952,
+      "V2": 0.6606,
+      "V3": 0.542,
+      "V4": 0.2375,
+      "V5": 0.206,
+      "V6": 0.1219
+    },
+    "dwt-500": {
+      "V1": 0.3347,
+      "V2": 0.7144,
+      "V3": 0.5589,
+      "V4": 0.2398,
+      "V5": 0.041,
+      "V6": 0.0778
+    }
+  },
+  "verdict_sign_stable": true,
+  "verdict_ordering_spearman_vs_ref": {
+    "ref": "dwt-100",
+    "rho": {
+      "cwt-100": 1.0,
+      "dwt-500": 0.9429
+    }
+  },
+  "verdict_strong_lead_max_spread": 0.065,
+  "rate_stability": {
+    "pair": [
+      "dwt-100",
+      "dwt-500"
+    ],
+    "max_abs_deta_strong": 0.0277,
+    "max_abs_deta_all": 0.051
+  },
+  "magnitude_FP_FN_total": {
+    "dipolar": {
+      "false_positive_rate": {
+        "by_setting": {
+          "dwt-100": 0.0576,
+          "cwt-100": 0.0667,
+          "dwt-500": 0.0375
+        },
+        "max_spread": 0.0292
+      },
+      "false_negative_rate": {
+        "by_setting": {
+          "dwt-100": 0.4406,
+          "cwt-100": 0.3,
+          "dwt-500": 0.45
+        },
+        "max_spread": 0.15
+      },
+      "total_wrong_rate": {
+        "by_setting": {
+          "dwt-100": 0.4981,
+          "cwt-100": 0.3667,
+          "dwt-500": 0.4875
+        },
+        "max_spread": 0.1314
+      },
+      "mean_st_error_mv": {
+        "by_setting": {
+          "dwt-100": 0.073,
+          "cwt-100": 0.0988,
+          "dwt-500": 0.0763
+        },
+        "max_spread": 0.0258
+      }
+    },
+    "ridge": {
+      "false_positive_rate": {
+        "by_setting": {
+          "dwt-100": 0.015,
+          "cwt-100": 0.0167,
+          "dwt-500": 0.0138
+        },
+        "max_spread": 0.0029
+      },
+      "false_negative_rate": {
+        "by_setting": {
+          "dwt-100": 0.5056,
+          "cwt-100": 0.3333,
+          "dwt-500": 0.51
+        },
+        "max_spread": 0.1767
+      },
+      "total_wrong_rate": {
+        "by_setting": {
+          "dwt-100": 0.5207,
+          "cwt-100": 0.35,
+          "dwt-500": 0.5238
+        },
+        "max_spread": 0.1738
+      },
+      "mean_st_error_mv": {
+        "by_setting": {
+          "dwt-100": 0.0717,
+          "cwt-100": 0.0888,
+          "dwt-500": 0.0754
+        },
+        "max_spread": 0.0171
+      }
+    },
+    "ols": {
+      "false_positive_rate": {
+        "by_setting": {
+          "dwt-100": 0.0138,
+          "cwt-100": 0.0167,
+          "dwt-500": 0.0112
+        },
+        "max_spread": 0.0055
+      },
+      "false_negative_rate": {
+        "by_setting": {
+          "dwt-100": 0.5019,
+          "cwt-100": 0.3333,
+          "dwt-500": 0.5112
+        },
+        "max_spread": 0.1779
+      },
+      "total_wrong_rate": {
+        "by_setting": {
+          "dwt-100": 0.5156,
+          "cwt-100": 0.35,
+          "dwt-500": 0.5225
+        },
+        "max_spread": 0.1725
+      },
+      "mean_st_error_mv": {
+        "by_setting": {
+          "dwt-100": 0.072,
+          "cwt-100": 0.0886,
+          "dwt-500": 0.0754
+        },
+        "max_spread": 0.0166
+      }
+    }
+  },
+  "endpoint_fn_dominated_all_settings": true,
+  "note": "The limb-6 observed set is structurally rank-2 (frontal-plane leads span 2 of 3 dipole dimensions -- an algebraic identity), so the precordial-not-recoverable verdict (eta_ST > 0) holds at every delineator/rate; magnitudes shift but the recoverability ordering and the FN-dominated (under-warning) failure direction are preserved. The cwt cell delineates few records cleanly (small n, high PR-baseline fallback) and corroborates only the verdict sign/ordering, not the magnitudes."
+}

@@ -1,17 +1,20 @@
-"""Conditional 1-D DDPM reduced-lead ECG reconstructor (GPU).
+"""Arbitrary-mask conditional 1-D DDPM reduced-lead ECG reconstructor (GPU).
 
-A real generative reconstructor of the class the ECG literature uses (denoising
-diffusion, cf. arXiv:2401.05388), so the fabrication finding is not a straw man.
-The denoiser is a 1-D U-Net that predicts the noise added to a full 12-lead window,
-conditioned on the observed leads (concatenated as extra input channels with a
-binary lead mask). Condition dropout during training enables classifier-free
-guidance (CFG), whose scale $w$ is the perception knob: small $w$ -> conditional-mean,
-low fabrication; large $w$ -> sharp, realistic, high fabrication.
+A single mask-agnostic generative reconstructor (cf. diffusion ECG inpainting,
+arXiv:2401.05388). The denoiser is a 1-D U-Net predicting the noise added to a full
+12-lead window, conditioned on (i) the observed-lead values (unobserved leads zeroed)
+and (ii) the full 12-channel BINARY observation mask. During training a fresh lead
+mask is sampled per example, so ONE model serves any observed subset -- there is no
+per-configuration model and no target-lead leakage: scoring configuration S conditions
+on S's mask only.
 
-Sampling supports (a) plain conditional ancestral sampling, (b) CFG, and (c)
-measurement replacement (RePaint-style inpainting: overwrite observed leads with the
-known values each step) so the reconstruction is data-consistent by construction and
-realism cannot be dismissed as ignoring the observation.
+(Corrected from an earlier version whose obs_idx was fixed at init to a single
+configuration and whose conditioning used a scalar mean(mask); reusing that model for a
+different configuration leaked the originally-observed target leads.)
+
+Sampling supports classifier-free guidance (CFG; scale w is the perception knob) and
+RePaint measurement replacement (overwrite observed leads with the known values each
+step) so reconstructions are data-consistent by construction.
 
 Everything here is torch; import lazily so the CPU package stays torch-optional.
 """
@@ -98,104 +101,133 @@ def _make_unet(in_ch, out_ch, base=64, tdim=256):
     return UNet()
 
 
+# --------------------------------------------------------------------------- masks
+# Deployment configurations the model must handle (observed lead indices, 0..11 in the
+# clinical order [I,II,III,aVR,aVL,aVF,V1..V6]); used to seed the training-mask mix.
+_DEPLOY_CONFIGS = (
+    (0, 1, 6, 8, 10),                 # {I, II, V1, V3, V5}  precordial interpolation
+    (0, 1, 2, 3, 4, 5),               # limb-6
+    (0, 1, 7),                        # {I, II, V2}
+    (0,),                             # Lead I
+    (1,),                             # Lead II
+)
+
+
+def _sample_masks(torch, B, device, rng, p_config=0.5):
+    """Sample B binary lead masks (B,12). With prob p_config use a deployment config;
+    else a random subset of 3-8 leads. Ensures eval configs are in-distribution while
+    the model still generalises to arbitrary masks."""
+    mask = torch.zeros(B, 12, device=device)
+    for b in range(B):
+        if rng.random() < p_config:
+            obs = _DEPLOY_CONFIGS[rng.integers(len(_DEPLOY_CONFIGS))]
+        else:
+            k = int(rng.integers(3, 9))
+            obs = rng.choice(12, size=k, replace=False)
+        mask[b, list(obs)] = 1.0
+    return mask
+
+
 # --------------------------------------------------------------------------- model
 class DiffusionReconstructor:
-    """Conditional DDPM over 12-lead windows, conditioned on observed leads.
+    """Arbitrary-mask conditional DDPM over 12-lead windows.
 
-    Window length must be divisible by 4 (two downsamplings).
+    Window length must be divisible by 4 (two downsamplings). The model takes NO fixed
+    observed set; the observed leads are supplied per call via a mask.
     """
 
-    def __init__(self, obs_idx, T=200, base=64, device="cuda", cond_dropout=0.1, seed=0):
+    def __init__(self, T=200, base=64, device="cuda", cond_dropout=0.1, seed=0):
         torch = _t()
         torch.manual_seed(seed)
-        self.obs_idx = list(obs_idx)
         self.device = device
         self.T = T
         self.cond_dropout = cond_dropout
-        # input channels: 12 (noisy leads) + 12 (observed condition, unobserved zeroed)
-        # + 1 (lead mask broadcast). output: 12 (predicted noise).
-        self.net = _make_unet(12 + 12 + 1, 12, base=base).to(device)
+        self._mask_rng = np.random.default_rng(seed)
+        # input channels: 12 (noisy leads) + 12 (observed values, unobserved zeroed)
+        # + 12 (binary observation mask). output: 12 (predicted noise).
+        self.net = _make_unet(12 + 12 + 12, 12, base=base).to(device)
         betas = cosine_beta_schedule(T).to(device)
         self.betas = betas
         self.alphas = 1 - betas
         self.acp = torch.cumprod(self.alphas, 0)          # alpha-bar
-        mask = torch.zeros(12, device=device)
-        mask[self.obs_idx] = 1.0
-        self.lead_mask = mask                              # (12,)
 
-    def _cond(self, x0):
-        """Build the conditioning tensor from a clean batch x0 (B,12,W)."""
+    def _mask_from_obs(self, obs_idx, B, W):
         torch = _t()
-        B, _, W = x0.shape
-        obs = x0 * self.lead_mask[None, :, None]           # observed leads, rest zero
-        maskc = self.lead_mask[None, :, None].expand(B, 12, W).mean(1, keepdim=True)
-        return torch.cat([obs, maskc], dim=1)              # (B, 13, W)
+        m = torch.zeros(12, device=self.device)
+        m[list(obs_idx)] = 1.0
+        return m[None, :, None].expand(B, 12, W)
 
-    def train(self, X, epochs=40, bs=128, lr=2e-4, log_every=5):
-        """X: (N,12,W) float32 numpy (per-window z-scored upstream)."""
+    def _cond(self, x0, mask_bcw):
+        """Conditioning tensor from clean batch x0 (B,12,W) and mask (B,12,W)."""
+        torch = _t()
+        obs = x0 * mask_bcw                                # observed values, rest zero
+        return torch.cat([obs, mask_bcw], dim=1)           # (B, 24, W)
+
+    def train(self, X, epochs=40, bs=64, lr=2e-4, log_every=5):
+        """X: (N,12,W) float32 numpy (per-window normalised upstream). A fresh random
+        lead mask is sampled per example each step (arbitrary-mask training)."""
         torch = _t()
         opt = torch.optim.Adam(self.net.parameters(), lr=lr)
         Xt = torch.tensor(X, dtype=torch.float32)
-        n = Xt.shape[0]
+        n, _, W = Xt.shape
         for ep in range(epochs):
             perm = torch.randperm(n)
             tot = 0.0
             for i in range(0, n, bs):
                 idx = perm[i:i + bs]
                 x0 = Xt[idx].to(self.device)
-                cond = self._cond(x0)
-                # classifier-free: randomly drop condition
-                if self.cond_dropout > 0:
-                    drop = (torch.rand(x0.shape[0], device=self.device) < self.cond_dropout)
+                B = x0.shape[0]
+                mask = _sample_masks(torch, B, self.device, self._mask_rng)[:, :, None].expand(B, 12, W)
+                cond = self._cond(x0, mask)
+                if self.cond_dropout > 0:                  # classifier-free: drop condition
+                    drop = (torch.rand(B, device=self.device) < self.cond_dropout)
                     cond = cond * (~drop)[:, None, None]
-                t = torch.randint(0, self.T, (x0.shape[0],), device=self.device)
+                t = torch.randint(0, self.T, (B,), device=self.device)
                 noise = torch.randn_like(x0)
                 ac = self.acp[t][:, None, None]
                 xt = ac.sqrt() * x0 + (1 - ac).sqrt() * noise
                 pred = self.net(xt, t, cond)
                 loss = ((pred - noise) ** 2).mean()
                 opt.zero_grad(); loss.backward(); opt.step()
-                tot += loss.item() * x0.shape[0]
+                tot += loss.item() * B
             if (ep + 1) % log_every == 0 or ep == 0:
                 print(f"  [ddpm] epoch {ep+1}/{epochs} loss={tot/n:.5f}", flush=True)
         return self
 
-    def sample(self, y_full, guidance=1.0, replace=True, steps=None, seed=0):
-        """Reconstruct from observed leads.
+    def sample(self, y_full, obs_idx, guidance=1.0, replace=True, steps=None, seed=0):
+        """Reconstruct from the leads in ``obs_idx`` (a tuple/list of indices).
 
-        y_full: (B,12,W) with observed leads set to their true values (others
-        arbitrary; only observed rows are read). guidance: CFG scale w. w=1 is the
-        plain conditional model (no guidance term); w>1 sharpens toward the
-        conditional mode (more realistic, more fabrication); w=0 is fully
-        unconditional. replace: RePaint measurement replacement of observed leads.
-        Returns (B,12,W) numpy.
+        y_full: (B,12,W) with the observed leads set to their true values (others
+        arbitrary; only observed rows are read). The model is conditioned ONLY on the
+        given mask -- no other lead can leak in. guidance: CFG scale w (1 = plain
+        conditional; w>1 sharpens; 0 = unconditional). replace: RePaint replacement of
+        observed leads. Returns (B,12,W) numpy.
         """
         torch = _t()
         self.net.eval()
         g = torch.Generator(device=self.device).manual_seed(seed)
         yt = torch.tensor(y_full, dtype=torch.float32, device=self.device)
-        cond = self._cond(yt)
-        zero_cond = torch.zeros_like(cond)
         B, _, W = yt.shape
+        mask = self._mask_from_obs(obs_idx, B, W)          # (B,12,W)
+        cond = self._cond(yt, mask)
+        zero_cond = torch.zeros_like(cond)
         x = torch.randn(B, 12, W, device=self.device, generator=g)
         ts = list(range(self.T))[::-1]
-        clip = 6.0                                     # x0 clamp (robust-normalized units)
-        m = self.lead_mask[None, :, None]
+        clip = 6.0
+        m = mask
         with torch.no_grad():
             for t in ts:
                 tt = torch.full((B,), t, device=self.device, dtype=torch.long)
                 eps = self.net(x, tt, cond)
-                if guidance != 1.0:                            # w=1 is plain conditional
+                if guidance != 1.0:
                     eps_u = self.net(x, tt, zero_cond)
-                    eps = eps_u + guidance * (eps - eps_u)     # CFG: eps_u + w*(cond-uncond)
+                    eps = eps_u + guidance * (eps - eps_u)
                 ac = self.acp[t]
                 ac_prev = self.acp[t - 1] if t > 0 else torch.tensor(1.0, device=self.device)
                 beta = self.betas[t]
-                # predict + clamp x0 (Tweedie), then form the DDPM posterior mean.
                 x0 = (x - (1 - ac).sqrt() * eps) / ac.sqrt()
                 x0 = torch.clamp(x0, -clip, clip)
                 if replace:
-                    # anchor observed leads to the (noise-free) measurement
                     x0 = x0 * (1 - m) + yt * m
                 coef_x0 = ac_prev.sqrt() * beta / (1 - ac)
                 coef_xt = self.alphas[t].sqrt() * (1 - ac_prev) / (1 - ac)

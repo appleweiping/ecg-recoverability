@@ -1,0 +1,46 @@
+\subsection{Baselines and what the map predicts}
+Table~\ref{tab:base} reports reconstruction RMSE (mV) of the unobserved target leads under a
+\emph{single, identical protocol} for all methods: the same shared split (train folds 1--7,
+ridge $\lambda$ selected on fold 8, test on NORM fold-10), the same $\NTestFair$ test records,
+per-timepoint waveform RMSE on the same segment indices, and \emph{paired} record-bootstrap
+CIs on the step-to-step differences. We include a \emph{representative} masked-completion
+baseline---an arbitrary-mask conditional 1-D U-Net trained with random lead masks (one model
+serves any configuration, no target-lead leakage), the same family as
+\cite{gradowski2025reveals,lence2025ecgrecover,fang2026imputeecg}, run over three seeds
+(mean reported)---not a state-of-the-art claim.
+
+On a dipole-spanning set the methods form \LadderQual{}---prior-mean $\to$ dipolar (Tier~I)
+$\to$ per-segment ridge (Tier~I+II) $\to$ U-Net---evidence of recoverable non-dipolar content
+(the calibrated Tier~II layer), though the neural model's margin over a simple ridge is small
+(QRS $\FairSpanUnetQRS$ vs.\ $\FairSpanRidgeQRS$\,mV on $\{$I,II,V1,V3,V5$\}$; paired
+$\Delta$ CI \RidgeUnetSpanCI). On \textbf{limb-6} the U-Net still \emph{lowers} error over the
+prior mean (QRS $\FairLimbPriorQRS\!\to\!\FairLimbUnetQRS$)---it recovers the predictable,
+largely population-correlated structure---but plateaus at $\FairUnetLimbSpanRatio\times$ its
+spanning-set error (paired spanning$\to$limb-6 $\Delta$ CI \SpanLimbUnetCI) and no reconstructor
+closes that gap. This residual gap is \emph{consistent with} the unobserved dipolar coordinate
+the map's $\eta{>}0$ marks as unidentifiable (we do not decompose the error into projected
+components, so we claim consistency, not equality): capacity recovers the predictable part but
+not the missing coordinate, so a reconstruction that looked confident about anterior precordial
+morphology here would be inventing it. We therefore scope the identifiability claim to the
+dipolar component, not to a blanket ``not recoverable.''
+
+\begin{table}[t]
+\centering\small
+\caption{Reconstruction RMSE (mV) of target leads, QRS segment, under one identical
+per-timepoint protocol on NORM fold-10 ($\NTestFair$ test records, shared split). ``dipolar''
+= Tier~I; ``ridge'' = per-segment ridge (Tier~I+II); ``U-Net'' = representative masked-completion
+baseline (3-seed mean). Best in bold. On limb-6 even the neural baseline plateaus far above its
+identifiable-set error. Numbers auto-generated from \texttt{results/fair\_baselines.json}.}
+\label{tab:base}
+\input{auto/fair_baselines_table}
+\end{table}
+
+\textbf{Empirical, not physical, subspace.} On real PTB-XL the estimated $\bm M_s$ has three
+graded principal angles to the classical inverse-Dower vectorcardiographic space
+\cite{edenbrandt1988dower,kors1990vcg}: one close ($\PhysMinAngLo$--$\PhysMinAngHi^\circ$), one
+moderate ($\PhysMidAngLo$--$\PhysMidAngHi^\circ$), and one substantially different
+($\PhysMaxAngLo$--$\PhysMaxAngHi^\circ$, bootstrap CIs excluding small angles). We therefore treat $\bm M_s$ as an \emph{empirical rank-3 spatial subspace}
+estimated from the data, not a physical cardiac dipole; all recoverability quantities are stated
+with respect to this estimated subspace. This empirical, data-driven subspace---rather than a
+fixed physiological transform---is what makes the map dataset-specific and, we verify, stable
+across PTB-XL and Chapman for the QRS segment (and robust to the duplicated-limb weighting).

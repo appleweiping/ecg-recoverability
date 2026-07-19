@@ -1,0 +1,243 @@
+# AutoResearchClaw control-plane configuration for ECG recoverability research.
+# Pinned compatibility target: aiming-lab/AutoResearchClaw v0.5.0.
+# HARD PREREQUISITE: the `acpx` executable must be installed and recorded before
+# this ACP-backed pipeline can produce any research artifact.  A configured or
+# failed probe is not evidence that AutoResearchClaw reviewed the project.
+# Secrets, including SSH passwords and API keys, must never be stored here.
+
+project:
+  name: "robust-ecg-recoverability-map"
+  mode: "semi-auto"
+
+research:
+  topic: >-
+    Do robust target-specific recoverability scores estimated from training-set
+    ECG spatial geometry predict held-out per-lead reduced-lead reconstruction
+    error beyond simple configuration and signal-scale baselines, across
+    reconstruction families and both Chapman and CPSC external cohorts?
+  domains:
+    - "machine-learning"
+    - "biomedical-signal-processing"
+  daily_paper_count: 15
+  quality_threshold: 7.5
+
+runtime:
+  timezone: "Asia/Shanghai"
+  # The remote host runs at most one training job at a time.  The native DAG
+  # may still use up to ten CPU workers inside a CPU-only node.
+  max_parallel_tasks: 1
+  approval_timeout_hours: 24
+  retry_limit: 2
+
+notifications:
+  channel: "console"
+  target: ""
+  on_stage_start: true
+  on_stage_fail: true
+  on_gate_required: true
+
+knowledge_base:
+  backend: "markdown"
+  # Portable sentinel only. The co-pilot bridge replaces this with the
+  # run-isolated <output>/kb path before invoking official ARC.
+  root: "__ARC_OUTPUT__/kb"
+
+openclaw_bridge:
+  use_cron: false
+  use_message: false
+  use_memory: false
+  use_sessions_spawn: false
+  use_web_fetch: false
+  use_browser: false
+
+llm:
+  provider: "acp"
+  base_url: "https://api.openai.com/v1"
+  wire_api: "responses"
+  api_key_env: "OPENAI_API_KEY"
+  api_key: ""
+  primary_model: "gpt-5.4"
+  fallback_models:
+    - "gpt-5"
+    - "gpt-4.1"
+  acp:
+    # The official ARC v0.5.0 controller remains unmodified. Its ACP backend
+    # is the separately pinned acpx/codex-acp compatibility environment
+    # recorded in arc_audit/acpx_version.txt and arc_probe_status.v1.json.
+    agent: "codex"
+    cwd: "."
+    # Portable sentinel only. The co-pilot bridge supplies the pinned external
+    # wrapper path and records its SHA-256 in the run status.
+    acpx_command: "acpx"
+    session_name: "ecgcert-icassp27-arc-v050"
+    timeout_sec: 1800
+
+literature_search:
+  sources:
+    - "openalex"
+    - "semantic_scholar"
+    - "arxiv"
+  max_results_per_query: 50
+  inter_query_delay_sec: 1.5
+  openalex_email: "researchclaw@users.noreply.github.com"
+  openalex_api_key_env: "OPENALEX_API_KEY"
+  openalex_api_key: ""
+  s2_api_key_env: "S2_API_KEY"
+  s2_api_key: ""
+
+# Hybrid/co-pilot operation: the pipeline may prepare work, but the four
+# scientific gates require a named human decision and never auto-proceed.
+# One official process must remain alive across all four gates; v0.5.0
+# restart/from-stage creates new native run/session identities and is invalid.
+hitl:
+  enabled: true
+  mode: "co-pilot"
+  stage_policies:
+    # Override v0.5.0's broader co-pilot preset so the control plane pauses
+    # only at the four preregistered scientific gates.
+    1: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    2: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    3: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    5:
+      auto_execute: true
+      pause_before: false
+      pause_after: true
+      require_approval: true
+      stream_output: true
+      show_llm_calls: true
+      allow_edit_output: true
+      allow_inject_prompt: true
+      enable_collaboration: true
+      min_quality_score: 7.5
+      max_auto_retries: 1
+      human_timeout_sec: 86400
+      auto_proceed_on_timeout: false
+    7: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    8: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    9:
+      auto_execute: true
+      pause_before: false
+      pause_after: true
+      require_approval: true
+      stream_output: true
+      show_llm_calls: true
+      allow_edit_output: true
+      allow_inject_prompt: true
+      enable_collaboration: true
+      min_quality_score: 8.0
+      max_auto_retries: 1
+      human_timeout_sec: 86400
+      auto_proceed_on_timeout: false
+    10: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    13: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    15:
+      auto_execute: true
+      pause_before: false
+      pause_after: true
+      require_approval: true
+      stream_output: true
+      show_llm_calls: true
+      allow_edit_output: true
+      allow_inject_prompt: true
+      enable_collaboration: true
+      min_quality_score: 8.5
+      max_auto_retries: 0
+      human_timeout_sec: 86400
+      auto_proceed_on_timeout: false
+    16: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    17: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    18: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+    20:
+      auto_execute: true
+      pause_before: false
+      pause_after: true
+      require_approval: true
+      stream_output: true
+      show_llm_calls: true
+      allow_edit_output: true
+      allow_inject_prompt: true
+      enable_collaboration: true
+      min_quality_score: 9.0
+      max_auto_retries: 0
+      human_timeout_sec: 86400
+      auto_proceed_on_timeout: false
+    23: {auto_execute: true, pause_before: false, pause_after: false, require_approval: false, enable_collaboration: false}
+
+copilot:
+  mode: "co-pilot"
+  pause_at_gates: true
+  pause_at_every_stage: false
+  feedback_timeout_sec: 86400
+  allow_branching: true
+  max_branches: 3
+
+security:
+  hitl_required_stages: [5, 9, 15, 20]
+  allow_publish_without_approval: false
+  redact_sensitive_logs: true
+
+experiment:
+  # ARC is the local 23-stage control plane only. Claim-bearing CPU/GPU work is
+  # executed exclusively by the repository's authenticated native DAG; ARC's
+  # own sandbox must never invoke its upstream ssh_remote backend (which does
+  # not implement this project's pinned-known-hosts contract).
+  mode: "sandbox"
+  time_budget_sec: 43200
+  max_iterations: 20
+  metric_key: "delta_r2"
+  metric_direction: "maximize"
+  sandbox:
+    python_path: ".venv/Scripts/python.exe"
+    gpu_required: false
+    max_memory_mb: 16384
+  opencode:
+    enabled: false
+    auto: false
+    complexity_threshold: 0.8
+    model: ""
+    timeout_sec: 1200
+    max_retries: 1
+    workspace_cleanup: true
+  figure_agent:
+    enabled: false
+    min_figures: 2
+    max_figures: 6
+    max_iterations: 3
+    render_timeout_sec: 60
+    docker_image: "researchclaw/experiment:latest"
+    output_format: "python"
+    nano_banana_enabled: false
+    gemini_model: "gemini-2.5-flash-image"
+    strict_mode: true
+    dpi: 300
+
+prompts:
+  custom_file: ""
+  extra_prompts:
+    topic_init: "arc_audit/prompts/topic_init_icassp27.md"
+    problem_decompose: "docs/research_protocol.md"
+    search_strategy: "docs/research_protocol.md"
+    literature_collect: "docs/research_protocol.md"
+    literature_screen: "docs/research_protocol.md"
+    experiment_design: "docs/research_protocol.md"
+    research_decision: "docs/research_protocol.md"
+    quality_gate: "docs/research_protocol.md"
+
+metaclaw_bridge:
+  enabled: false
+  proxy_url: "http://localhost:30000"
+  skills_dir: "~/.metaclaw/skills"
+  fallback_url: ""
+  fallback_api_key: ""
+  prm:
+    enabled: false
+    api_base: ""
+    api_key_env: "PRM_API_KEY"
+    api_key: ""
+    model: "gpt-5.4"
+    votes: 3
+    gate_stages: [5, 9, 15, 20]
+  lesson_to_skill:
+    enabled: true
+    min_severity: "error"
+    max_skills_per_run: 3

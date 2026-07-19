@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ecgcert.certify import certified_unrecoverable_projector, hallucination_energy
+from ecgcert.certify import off_dipole_projector, off_dipole_energy
 from ecgcert.data import PTBXL
 from ecgcert.estimators import (
     GenerativeSampleReconstructor,
@@ -97,7 +97,7 @@ def main(n_train=500, n_test=500, rate=100, seed=0):
                 continue
             lin = LinearDipolarReconstructor(m.M, m.mu, obs)
             gen = GenerativeSampleReconstructor(m.M, m.mu, obs, m.Sigma_r, scale=1.0, seed=1)
-            U = certified_unrecoverable_projector(m.M, obs)
+            U = off_dipole_projector(m.M, obs)
             acc = {r: {"rmse": [], "h": [], "corr": []} for r in ("dipolar", "ols", "generative")}
             true_nondip_energy = []
             for W in test_windows[seg]:                      # W: (12, T)
@@ -106,7 +106,7 @@ def main(n_train=500, n_test=500, rate=100, seed=0):
                 for rname, rec in (("dipolar", lin), ("ols", ols), ("generative", gen)):
                     Lhat = rec.predict(yS)
                     rmse = np.sqrt(np.mean((Lhat[recon_leads] - W[recon_leads]) ** 2))
-                    h = hallucination_energy(m.M, m.mu, obs, Lhat)
+                    h = off_dipole_energy(m.M, m.mu, obs, Lhat)
                     rec_nd = U @ (Lhat - m.mu[:, None])
                     # correlation of the non-dipolar component, pooled over recon leads.
                     corr = _pearson(rec_nd[recon_leads].ravel(), true_nd[recon_leads].ravel())

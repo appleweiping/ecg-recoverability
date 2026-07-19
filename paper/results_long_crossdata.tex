@@ -1,0 +1,31 @@
+\section{Cross-Dataset Transfer (Matched Comparison)}
+\label{sec:cross}
+To test whether the certificate is an artifact of one cohort we re-estimate $\bm M_s$ under the
+same unified truncated-SVD numerics on the independent Chapman-Shaoxing-Ningbo 12-lead database
+\cite{zheng2020chapman} and compare principal angles, rank, and $\kappa$ to PTB-XL. To avoid
+confounding \emph{cohort} with \emph{case mix}, we run a \textbf{matched} comparison (PTB-XL NORM
+vs.\ Chapman sinus-rhythm records) alongside an all-record comparison. Chapman records are sampled
+\emph{randomly} from the complete manifest with a fixed seed (not a deterministic folder/name
+stride), channels are reordered by WFDB \texttt{sig\_name} with a 12-lead assertion and resampled
+from the record's actual sampling rate, and the exact loaded manifest is hashed
+(\texttt{results/cross\_dataset.json}); we used $\CrossNchap$ Chapman records, of which
+$\CrossNnormal$ were sinus-rhythm.
+
+\textbf{QRS transfers; ST/T do not.} In the \emph{matched} (normal-vs-normal) comparison the QRS
+subspaces are close (max principal angle $\CrossMNQRSang^\circ$, record-bootstrap CI
+$\CrossMNQRSCI$), and the well-posed conditioning transfers ($\kappa$ for $\{$I,II,V1,V3,V5$\}$:
+$\CrossMNKapSpanPtb$ PTB-XL vs.\ $\CrossMNKapSpanChap$ Chapman). limb-6 is effective rank
+$\CrossMNLimbRankChap$ on both cohorts (we do not invert a near-zero singular value into a
+spurious $10^5$-scale $\kappa$). The low-amplitude segments differ sharply even under the matched
+comparison (ST max angle $\CrossMNSTang^\circ$, T $\CrossMNTang^\circ$), and the all-record
+comparison is similar (QRS $\CrossARQRSang^\circ$, ST $\CrossARSTang^\circ$). Because the ST/T
+difference \emph{survives the matched case mix}, we describe it as \CrossVerdict: the QRS map and
+the limb-6 verdict are cohort-stable, while the ST/T third spatial direction is cohort-specific
+and should be re-estimated per dataset.
+
+\textbf{Duplicated-limb weighting (\texttt{results/lead\_weighting.json}).} On the \emph{same}
+records as the primary map, refitting on the 8 algebraically-independent leads leaves the
+identifiability \emph{verdict} unchanged (spanning-set $\eta$ identical; limb-6 precordial stays
+unidentifiable) and the QRS $\tilde\eta$ ordering bootstrap-stable, but the low-amplitude ST/T
+ordering is \emph{not} robust to the weighting (Sec.~\ref{sec:exp}); we therefore make no fine
+ST/T ordering claim under either fit.

@@ -1,0 +1,139 @@
+# Claim-bearing citation verification ledger.
+# `verified_pending` entries must not be promoted to factual bibliography
+# metadata until a primary source resolves the identity and fields.
+verified_on: "2026-07-19"
+
+citations:
+  - key: "wagner2020ptbxl"
+    work: "PTB-XL, a large publicly available electrocardiography dataset"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "journal", "year", "DOI"]
+    source: "https://doi.org/10.1038/s41597-020-0495-6"
+
+  - key: "zheng2020chapman"
+    work: "A 12-lead electrocardiogram database for arrhythmia research covering more than 10,000 patients"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "journal", "year", "DOI"]
+    source: "https://doi.org/10.1038/s41597-020-0386-x"
+
+  - key: "edenbrandt1988dower"
+    work: "Vectorcardiogram synthesized from a 12-lead ECG: superiority of the inverse Dower matrix"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "journal", "pages", "year", "DOI", "PMID"]
+    source: "https://pubmed.ncbi.nlm.nih.gov/3241148/"
+
+  - key: "kors1990vcg"
+    work: "Reconstruction of the Frank vectorcardiogram from standard electrocardiographic leads"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "journal", "pages", "year", "DOI", "PMID"]
+    source: "https://pubmed.ncbi.nlm.nih.gov/2292255/"
+
+  - key: "nelwan2004reduced"
+    work: "Reconstruction of the 12-lead electrocardiogram from reduced lead sets"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "journal", "pages", "year", "DOI", "PMID"]
+    source: "https://pubmed.ncbi.nlm.nih.gov/15132364/"
+
+  - key: "joshi2009sensor"
+    work: "Sensor Selection via Convex Optimization"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "journal", "volume", "pages", "year", "DOI"]
+    source: "https://web.stanford.edu/~boyd/papers/sensor_selection.html"
+
+  - key: "cardoso2024bayesian"
+    work: "Bayesian ECG reconstruction using denoising diffusion generative models"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "arXiv identifier", "submission year"]
+    source: "https://arxiv.org/abs/2401.05388"
+
+  - key: "gradowski2025reveals"
+    work: "Deep learning model for ECG reconstruction reveals the information content of ECG leads"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "arXiv identifier", "submission year"]
+    source: "https://arxiv.org/abs/2502.00559"
+
+  - key: "makowski2021neurokit"
+    work: "NeuroKit2: A Python toolbox for neurophysiological signal processing"
+    status: "verified_primary"
+    verified_fields: ["title", "authors", "journal", "pages", "year", "DOI"]
+    source: "https://doi.org/10.3758/s13428-020-01516-y"
+
+  - key: "lence2025ecgrecover"
+    work: "ECGrecover: A Deep Learning Approach for Electrocardiogram Signal Completion"
+    status: "verified_primary"
+    verified_fields:
+      - "title"
+      - "authors"
+      - "arXiv identifier"
+    source: "https://arxiv.org/abs/2406.16901"
+    note: >-
+      The bibliography cites the primary arXiv record. Any later conference
+      venue, year, pagination, or DOI remains outside this verified field set.
+
+  - key: "fang2026imputeecg"
+    work: >-
+      ImputeECG: Deep Learning Reconstruction of Complete 12-Lead
+      Electrocardiograms from Incomplete Recordings for Cardiac Assessment
+    status: "verified_primary"
+    verified_fields:
+      - "title"
+      - "authors"
+      - "arXiv identifier"
+      - "submission year"
+    source: "https://arxiv.org/abs/2607.05009"
+    note: >-
+      The complete author list in refs.bib was expanded from the primary arXiv
+      record and rechecked during the Stage 5 citation audit.
+
+  - key: "pagotto2025minimal"
+    work: >-
+      Effective 12-Lead ECG Reconstruction from Minimal Lead Sets Using Deep
+      Learning for Advanced Wearable Systems
+    status: "verified_primary"
+    verified_fields:
+      - "title"
+      - "authors"
+      - "conference"
+      - "year"
+      - "pages"
+      - "DOI"
+      - "PMID"
+    source: "https://pubmed.ncbi.nlm.nih.gov/41336307/"
+    note: "This is a 2025 benchmark and must not be relabeled as 2026."
+
+  - key: "liu2018cpsc"
+    work: >-
+      An Open Access Database for Evaluating the Algorithms of
+      Electrocardiogram Rhythm and Morphology Abnormality Detection
+    status: "verified_primary"
+    verified_fields:
+      - "title"
+      - "authors"
+      - "journal"
+      - "volume and issue"
+      - "pages"
+      - "year"
+      - "DOI"
+    source: "https://doi.org/10.1166/jmihi.2018.2442"
+    note: "Primary database paper for CPSC 2018."
+
+  - key: "zhang2026systematic"
+    work: >-
+      Systematic benchmark of reduced-lead configurations for 12-lead ECG
+      reconstruction: multi-model evaluation across all possible subsets
+    status: "verified_primary"
+    verified_fields:
+      - "title"
+      - "authors"
+      - "journal"
+      - "volume"
+      - "article number"
+      - "year"
+      - "publication date"
+      - "DOI"
+    source: "https://doi.org/10.3389/fcvm.2026.1856211"
+    note: >-
+      LR, ridge, and LightCNN exhaustively cover all 4,094 nominal 12-lead
+      subsets; the Transformer covers 32 representative configurations.
+
+pending_requests: []

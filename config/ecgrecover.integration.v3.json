@@ -1,0 +1,86 @@
+{
+  "schema_version": "ecgrecover-integration-v3",
+  "upstream_commit": "ed49dddf8e5e599b8af702e871a1f66b1d628518",
+  "upstream_root_tree": "980f872d6d25b1291942f4929d1417abec66fe1e",
+  "input_lead": "I",
+  "native_rate_hz": 500,
+  "model_samples": 512,
+  "inference_records_per_process": 128,
+  "inference_micro_batch_size": 64,
+  "license_spdx": "NOASSERTION",
+  "redistribution": false,
+  "permission_basis": "author_permission_reported_by_project_owner",
+  "adaptation_disclosure": [
+    "The exact upstream U-Net in tools/LoadModel.py is not modified.",
+    "The exact upstream MSE-minus-0.1-Pearson loss in tools/LossFunction.py is not modified.",
+    "The exact upstream learn/Training.training loop is called through a PyTorch compatibility wrapper.",
+    "Per-record target min-max normalization is replaced by folds-1-7 fixed per-lead scaling to prevent missing-target amplitude leakage and support raw-mV evaluation.",
+    "Training and evaluation are restricted to the published lead-I single-input task; ECGrecover is excluded from arbitrary-mask parity claims.",
+    "Unobserved input leads use deterministic random-valued masking and the observed lead is restored bit-for-bit after inference.",
+    "Inference accepts homogeneous record batches, loads the unchanged U-Net and checkpoint once per process, and uses fixed 64-record device micro-batches; batching changes execution only, not model inputs or outputs."
+  ],
+  "train_command": [
+    "{python}",
+    "{bridge_root}/ecgrecover_bridge.py",
+    "train",
+    "--source-dir",
+    "{source_dir}",
+    "--data-dir",
+    "{data_dir}",
+    "--seed",
+    "{seed}",
+    "--output-dir",
+    "{output_dir}",
+    "--input-lead",
+    "I",
+    "--device",
+    "cuda:0",
+    "--epochs",
+    "100",
+    "--batch-size",
+    "256"
+  ],
+  "inference_command": [
+    "{python}",
+    "{bridge_root}/ecgrecover_bridge.py",
+    "infer",
+    "--source-dir",
+    "{source_dir}",
+    "--input",
+    "{input}",
+    "--output",
+    "{output}",
+    "--checkpoint",
+    "{checkpoint}",
+    "--device",
+    "cuda:0",
+    "--micro-batch-size",
+    "64"
+  ],
+  "checkpoint": "{output_dir}/Modeltemp.pth",
+  "upstream_source_files": [
+    {
+      "path": "learn/Training.py",
+      "sha256": "3b3d986040932cbfe593198f512faaf0fe34835541dc4ef6c756f20382b856b0"
+    },
+    {
+      "path": "tools/LoadModel.py",
+      "sha256": "2d9e0a51b7e588ab36b89945b15dbdf6dbc72c5369fa3a47f91cb188dff53bd6"
+    },
+    {
+      "path": "tools/LossFunction.py",
+      "sha256": "fc8ad1c14d9bbbf9c3a95792081fe8b72c5ee920b50456a567f2e7b50d609049"
+    },
+    {
+      "path": "tools/PreProcesing.py",
+      "sha256": "4c00bcca3cedb38c67a4d0762f7fae0a01567ad6532bc0c395d8082800fd7a34"
+    }
+  ],
+  "bridge_root": "../integrations/ecgrecover",
+  "bridge_files": [
+    {
+      "path": "ecgrecover_bridge.py",
+      "sha256": "1f4a81c1b64e3f5a30a9f666e6cd6e9ec741b1598f89fe14be1fb38399dd3afa"
+    }
+  ]
+}

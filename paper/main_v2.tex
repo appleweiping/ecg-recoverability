@@ -1,0 +1,358 @@
+\documentclass{article}
+\usepackage{spconf,amsmath,amssymb,graphicx,booktabs,bm,array}
+\usepackage[hidelinks]{hyperref}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% Stage-15 values enter only through the reviewed claim-synchronization artifact.
+\input{auto/robust_map_placeholders}
+% Identity, declarations, and tool provenance are generated only from signed artifacts.
+\input{auto/venue_policy}
+\input{auto/author_declaration}
+\input{auto/tool_provenance}
+% Keep synchronized claim text breakable in table cells.
+\newcommand{\resultcell}[1]{\begingroup\renewcommand{\text}[1]{##1}#1\endgroup}
+\newcommand{\pendingfigure}[2]{%
+  \fbox{\parbox[c][#1][c]{0.92\columnwidth}{\centering\small
+  \textbf{PENDING--Stage 15}\\[3pt]#2}}}
+
+\title{Robust Posterior-Ambiguity Maps for Reduced-Lead ECG Reconstruction%
+\SubmissionBuildTitleSuffix}
+\ifSubmissionAuthorIdentitiesVisible
+  \name{\SubmissionAuthorNames}\address{\SubmissionAuthorAffiliations}
+\else
+  \name{}\address{}
+\fi
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Reduced-lead electrocardiography needs more than a mean reconstruction score: difficulty varies
+with the observed set, waveform segment, and missing target.  We define a model-conditional
+posterior ambiguity in millivolts under a fitted Gaussian spatial prior.  One observation variance
+is frozen on PTB-XL fold~8, while ranks 2--5 are retained and combined by the worst patient-bootstrap
+97.5th percentile.  The resulting map is tested as a predictor, not as a clinical guarantee.  The
+primary estimand is the leave-one-configuration-out gain in predicting patient-level log-RMSE when
+ambiguity is added to prespecified covariates.  Fold~9 fits the meta-model, fold~10 is opened once,
+and zero-transfer tests use both Chapman and CPSC~2018.  Four reconstructors share a fixed 64-set
+panel; ECGrecover is reported separately on its supported single-input task.  Numerical claims and
+figures are released only after the hard Stage~15 rule and human review.  \ResultHeadline
+\end{abstract}
+
+\begin{keywords}
+electrocardiography, reduced leads, posterior uncertainty, reconstruction, external validation
+\end{keywords}
+
+\section{Motivation and contribution}
+Reduced-lead systems motivate fixed transforms, regression, and learned completion of the standard
+12-lead display
+\cite{edenbrandt1988dower,kors1990vcg,nelwan2004reduced,gradowski2025reveals,cardoso2024bayesian,%
+lence2025ecgrecover,fang2026imputeecg,pagotto2025minimal}.  Their reconstruction metrics answer how
+well a method performed after training.  The latest multi-model benchmark exhaustively evaluates
+4,094 nominal 12-lead subsets for LR, ridge, and LightCNN, with 32 representative Transformer
+configurations \,\cite{zhang2026systematic}.  It ranks configurations by aggregate fidelity,
+diagnosis, and electrode burden; it does not identify, before choosing a reconstructor,
+which missing lead and waveform segment are weakly constrained by an observed-lead set.  A global
+condition number also gives every target the same configuration-level description, despite the
+algebraic dependence of displayed limb leads and target-specific spatial geometry.
+
+For segment $s$, nonempty observed set $S$, and target lead $\ell\notin S$, we test one empirical
+claim: a training-derived robust ambiguity $A_{\mathrm{robust}}(s,\ell,S)$ adds held-out predictive
+value for reconstruction error beyond method, segment, target, observed-lead count, configuration
+rank, conditioning, target scale, and observed--target correlation.  The claim must hold on the
+untouched PTB-XL test fold, cover most common-panel methods, and show positive uncertainty-bounded
+transfer in at least one of two prespecified external cohorts.
+
+\noindent\textbf{Contributions.}  First, we give a target-resolved posterior standard deviation in
+physical units and a conservative rank-and-patient envelope.  Second, we freeze a falsifiable
+benchmark with four common-panel reconstructors, one separate strong single-input baseline, and two
+zero-transfer cohorts.  Third, we connect every claim to a hard automatic decision followed by
+human review.  The current manuscript contains the complete protocol and no invented result.
+
+Sensor-design objectives usually optimize a global acquisition criterion \cite{joshi2009sensor}.
+Our setting is descriptive: $S$ is given, and the proposed quantity must earn its interpretation by
+predicting unseen reconstruction outcomes.  It is therefore narrower than a biological
+identifiability statement and does not prescribe a lead set.
+
+\section{Gaussian posterior ambiguity}
+\label{sec:map}
+\subsection{Frozen spatial model and observation variance}
+At 500~Hz, QRS, ST, and T samples from PTB-XL folds 1--7 fit one spatial model for each
+$r\in\mathcal R=\{2,3,4,5\}$.  The primary representation fits the eight algebraically independent
+channels $[\mathrm I,\mathrm{II},\mathrm{V1},\ldots,\mathrm{V6}]$ and lifts them to the displayed
+12 leads; raw 12-lead PCA is only a sensitivity analysis.  For a centered lead vector,
+\begin{equation}
+ \bm x_s-\bm\mu_s=\bm M_{s,r}\bm d,\qquad
+ \bm d\sim\mathcal N(\bm0,\bm\Sigma_{s,r}),
+ \label{eq:prior}
+\end{equation}
+where $\bm M_{s,r}\in\mathbb R^{12\times r}$.  Observing $S$ is represented as
+$\bm y_S=\bm\mu_S+\bm M_{S}\bm d+\bm\varepsilon$ with
+$\bm\varepsilon\sim\mathcal N(\bm0,\tau^2\bm I)$.  The coordinate posterior covariance is
+\begin{equation}
+ \bm\Sigma^{\mathrm{post}}_{s,r,S}=\bm\Sigma-
+ \bm\Sigma\bm M_S^\top(\bm M_S\bm\Sigma\bm M_S^\top+\tau^2\bm I)^{-1}
+ \bm M_S\bm\Sigma .
+ \label{eq:posterior}
+\end{equation}
+Only one $\tau^2$ is used for all segments, ranks, and configurations.  Fold~8 selects it from the
+prespecified log grid $\{10^{-8},\ldots,10^{-1}\}$~mV$^2$ by mean patient-balanced missing-target
+MSE, giving equal weight to each segment--rank--configuration cell.  The chosen value is then
+frozen.  Fold~8 never selects a rank.
+
+For target row $\bm m_{s,r,\ell}$, posterior ambiguity is
+\begin{equation}
+ A_{s,r,\ell}(S)=
+ \sqrt{\bm m_{s,r,\ell}\bm\Sigma^{\mathrm{post}}_{s,r,S}
+ \bm m_{s,r,\ell}^{\top}}\quad[\mathrm{mV}].
+ \label{eq:ambiguity}
+\end{equation}
+It is a predictive standard deviation under Eq.~\eqref{eq:prior}, conditional on the fitted
+representation and the frozen observation model.
+
+\subsection{Patient-bootstrap rank envelope}
+Each spatial model is refit in 2,000 patient-cluster bootstrap draws.  With $Q^{\mathrm{pat}}_{.975}$
+denoting the empirical 97.5th percentile over those draws, the primary map is
+\begin{equation}
+ A_{\mathrm{robust}}(s,\ell,S)=
+ \max_{r\in\{2,3,4,5\}}Q^{\mathrm{pat}}_{.975}
+ \!\left[A_{s,r,\ell}(S)\right].
+ \label{eq:robust}
+\end{equation}
+Thus no favorable rank can replace the prespecified family.  The structural artifact contains all
+$2^8-1=255$ nonempty independent-channel configurations.  Reconstruction experiments use an
+outcome-independent 64-configuration panel: all one- and two-channel sets plus a salted-hash sample
+at larger sizes.  Its ordered membership and SHA-256 digest are frozen before outcomes.  Figure~1
+shows those same 64 rows so the displayed map and deep benchmark align.
+
+The role of $\tau^2$ is deliberately limited.  It regularizes Gaussian conditioning and absorbs
+unrepresented variation at the observation interface; it is not presented as a calibrated sensor
+noise measurement.  A single global choice prevents each target, segment, configuration, or rank
+from receiving a favorable post hoc value.  In every bootstrap draw the patient blocks are sampled
+with replacement, all spatial ranks are refit, and Eq.~\eqref{eq:ambiguity} is recomputed with the
+same frozen $\tau^2$.  The percentile is formed within rank before the maximum in
+Eq.~\eqref{eq:robust}; bootstrap rows are never pooled as if rank were a random draw.  Rank-deficient
+refits and their rejection fraction are retained in the audit, and insufficient valid refits stop
+release rather than silently narrowing the interval.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figures_v3/figure1_robust_map.pdf}{%
+  \includegraphics[width=\columnwidth]{figures_v3/figure1_robust_map.pdf}%
+}{%
+  \pendingfigure{2.30in}{Robust ambiguity heatmaps\\
+  QRS, ST, and T; 64 configurations $\times$ 12 targets\\
+  color scale: $A_{\mathrm{robust}}$ (mV)}%
+}
+\caption{Primary robust map.  The frozen 64-row panel is drawn from the complete 255-configuration
+artifact.  Gray cells are measured targets and are masked from the color scale; outcome analyses
+use only missing targets.  Final pixels must come from the reviewed \texttt{figures\_v3} artifact.}
+\label{fig:map}
+\end{figure}
+
+\noindent\textbf{Diagnostics only.}  Let $\eta$ be the target-row fraction outside the observed-row
+span.  We retain
+$R_{\mathrm{lower}}=\operatorname{clip}\{1-\max_rQ^{\mathrm{pat}}_{.975}(\eta),0,1\}$,
+upper $\log_{10}\kappa$ summaries for target and global pseudoinverse amplification, and the
+point-estimate rank span $\max_r A_{s,r,\ell}-\min_r A_{s,r,\ell}$ in mV.  These quantities audit
+geometry and rank sensitivity; they neither replace $A_{\mathrm{robust}}$ nor enter the primary
+incremental predictor.
+
+\section{Locked evaluation}
+\label{sec:evaluation}
+\subsection{Reconstructors, cells, and outcome}
+The common panel contains four primary methods: low-rank conditional mean, ridge regression, a
+mask-conditioned 1-D U-Net, and the pinned official ImputeECG implementation
+\cite{fang2026imputeecg}.  They receive the same patient partitions, 500-Hz delineated windows,
+whole-lead masks, reversible training normalization, and missing-target scorer on all 64
+configurations.  Predictions are returned to mV before evaluation.
+ECGrecover \cite{lence2025ecgrecover} is a strong pinned baseline for its supported single
+independent input lead.  It is reported in a separate block and is not counted among the four
+common-panel methods.  Its U-Net, loss, and training loop remain upstream code; a disclosed
+folds-1--7 fixed lead scale replaces target-specific min--max preprocessing to prevent missing-target
+amplitude leakage and return predictions to mV.  Missing source, command, data, or checkpoint artifacts are hard failures;
+public methods are not replaced by local surrogates.
+
+Low-rank and ridge runs are deterministic.  The U-Net, ImputeECG, and ECGrecover use model seeds
+0--4.  The shared scorer produces one missing-target outcome per patient, method, seed, segment,
+configuration, and target.  The primary response is patient-level log-RMSE in mV on missing target
+samples.  Other error summaries are supplementary.  QRS, ST, and T are primary, while P-wave
+analysis is supplementary.
+
+\noindent\textbf{Population and cell construction.}  The primary PTB-XL population includes all
+diagnostic groups; a normal-rhythm subset is reserved for sensitivity analysis.  Loaders enforce
+the canonical lead order, mV units, signs, 500-Hz rate, and patient identifiers before any model
+sees a record.  A frozen DWT delineator \cite{makowski2021neurokit} produces segment indices, and a
+record without evaluable primary windows is recorded with its exclusion reason.  Whole leads, not
+isolated time samples, are hidden.  A target already present in $S$ is removed from the prediction
+endpoint, while its map value remains available for the structural audit in Fig.~\ref{fig:map}.
+Errors are accumulated over all eligible samples and records for a patient before the patient row
+is emitted.  Consequently, a patient with more beats does not become multiple resampling units.
+The same construction code produces fold-8, fold-9, fold-10, and external outcome tables.
+
+\subsection{Fold discipline and incremental estimand}
+PTB-XL folds 1--7 fit spatial and reconstruction models, fold~8 contains tuning only, fold~9 is the
+meta-fit/calibration partition, and fold~10 is evaluated once \cite{wagner2020ptbxl}.  In addition
+to $\tau^2$, fold~8 selects one shared meta-model ridge penalty by leave-one-configuration-out
+(LOCO) prediction.  Its neutral objective is the mean validation MSE of the simple and augmented
+meta-models.  No fold-10 response can affect fitting or selection.
+
+Both meta-models include categorical method, segment, and target effects.  The simple numeric
+predictors are $|S|$, observed-matrix rank, $\log_{10}$ condition number, target RMS, and the largest
+observed--target correlation.  RMS and correlation are computed once from the authenticated
+folds-1--7 training-predictor table; all four common-panel methods share identical values, and both
+external cohorts reuse that PTB-XL table without replacement by rank-map sample statistics.  The
+augmented model adds only $A_{\mathrm{robust}}$.  For every test
+configuration, the fold-9 fit excludes that configuration before predicting its fold-10 patient
+rows.  The sole primary effect is
+\begin{equation}
+ \Delta R^2=R^2_{\mathrm{augmented}}-R^2_{\mathrm{simple}}
+ \label{eq:delta}
+\end{equation}
+over the resulting LOCO predictions.  Patient-cluster bootstrap uncertainty uses 2,000 draws; each
+draw resamples five times with replacement from the five fitted seeds of each neural method and
+reconstructs its cellwise seed mean, while every method shares the same patient draw.  This nested
+seed resampling matches the five-seed-mean point estimand and prevents replicated checkpoints from
+masquerading as independent patients.
+
+LOCO tests the intended generalization axis.  A conventional random split of configuration--target
+rows could let the meta-model memorize a nearly identical observed set; here, every fold-10
+configuration is predicted by models trained on fold~9 patients and other configurations.  Numeric
+features are standardized within the fit and categorical levels are one-hot encoded with unseen
+levels tolerated.  The fold-8 penalty grid is
+$\{0,10^{-4},10^{-3},10^{-2},10^{-1},1,10,10^2,10^3\}$, with the smaller penalty breaking a tied
+validation criterion.  The reported $R^2$ values are computed on the same retained patient rows, so
+$\Delta R^2$ is a paired predictive comparison rather than the difference between separately
+filtered analyses.  Method-specific point effects use those predictions only for the Stage~15 sign
+count; they do not create five additional headline hypotheses.
+
+\subsection{Two zero-transfer cohorts}
+Chapman--Shaoxing--Ningbo \cite{zheng2020chapman} uses a frozen patient-hashed 60/20/20 manifest.
+CPSC~2018 \cite{liu2018cpsc} publishes no verifiable cross-record patient key, so its record name is
+explicitly treated as a pseudopatient for the same salted-hash split; true patient-disjointness in
+that cohort cannot be established from the public release.  The 60\% partition is reserved for a
+secondary cohort-map sensitivity and the 20\% development partition for audit/QC.  Primary zero transfer reloads PTB-XL
+checkpoints and applies the fold-9 meta-fit, frozen $\tau^2$, frozen ridge penalty, preprocessing,
+masks, and scorer to the untouched 20\% test partition.  It performs no cohort-specific fitting,
+adaptation, or threshold selection.  Both external bundles must be complete for release; a
+secondary map fitted on an external 60\% partition cannot substitute for either zero-transfer test.
+
+The external target is performance transport, not re-estimation of spatial geometry.  Each
+external patient row is therefore joined to the PTB-XL $A_{\mathrm{robust}}$ cell for its frozen
+segment, configuration, and target.  A missing map cell, common-panel method, seed bundle, or test
+partition is a release error.  Manifest audits attempt every authorized record and preserve the
+reason for any signal, length, unit, or delineation exclusion.  The external 60\% maps may quantify
+ranking shift as a secondary analysis, but they never supply the score used in Fig.~\ref{fig:gain}.
+This prevents external test morphology from leaking into the proposed predictor while making
+cohort shift visible rather than treating successful file loading as evidence of transfer.
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figures_v3/figure2_prediction_gain.pdf}{%
+  \includegraphics[width=\columnwidth]{figures_v3/figure2_prediction_gain.pdf}%
+}{%
+  \pendingfigure{1.62in}{Incremental predictive value $\Delta R^2$\\
+  PTB-XL fold 10, Chapman test, CPSC~2018 test\\
+  patient-bootstrap 95\% intervals}%
+}
+\caption{Primary effect display for the untouched PTB-XL and zero-transfer test cohorts.  Points
+and intervals are synchronized from the reviewed Stage~15 artifact; the zero line and cohort order
+are frozen.  CPSC~2018 intervals use record-name pseudoclusters because the public release provides
+no cross-record patient key.}
+\label{fig:gain}
+\end{figure}
+
+\section{Evidence gate and responsible scope}
+Stage~15 is fail-closed.  The automatic decision is \textsc{Proceed} only when (i) the PTB-XL
+fold-10 lower 95\% bootstrap bound for $\Delta R^2$ is greater than zero; (ii) the corresponding
+lower bound is greater than zero for Chapman; and (iii) at least three
+of the four common-panel methods have positive point $\Delta R^2$.  Every other outcome is
+\textsc{Pivot}.  Either automatic outcome awaits user review for up to 24 hours; the claim macros
+and two final figures are released only after a valid human review signature.  CPSC~2018 remains a
+required zero-transfer sensitivity but cannot trigger the patient-level external hard gate because
+its public release has no cross-record patient identity key.
+
+\noindent\textbf{Presentation contract.}  The main paper has two claim-bearing figures and one
+claim table.  Figure~\ref{fig:map} is purely structural and must contain all $64\times12\times3$
+frozen cells.  Figure~\ref{fig:gain} contains PTB-XL, Chapman, and CPSC~2018 in a fixed order, with
+the zero line and patient-bootstrap intervals.  Table~\ref{tab:evidence} is populated from the same
+reviewed decision artifact.  Source tables, decision metadata, and rendered figures are hashed
+together; a manually typed value or manually substituted image fails the submission build.
+Point estimates and interval endpoints are reported together, and method-specific signs are shown
+even when they oppose the pooled effect.  Until review, the visible placeholders are part of the
+paper's evidence boundary rather than estimates.
+
+\begin{table}[t]
+\centering
+\caption{Single claim table synchronized from the reviewed Stage~15 artifact.}
+\label{tab:evidence}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{L{0.43\columnwidth}L{0.49\columnwidth}}
+\toprule
+Evidence item & Synchronized value \\
+\midrule
+Reviewed primary claim & \resultcell{\ResultPrimaryAssociation} \\
+PTB-XL LOCO $\Delta R^2$ & \resultcell{\ResultIncrementalValue} \\
+Rank 2--5 envelope & \resultcell{\ResultRankWeightStability} \\
+Chapman and CPSC zero transfer & \resultcell{\ResultExternalAssociation} \\
+Four-method sign coverage & \resultcell{\ResultModelCoverage} \\
+Patient/seed uncertainty & \resultcell{\ResultBootstrapUncertainty} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Falsification paths.}  The protocol distinguishes an informative negative result
+from a workflow failure.  If the PTB-XL interval crosses zero, adding
+$A_{\mathrm{robust}}$ has not improved held-out prediction and the central claim is unsupported.
+If the pooled effect is positive but fewer than three common-panel methods have positive point
+effects, the result is too method-specific for the proposed scope.  If the Chapman external lower
+bound is not positive, transfer is unsupported even when the PTB-XL effect or CPSC pseudocluster
+effect passes.  A favorable raw
+association, rank-specific fit, external-train cohort map, or ECGrecover single-input result cannot
+override any of these outcomes.  Incompatibility of a required official adapter, incomplete external
+test coverage, leakage, or failure to retain the required bootstrap draws blocks the gate rather than
+being recoded as a statistical null.  This separation prevents implementation failures from being
+used selectively and prevents secondary evidence from rescuing a failed primary estimand.
+
+\noindent\textbf{Sensitivity hierarchy.}  Predeclared sensitivities cover raw 12-lead PCA, the
+PTB-XL normal-rhythm subset, another delineator, other error summaries, and maps fitted on each
+external 60\% partition.  Rank-resolved posterior ambiguity and the geometric
+diagnostics can explain a broad envelope but cannot nominate a replacement rank after fold~10.
+P-wave results remain supplementary because delineation completeness differs from the primary
+segments.  These analyses are reported with their original signs and uncertainty after the primary
+decision; none changes the Stage~15 rule, predictor set, external test partitions, or title.  Any
+analysis proposed after opening fold~10 is labeled exploratory in the ledger and is excluded from
+claim synchronization.
+
+\noindent\textbf{Artifact and leakage contract.}  Patient identities are disjoint across every
+PTB-XL role and every Chapman partition.  CPSC record-name pseudopatients are disjoint across its
+partitions, while the unavailable cross-record identity remains an explicit limitation.  The evaluation loader freezes record
+membership, first-window boundaries, segment indices, and whole-lead masks before inference.
+Observed samples must be preserved pointwise, and only missing targets enter the response.  Every
+claim-bearing prediction binds cohort, split, panel, method, seed, source, environment, tuning, and
+checkpoint identities; failures remain audited.  Figure source tables and generated claim macros
+bind the same signed Stage~15 decision, whose signature is rechecked by the submission build.  Thus
+each PDF cell traces to patient-level predictions without exposing patient data in the paper.
+
+\noindent\textbf{Scope and limitations.}  The Gaussian prior and linear spatial representation are
+empirical approximations; learned reconstructors may use repeatable nonlinear or temporal
+associations absent from them.  The frozen observation variance conflates residual model mismatch
+and measurement noise.  Delineation, pathology prevalence, devices, placement, and acquisition
+noise can shift both maps and errors.  Two external cohorts improve falsifiability but do not prove
+deployment validity.  Reconstruction fidelity does not establish diagnostic equivalence or
+clinical safety, and $R_{\mathrm{lower}}$, $\eta$, $\log_{10}\kappa$, and rank span are diagnostics,
+not guarantees.  Null effects, reversals, failed seeds, exclusions under frozen rules, and adapter
+failures stay in the evidence ledger.
+
+\section{Conclusion}
+This study asks a deliberately narrow question: does a conservative Gaussian posterior ambiguity
+in mV improve out-of-sample prediction of patient reconstruction difficulty?  Only the
+prespecified Stage~15 evidence rule determines the answer.  \ResultConclusion
+\label{technical-content-end}
+
+\clearpage
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
+\input{compliance}
+\end{document}

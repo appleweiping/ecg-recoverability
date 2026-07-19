@@ -1,0 +1,116 @@
+{
+  "configs": {
+    "limb-6": {
+      "obs": [
+        "I",
+        "II",
+        "III",
+        "aVR",
+        "aVL",
+        "aVF"
+      ],
+      "per_w": {
+        "1": {
+          "QRS": 0.0,
+          "ST": 0.0,
+          "T": 0.0
+        },
+        "2": {
+          "QRS": 0.0,
+          "ST": 0.0,
+          "T": 0.0
+        },
+        "4": {
+          "QRS": 0.0,
+          "ST": 0.0,
+          "T": 0.0
+        },
+        "6": {
+          "QRS": 0.0,
+          "ST": 0.0,
+          "T": 0.0
+        }
+      },
+      "fabrication_trend_w1_to_w6": {
+        "QRS": 0.0,
+        "ST": 0.0,
+        "T": 0.0
+      }
+    },
+    "Lead-I": {
+      "obs": [
+        "I"
+      ],
+      "per_w": {
+        "1": {
+          "QRS": 0.75016,
+          "ST": 0.81642,
+          "T": 0.81065
+        },
+        "2": {
+          "QRS": 0.79207,
+          "ST": 0.8209,
+          "T": 0.80268
+        },
+        "4": {
+          "QRS": 0.82977,
+          "ST": 0.83811,
+          "T": 0.80753
+        },
+        "6": {
+          "QRS": 0.84019,
+          "ST": 0.85755,
+          "T": 0.82372
+        }
+      },
+      "fabrication_trend_w1_to_w6": {
+        "QRS": 0.09003,
+        "ST": 0.04113,
+        "T": 0.01307
+      }
+    }
+  },
+  "guidances": [
+    1.0,
+    2.0,
+    4.0,
+    6.0
+  ],
+  "metric": "phi = ||M_s Q d_hat||^2 / ||M_s d_hat||^2, fraction of the diffusion reconstruction's dipolar energy in the UNIDENTIFIABLE subspace (0 = honest, >0 = fabricates content the observation cannot fix)",
+  "n_test": 300,
+  "lineage": {
+    "commit": "2370ee266167f960de92d833908b070ba85adfe6",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "fabrication_audit_diffusion.py",
+    "experiment_script_sha256": "4852a40b9ceac6a7",
+    "seed": 0,
+    "targets": [
+      "V2",
+      "V4",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV (DDPM reconstruction)",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
+    },
+    "n_train": 3000,
+    "n_test": 300,
+    "train_ids_sha256": "8ae48a6d8862aa08",
+    "test_ids_sha256": "099a820152ad4945",
+    "checkpoint_sha256": null,
+    "checkpoint": "/root/autodl-tmp/ecg-recoverability/results/gpu_ddpm.pt",
+    "guidances": [
+      1.0,
+      2.0,
+      4.0,
+      6.0
+    ],
+    "metric": "null_space_dipolar_fabrication_vs_guidance"
+  }
+}

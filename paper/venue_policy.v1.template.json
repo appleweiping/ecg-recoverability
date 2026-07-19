@@ -1,0 +1,40 @@
+{
+  "author_identities_visible_to_reviewers": null,
+  "author_kit_sha256": null,
+  "author_kit_members": {
+    "bibliography_style": {
+      "build_target": "IEEEbib.bst",
+      "member_path": null,
+      "sha256": null
+    },
+    "latex_template": {
+      "build_target": "author_kit/official-template.tex",
+      "member_path": null,
+      "sha256": null
+    },
+    "style": {
+      "build_target": "spconf.sty",
+      "member_path": null,
+      "sha256": null
+    }
+  },
+  "author_kit_status": "PENDING_OFFICIAL_AUTHOR_KIT",
+  "author_kit_url": null,
+  "page_five_allowed_content": [
+    "references",
+    "funding acknowledgments",
+    "Compliance with Ethical Standards"
+  ],
+  "policy_checked_at": null,
+  "policy_url": "https://2027.ieeeicassp.org/about/editorial-policies/",
+  "review_model": null,
+  "schema_version": "paper-venue-policy-v1",
+  "signed_at": null,
+  "signer": null,
+  "signer_public_key_sha256": null,
+  "signature_algorithm": "Ed25519",
+  "status": "PENDING_OFFICIAL_AUTHOR_KIT",
+  "technical_page_limit": 4,
+  "total_page_limit": 5,
+  "venue": "ICASSP 2027"
+}

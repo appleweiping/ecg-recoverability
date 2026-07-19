@@ -1,0 +1,288 @@
+{
+  "per_budget": {
+    "1": {
+      "greedy_J": 0.79793,
+      "greedy_set": [
+        "V4"
+      ],
+      "exhaustive": {
+        "J": 0.79793,
+        "set": [
+          "V4"
+        ],
+        "n_subsets": 8
+      },
+      "random_J_mean": 0.89693,
+      "random_J_std": 0.10834,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    },
+    "2": {
+      "greedy_J": 0.19241,
+      "greedy_set": [
+        "V4",
+        "V2"
+      ],
+      "exhaustive": {
+        "J": 0.19241,
+        "set": [
+          "V2",
+          "V4"
+        ],
+        "n_subsets": 28
+      },
+      "random_J_mean": 0.30507,
+      "random_J_std": 0.13442,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    },
+    "3": {
+      "greedy_J": 0.0,
+      "greedy_set": [
+        "V4",
+        "V2",
+        "II"
+      ],
+      "exhaustive": {
+        "J": 0.0,
+        "set": [
+          "V2",
+          "V4",
+          "V5"
+        ],
+        "n_subsets": 56
+      },
+      "random_J_mean": 0.0075,
+      "random_J_std": 0.03057,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    },
+    "4": {
+      "greedy_J": 0.0,
+      "greedy_set": [
+        "V4",
+        "V2",
+        "II",
+        "V5"
+      ],
+      "exhaustive": {
+        "J": 0.0,
+        "set": [
+          "II",
+          "V1",
+          "V3",
+          "V5"
+        ],
+        "n_subsets": 70
+      },
+      "random_J_mean": 0.0,
+      "random_J_std": 0.0,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    },
+    "5": {
+      "greedy_J": 0.0,
+      "greedy_set": [
+        "V4",
+        "V2",
+        "II",
+        "V5",
+        "V6"
+      ],
+      "exhaustive": {
+        "J": 0.0,
+        "set": [
+          "V1",
+          "V3",
+          "V4",
+          "V5",
+          "V6"
+        ],
+        "n_subsets": 56
+      },
+      "random_J_mean": 0.0,
+      "random_J_std": 0.0,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    },
+    "6": {
+      "greedy_J": 0.0,
+      "greedy_set": [
+        "V4",
+        "V2",
+        "II",
+        "V5",
+        "V6",
+        "V3"
+      ],
+      "exhaustive": {
+        "J": 0.0,
+        "set": [
+          "I",
+          "II",
+          "V1",
+          "V2",
+          "V4",
+          "V5"
+        ],
+        "n_subsets": 28
+      },
+      "random_J_mean": 0.0,
+      "random_J_std": 0.0,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    },
+    "7": {
+      "greedy_J": 0.0,
+      "greedy_set": [
+        "V4",
+        "V2",
+        "II",
+        "V5",
+        "V6",
+        "V3",
+        "V1"
+      ],
+      "exhaustive": {
+        "J": 0.0,
+        "set": [
+          "II",
+          "V1",
+          "V2",
+          "V3",
+          "V4",
+          "V5",
+          "V6"
+        ],
+        "n_subsets": 8
+      },
+      "random_J_mean": 0.0,
+      "random_J_std": 0.0,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    },
+    "8": {
+      "greedy_J": 0.0,
+      "greedy_set": [
+        "V4",
+        "V2",
+        "II",
+        "V5",
+        "V6",
+        "V3",
+        "V1",
+        "I"
+      ],
+      "exhaustive": {
+        "J": 0.0,
+        "set": [
+          "I",
+          "II",
+          "V1",
+          "V2",
+          "V3",
+          "V4",
+          "V5",
+          "V6"
+        ],
+        "n_subsets": 1
+      },
+      "random_J_mean": 0.0,
+      "random_J_std": 0.0,
+      "greedy_minus_optimal": 0.0,
+      "greedy_is_optimal": true
+    }
+  },
+  "submodularity": {
+    "fraction_satisfied": 1.0,
+    "n_tested": 200,
+    "worst_violation_mV2": 0.0
+  },
+  "summary": {
+    "objective": "min total certified squared ambiguity over 12 leads x 3 segments (mV^2)",
+    "candidates": [
+      "I",
+      "II",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "budgets": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "greedy_matches_optimal_all_feasible": true,
+    "greedy_max_gap_to_optimal_mV2": 0.0,
+    "empirical_submodular_fraction": 1.0,
+    "k3_greedy_set": [
+      "V4",
+      "V2",
+      "II"
+    ],
+    "k3_greedy_J": 0.0,
+    "k3_random_J_mean": 0.0075,
+    "k3_greedy_vs_random_ratio": 0.0,
+    "J_empty": 2.01002
+  },
+  "segments": [
+    "QRS",
+    "ST",
+    "T"
+  ],
+  "lineage": {
+    "commit": "3329f6def01a24bea32e76ce168d96f15d358305",
+    "git_dirty": true,
+    "protocol": "recoverability-v2-2026-07",
+    "protocol_sha256": "a2ff753529e4",
+    "experiment_script": "active_selection.py",
+    "experiment_script_sha256": "bca69ef3cd016cbb",
+    "seed": 0,
+    "targets": [
+      "I",
+      "II",
+      "III",
+      "aVR",
+      "aVL",
+      "aVF",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ],
+    "segment_def": "neurokit2-dwt on observed Lead II; P=Pon..Poff, QRS=Ron..Roff, ST=J..Ton, T=Ton..Toff",
+    "normalization": "raw mV segment samples; total certified squared ambiguity objective",
+    "dataset": {
+      "name": "PTB-XL",
+      "n_records": 21799,
+      "ids_sha256": "d01d605b52faa1dd",
+      "metadata_sha256": "7600de9c1b27d181"
+    },
+    "n_train": 1500,
+    "n_test": null,
+    "train_ids_sha256": "4fd528172c55d714",
+    "test_ids_sha256": null,
+    "checkpoint_sha256": null,
+    "objective": "total_certified_squared_ambiguity_mV2",
+    "candidates": [
+      "I",
+      "II",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6"
+    ]
+  }
+}

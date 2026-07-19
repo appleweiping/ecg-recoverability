@@ -1,0 +1,224 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,graphicx,booktabs,bm,amsthm,enumitem,cite}
+\usepackage[hidelinks]{hyperref}
+
+% Evidence-gated primary-paper macros.
+\input{auto/robust_map_placeholders}
+% Historical macros are loaded only for the quarantined legacy supplement.
+% They must never be cited as evidence for the refactored primary claim.
+\input{auto/fair_baselines_macros}
+\input{auto/long_results_macros}
+
+\newcommand{\LegacyBanner}{%
+  \begin{center}
+  \fbox{\parbox{0.92\linewidth}{\textbf{Legacy supplement---not evidence for the primary
+  claim.} This material records an earlier research branch.  It is excluded from the
+  Stage~15 claim--evidence decision and from the four-page submission.}}
+  \end{center}}
+
+\title{\textbf{Robust Target-Specific Recoverability Maps for Reduced-Lead ECG
+Reconstruction}\\[2pt]\large Evidence-gated extended protocol and legacy research record}
+\newif\ifanon\anontrue
+\ifanon
+  \author{Anonymous authors\\Paper under double-blind review}
+\else
+  \author{Weiping Yan\\University of Minnesota, Twin Cities}
+\fi
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Reduced-lead electrocardiogram (ECG) reconstruction is commonly assessed only after a model
+produces a waveform.  We propose a training-set diagnostic that maps each observed configuration,
+waveform segment, and target lead to a continuous recoverability score.  The score combines target
+geometry outside the observed-row span with within-span amplification, then aggregates over a
+prespecified family of rank, lead-weighting, and patient-bootstrap fits.  The sole primary empirical
+claim is that this robust map predicts held-out target-lead reconstruction error beyond simple
+configuration and signal-scale covariates, across reconstruction families and on an external
+cohort.  Numerical claims are withheld pending the Stage~15 evidence decision.  This extended
+document separates the new protocol from earlier conditional theory, calibration, clinical-event,
+lead-selection, and diffusion branches, which are retained only as a transparent legacy supplement.
+\end{abstract}
+
+\section{Research question and contribution}
+Reduced-lead acquisition motivates fixed transforms, regression, and learned completion models
+\cite{edenbrandt1988dower,kors1990vcg,nelwan2004reduced,gradowski2025reveals,%
+cardoso2024bayesian,lence2025ecgrecover,fang2026imputeecg,pagotto2025minimal}.  These methods answer
+how to synthesize a missing waveform.  We ask a complementary question: before selecting a
+reconstructor, can training-set spatial geometry anticipate which segment and target lead will have
+larger held-out error?
+
+The refactored paper has one claim and one falsification route.  For each observed set $S$, segment
+$s$, and target lead $\ell$, a frozen robust score should (i) rank held-out target error, (ii) add
+out-of-sample predictive value beyond lead count, configuration rank, target scale, pairwise
+correlation, and global conditioning, (iii) retain its direction across transparent and learned
+reconstructors, and (iv) retain its direction on a second cohort.  Failure of the incremental,
+cross-model, or external tests prevents a positive headline.  The score is described as a map or
+diagnostic; it is not a clinical guarantee or a claim about all information in an ECG waveform.
+
+\section{Robust target-specific map}
+\label{sec:primary-method}
+Let $\bm x_{i,s}(t)\in\mathbb R^p$ be the multilead signal for patient $i$ in segment $s$.  A
+training-only weighted covariance fit gives $\bm M_s^v\in\mathbb R^{p\times r}$, with
+$v=(r,w,b)$ indexing candidate rank, lead weighting, and patient-bootstrap replicate.  For target
+row $\bm m_{s,\ell}^v$ and observed rows $\bm M_{s,S}^v$, define
+\begin{align}
+u_{s,\ell}^{v}(S)&=
+\frac{\|\bm m_{s,\ell}^{v}[\bm I-(\bm M_{s,S}^{v})^+\bm M_{s,S}^{v}]\|_2}
+{\|\bm m_{s,\ell}^{v}\|_2+\epsilon},\\
+g_{s,\ell}^{v}(S)&=\|\bm m_{s,\ell}^{v}(\bm M_{s,S}^{v})^+\|_2,\\
+q_{s,\ell}^{v}(S)&=
+\left[(u_{s,\ell}^{v})^2+
+\left\{\frac{\nu_{s,S}^{v}g_{s,\ell}^{v}}
+{\sigma_{s,\ell}^{v}+\epsilon}\right\}^{2}\right]^{1/2},
+\label{eq:robust-score-long}
+\end{align}
+where $\nu$ is a training-only observed residual scale and $\sigma$ a training-only target scale.
+The first term measures target geometry absent from the observed-row span of the fitted
+representation; the second measures amplification relative to target scale.  The primary map is the
+median $q^v$ over plausible fits, accompanied by patient-bootstrap quantiles.  Its empirical value
+comes only from the held-out tests below.
+
+\paragraph{Prespecified perturbations.}
+The primary fit uses eight algebraically independent measured channels; the 12 displayed leads form
+a weighting sensitivity.  Folds 1--7 fit rank candidates $2$--$5$, fold~8 chooses the primary rank
+by an out-of-sample representation criterion, and all plausible ranks remain in the envelope.
+Patient-cluster bootstrap resamples refit the subspace.  Sign conventions, units, segment windows,
+pseudoinverse tolerance, and missing-segment rules are frozen before fold~10 is opened.
+
+\section{Evaluation and analysis contract}
+\label{sec:primary-eval}
+\paragraph{Split discipline and cohorts.}
+PTB-XL official folds 1--7 are used for fitting, fold~8 for design choices, fold~9 for a full pipeline
+rehearsal without claim selection, and fold~10 once for the primary evaluation
+\cite{wagner2020ptbxl}.  The Chapman--Shaoxing--Ningbo cohort is the external test and uses the
+frozen PTB-XL specification \cite{zheng2020chapman}.  The patient is the resampling unit.  QRS, ST,
+and T form the core analysis; P-wave results move to the supplement if the frozen delineation-quality
+criterion is not met.
+
+\paragraph{Reconstruction families.}
+Prior mean and ridge regression are transparent anchors.  A mask-conditioned 1-D U-Net represents a
+flexible learned family.  Stage~15 also requires at least one reproducible public strong-method
+adapter; ECGrecover and ImputeECG are prioritized subject to artifact, license, and protocol
+compatibility \cite{lence2025ecgrecover,fang2026imputeecg}.  All reconstructors receive the same
+observed samples and mask.  Seeds, checkpoints, preprocessing, failures, and unavailable-method
+reasons are retained.
+
+\paragraph{Primary endpoint and test.}
+The primary outcome is patient-level target-lead normalized RMSE within segment.  For
+$(S,s,\ell,\text{reconstructor})$ cells, we first report rank association with the frozen map.  We
+then compare a baseline predictive model containing lead count, configuration rank, target RMS,
+maximum pairwise correlation, and global conditioning against the same model plus $q$.  Incremental
+out-of-sample fit, coefficient direction, and patient-cluster bootstrap intervals are co-primary
+evidence.  Segment- and model-specific contrasts are secondary and multiplicity controlled.
+External validation tests the frozen score--error relationship; subspace-angle agreement alone is
+insufficient.
+
+\begin{table}[t]
+\centering
+\caption{Primary claim--evidence matrix before the Stage~15 decision.}
+\label{tab:primary-evidence-long}
+\begin{tabular}{p{0.43\linewidth}p{0.22\linewidth}p{0.24\linewidth}}
+\toprule
+Evidence item & Gate value & Failure consequence \\
+\midrule
+Held-out score--error association & \ResultPrimaryAssociation & No positive primary claim \\
+Increment beyond simple covariates & \ResultIncrementalValue & Recast as descriptive map \\
+Rank/weight/bootstrap stability & \ResultRankWeightStability & Narrow supported scope \\
+External-cohort association & \ResultExternalAssociation & No transfer language \\
+Coverage across model families & \ResultModelCoverage & Model-specific conclusion \\
+Patient-level uncertainty & \ResultBootstrapUncertainty & Evidence gate fails \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Evidence gates, reproducibility, and decision policy}
+Stage~5 requires a verified literature ledger and a novelty statement that distinguishes the map
+from reconstruction methods.  Stage~9 freezes splits, endpoints, covariates, reconstructors,
+perturbations, exclusions, seeds, and decision rules.  Stage~15 permits \textsc{Proceed} only after
+a real non-simulated run provides immutable run identifiers, clean source state, dataset and split
+hashes, checkpoint hashes, leakage tests, patient-cluster uncertainty, a strong public baseline,
+external validation, and a completed claim--evidence matrix.  Stage~20 additionally requires no
+pending macros, verified citations, readable figures, a clean manuscript build, and a strict release
+audit.  \textsc{Refine} and \textsc{Pivot} are valid outcomes; negative and failed runs remain in the
+record.  The detailed contract is maintained in \texttt{docs/research\_protocol.md}.
+
+\section{Limitations and current status}
+The map is built from a fitted linear representation, while flexible models may exploit nonlinear
+population regularities.  Delineation, pathology mix, devices, noise, and lead placement can change
+both geometry and error.  One external cohort is not deployment validation, and waveform similarity
+is not diagnostic or clinical equivalence.  The current empirical status is deliberately
+\ResultPrimaryAssociation: the protocol is ready for gated execution, but it does not yet support a
+numerical abstract or a positive performance conclusion.
+
+\section{Conclusion}
+The intended contribution is a narrow, falsifiable diagnostic: a robust target-specific map that
+predicts held-out reconstruction difficulty beyond simple baselines and complements direct model
+benchmarking.  Its headline is conditional on the Stage~15 evidence decision.  The following pages
+retain earlier branches for auditability, separated from the primary narrative and evidence chain.
+
+\clearpage
+\appendix
+\section{Legacy supplement: conditional fixed-rank analysis}
+\label{app:legacy-theory}
+\LegacyBanner
+The material in this section assumes a fixed low-rank representation and studies conditional
+algebraic properties.  It is retained to preserve research history, not to justify the robust
+map--error hypothesis in the main paper.
+\input{theorem_corrected}
+\input{theorem_floor}
+\input{theorem_transfer}
+
+\section{Legacy supplement: calibration branch}
+\label{sec:calib}
+\LegacyBanner
+The earlier conformal-calibration branch addresses a different estimand from the robust score and is
+outside the primary claim.
+\input{results_v2_calib}
+
+\section{Legacy supplement: PTB-XL map, event, and baseline studies}
+\label{sec:exp}
+\LegacyBanner
+These analyses use the earlier fixed-rank formulation.  Their values are historical artifacts and
+must not populate the refactored manuscript without a new Stage~9 freeze and Stage~15 decision.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\linewidth]{../results/certificate_validation.png}
+  \caption{Legacy diagnostic retained for traceability.  It is not evidence for the robust
+  map--error claim and is excluded from the short submission.}
+  \label{fig:certval}
+\end{figure}
+\input{results_v2_maps}
+\input{results_v2_baseline}
+
+\section{Legacy supplement: sensitivity and cross-cohort branches}
+\label{sec:limits}
+\LegacyBanner
+Earlier subspace-angle and cross-cohort summaries are exploratory sensitivity analyses.  The new
+protocol instead requires external validation of the score--error relationship.
+\input{results_long_crossdata}
+
+\section{Legacy supplement: active lead-selection branch}
+\label{app:legacy-selection}
+\LegacyBanner
+The earlier greedy lead-selection analysis optimized a score fitted on one cohort and did not model
+electrode placement constraints.  It is not part of the current contribution and makes no selection
+or approximation claim.  A future prescriptive study would require a separate Stage~9 protocol,
+bootstrap and cross-cohort stability, and physical acquisition constraints.
+
+\section{Legacy supplement: diffusion and null-space branch}
+\label{app:legacy-generative}
+\LegacyBanner
+The following negative-result record concerns a different generative-model question.  It is retained
+for transparency and cannot be used to support the primary robust-map claim.
+\input{results_long_generative}
+
+\input{compliance}
+
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
+\end{document}

@@ -1,0 +1,88 @@
+\subsection*{An exact minimax recoverability floor}
+\label{sec:floor}
+Proposition~\ref{thm:perlead} says \emph{whether} a target lead's dipolar coordinate is recoverable
+($\eta{=}0$) and \emph{how well-conditioned} the estimate is ($\kappa$). We now give the \emph{exact}
+minimax risk of estimating the target's dipolar functional from the exact (noise-free) observation,
+over a second-moment class of dipole priors---turning the binary verdict into a per-lead risk in
+physical units. Fix segment $s$ and observed set $S$; let $\bm d\in\mathbb R^3$ be the dipole
+coordinate, $\bm y_S=\bm M_{s,S}\bm d$ the exact observation, and $\theta_\ell=\bm e_\ell^\top\bm M_s
+\bm d$ the target dipolar functional of lead $\ell$. Write the (orthogonal, symmetric) observed
+row-space projector $\bm P=\bm M_{s,S}^{+}\bm M_{s,S}$, $\bm Q=\bm I-\bm P$, and
+\[
+a_{s,\ell}(S)^2 = \bm e_\ell^\top\bm M_s\,\bm\Sigma_{Q\mid P}\,\bm M_s^\top\bm e_\ell,
+\qquad
+\bm\Sigma_{Q\mid P}=\bm Q\bm\Sigma_d\bm Q-\bm Q\bm\Sigma_d\bm P(\bm P\bm\Sigma_d\bm P)^{+}\bm P\bm\Sigma_d\bm Q ,
+\]
+where $\bm\Sigma_d\succ\bm0$ is a fixed dipole second-moment bound.
+
+\begin{theoremc}[Exact minimax dipolar floor]\label{thm:floor}
+Let $\mathcal P(\bm\Sigma_d)=\{\pi:\ \mathbb E_\pi[\bm d]=\bm0,\ \mathbb E_\pi[\bm d\bm d^\top]\preceq
+\bm\Sigma_d\}$. For the exact observation $\bm y_S=\bm M_{s,S}\bm d$, the minimax risk over \emph{all}
+measurable (possibly nonlinear) estimators $\hat\theta_\ell(\bm y_S)$ of $\theta_\ell$ satisfies
+\[
+\inf_{\hat\theta_\ell}\ \sup_{\pi\in\mathcal P(\bm\Sigma_d)}\
+\mathbb E_\pi\big[(\hat\theta_\ell(\bm y_S)-\theta_\ell)^2\big]\;=\;a_{s,\ell}(S)^2,
+\]
+attained by the Gaussian least-favourable prior $\pi^\star=\mathcal N(\bm0,\bm\Sigma_d)$ and a
+\emph{linear} estimator. Consequently $a_{s,\ell}(S)=0$ iff $\eta_{s,\ell}(S)=0$.
+\end{theoremc}
+
+\noindent\emph{Proof.}
+\textbf{Upper bound.} For a coefficient $\bm c$ the linear estimator $\bm c^\top\bm y_S$ has error
+$(\bm c^\top\bm M_{s,S}-\bm e_\ell^\top\bm M_s)\bm d=\bm g_{\bm c}^\top\bm d$, so for every
+$\pi\in\mathcal P(\bm\Sigma_d)$, $\mathbb E_\pi[(\bm c^\top\bm y_S-\theta_\ell)^2]=
+\bm g_{\bm c}^\top\mathbb E_\pi[\bm d\bm d^\top]\bm g_{\bm c}\le\bm g_{\bm c}^\top\bm\Sigma_d
+\bm g_{\bm c}$, with equality at $\pi^\star$. As $\bm c$ varies, $\bm M_{s,S}^\top\bm c$ ranges over
+$\operatorname{range}\bm P$, so $\min_{\bm c}\bm g_{\bm c}^\top\bm\Sigma_d\bm g_{\bm c}$ is the
+$\bm\Sigma_d$-projection residual of $\bm w:=\bm M_s^\top\bm e_\ell$ onto $\operatorname{range}\bm P$,
+$=\bm w^\top[\bm\Sigma_d-\bm\Sigma_d\bm P(\bm P\bm\Sigma_d\bm P)^{+}\bm P\bm\Sigma_d]\bm w$. Since
+conditioning on $\bm P\bm d$ removes all $\bm P$-variance, $\bm\Sigma_d-\bm\Sigma_d\bm P(\bm P
+\bm\Sigma_d\bm P)^{+}\bm P\bm\Sigma_d=\bm\Sigma_{Q\mid P}$, so this equals $a_{s,\ell}(S)^2$. Hence a
+linear estimator has worst-case risk $a_{s,\ell}(S)^2$ and the minimax risk is $\le a_{s,\ell}(S)^2$.
+\textbf{Lower bound.} The minimax risk is at least the Bayes risk under any single prior in the class;
+take $\pi^\star$. Its Bayes risk---the infimum over \emph{all} estimators of $\mathbb E_{\pi^\star}[(
+\hat\theta_\ell-\theta_\ell)^2]$---is attained by the posterior mean and equals
+$\mathrm{Var}_{\pi^\star}(\theta_\ell\mid\bm y_S)=a_{s,\ell}(S)^2$ (Gaussian conditioning: $\bm y_S$
+fixes $\bm P\bm d$ and the residual variance of $\bm e_\ell^\top\bm M_s\bm Q\bm d$ is the Schur
+complement $\bm\Sigma_{Q\mid P}$). Thus the minimax risk is $\ge a_{s,\ell}(S)^2$, and the two bounds
+coincide.
+\textbf{$a{=}0\!\iff\!\eta{=}0$.} $\eta_{s,\ell}(S)=\|\bm e_\ell^\top\bm M_s\bm Q\|_2$. If $\eta{=}0$
+then $\bm e_\ell^\top\bm M_s\bm Q=\bm0$, so $a^2=0$. If $\eta{>}0$ then $\bm v:=\bm Q^\top\bm M_s^\top
+\bm e_\ell\neq\bm0$; because $\bm\Sigma_d\succ\bm0$ the Schur complement $\bm\Sigma_{Q\mid P}$ is
+positive definite on $\operatorname{range}\bm Q$, so $a^2=\bm v^\top\bm\Sigma_{Q\mid P}\bm v>0$.
+\hfill$\square$
+
+\smallskip
+\noindent\textbf{Scope, and what the tests check.} The result is \emph{exact} and \emph{noise-free}:
+the minimax risk of the dipolar functional $\theta_\ell$ over the second-moment class
+$\mathcal P(\bm\Sigma_d)$ under an exact observation, with the infimum over all measurable estimators.
+We deliberately do \emph{not} state a noise-inflated or finite-sample ``floor.'' The observed-noise
+amplification $\kappa_{s,\ell}(S)=\|\bm e_\ell^\top\bm M_s\bm M_{s,S}^{+}\|_2$ (Prop.~\ref{thm:perlead})
+is an \emph{upper} bound on how observed noise/residual propagates into the estimate, not a lower risk
+floor; and a bootstrap minimum of $a_{s,\ell}$ over the estimated $\widehat{\bm M}_s$ is not a
+certified uniform confidence bound---so neither is claimed as part of the theorem. The certified
+object is the \emph{dipolar} functional; a floor on the full lead would require bounding the
+non-dipolar residual, which we instead meter with the distribution-free intervals of
+Sec.~\ref{sec:calib}. \texttt{tests/test\_floor.py} numerically checks that \emph{selected} estimators
+(the posterior mean, ridge, OLS) do not beat $a_{s,\ell}$ under $\pi^\star$: this validates the
+theorem on those estimators, it does not re-prove it.
+
+\smallskip
+\noindent\textbf{Operational value: $a_{s,\ell}$ predicts error.} The floor is a
+\emph{worst-case-prior} quantity, not an empirical envelope. On real ECG its value is as a
+\emph{predictor}: $a_{s,\ell}$ strongly predicts and ranks the measured per-lead dipolar error
+(Spearman $\CertValSpearAmb$, Pearson $\CertValPearAmb$; Fig.~\ref{fig:certval}) and the
+identifiable/unidentifiable split is separated with AUC $\CertValAUC$. Because it is worst-case over
+$\mathcal P(\bm\Sigma_d)$, estimators exploiting the true (non-Gaussian) population structure fall
+\emph{below} it on a fraction of the $\CertValNetaPos$ non-trivial ($\eta{>}0$) cells (the pure-dipolar
+reconstructor on $\CertValViolDip$, ridge/OLS on $\CertValViolRidge$). This below-floor gap and the
+Tier-II residual used by the calibration analysis in Sec.~\ref{sec:calib} are \emph{different
+objects}: the former compares an estimator's empirical-population risk with a worst-case-prior
+benchmark, whereas the latter is a record-level prediction error under a specified reconstructor and
+feature definition. No equality, decomposition, or coverage relationship follows between them. Any
+empirical association would require a separately frozen held-out analysis. The observed below-floor
+cases remain consistent with the theorem, which concerns the worst case rather than the risk under a
+single empirical population.
+The $\eta$-split likewise predicts a trained diffusion model's error (median $\FloorDiffEtaZero$ vs
+$\FloorDiffEtaPos$\,mV for $\eta{=}0$ vs $\eta{>}0$;
+\texttt{experiments/certificate\_floor\_diffusion.py}).

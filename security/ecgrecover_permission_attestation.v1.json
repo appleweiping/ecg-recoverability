@@ -1,0 +1,13 @@
+{
+  "schema_version": "ecgrecover-permission-attestation-v1",
+  "upstream_repository": "https://git.ummisco.fr/open/2024-ecg-recover.git",
+  "upstream_commit": "ed49dddf8e5e599b8af702e871a1f66b1d628518",
+  "attested_by": "project_owner",
+  "attested_at": "2026-07-19T00:00:00+08:00",
+  "author_permission_received": true,
+  "permission_scope_used_by_project": "research execution and evaluation through a non-vendored exact-commit checkout",
+  "repository_license_status_acknowledged": "NOASSERTION",
+  "source_or_weight_redistribution_by_this_repository": false,
+  "external_permission_record_review_required": true,
+  "stage9_disposition": "A signed Stage 9 review must bind this attestation, the upstream pin, and the integration descriptor before official baseline execution."
+}
