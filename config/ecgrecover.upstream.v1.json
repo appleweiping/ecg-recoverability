@@ -1,0 +1,40 @@
+{
+  "schema_version": "upstream-pin-v1",
+  "name": "ECGrecover",
+  "repository": "https://git.ummisco.fr/open/2024-ecg-recover.git",
+  "project_url": "https://git.ummisco.fr/open/2024-ecg-recover",
+  "gitlab_project_id": 136,
+  "default_branch": "main",
+  "commit": "ed49dddf8e5e599b8af702e871a1f66b1d628518",
+  "commit_url": "https://git.ummisco.fr/open/2024-ecg-recover/-/commit/ed49dddf8e5e599b8af702e871a1f66b1d628518",
+  "parent_commit": "7691f12a89fe4341b70b8975f07041a86601d0bd",
+  "root_tree_object": "980f872d6d25b1291942f4929d1417abec66fe1e",
+  "commit_authored_at": "2024-02-08T19:28:37Z",
+  "commit_author": "Alex Lence <alex.lence@ird.fr>",
+  "ref_verified_at": "2026-07-19T00:00:00+08:00",
+  "ref_verification": "git ls-remote: HEAD and refs/heads/main both equal commit",
+  "paper": {
+    "title": "ECGrecover: a Deep Learning Approach for Electrocardiogram Signal Completion",
+    "doi": "10.1145/3690624.3709405",
+    "arxiv": "2406.16901"
+  },
+  "license": {
+    "spdx": "NOASSERTION",
+    "repository_license_file": null,
+    "gitlab_detected_license": null,
+    "redistribution_by_this_repository": false,
+    "permission_basis": "author_permission_reported_by_project_owner",
+    "permission_evidence_policy": "author-controlled record must be reviewed at ARC Stage 9 before redistribution"
+  },
+  "tracked_source_sha256": {
+    "environment.yml": "7e4f6b0f61b5c0809f59fce6d9e639047fdae9f982b8530f26c61c85f289850a",
+    "learn/Training.py": "3b3d986040932cbfe593198f512faaf0fe34835541dc4ef6c756f20382b856b0",
+    "main.py": "f384970c6b3499c0b6bc4f663ce1710c6270b2e70e2a1b3b85e1183e87bd342a",
+    "readme.md": "3b2469bd0dbb635efecc755ee0f9ad3d08a4486809a46f5a01990ed670e6d9c3",
+    "tools/CompleteData.py": "8d228b4a6a3bd8b967b113d210f345d0a2fa4b631d21c70477974dc1a6405df5",
+    "tools/LoadModel.py": "2d9e0a51b7e588ab36b89945b15dbdf6dbc72c5369fa3a47f91cb188dff53bd6",
+    "tools/LossFunction.py": "fc8ad1c14d9bbbf9c3a95792081fe8b72c5ee920b50456a567f2e7b50d609049",
+    "tools/PreProcesing.py": "4c00bcca3cedb38c67a4d0762f7fae0a01567ad6532bc0c395d8082800fd7a34"
+  },
+  "vendored": false
+}

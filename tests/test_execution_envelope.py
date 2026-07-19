@@ -28,6 +28,8 @@ def _valid_envelope():
         "hardware": {"cpu_count": 1},
         "seed": 0,
         "upstream_sha256": {},
+        "late_control_inputs_sha256": {},
+        "late_control_snapshot_sha256": digest,
         "checkpoint_sha256": {},
         "outputs_sha256": {"result.json": digest},
     }
@@ -44,7 +46,8 @@ def test_result_envelope_roundtrip(tmp_path):
 @pytest.mark.parametrize("field", [
     "commit", "dirty", "argv", "config_sha256", "data_sha256", "split_sha256",
     "env_sha256", "environment_lock_sha256", "source_sha256", "hardware", "seed",
-    "upstream_sha256", "checkpoint_sha256",
+    "upstream_sha256", "late_control_inputs_sha256",
+    "late_control_snapshot_sha256", "checkpoint_sha256",
 ])
 def test_result_envelope_missing_or_null_fails(field):
     value = _valid_envelope()

@@ -8,7 +8,6 @@ an obligatory, hashed argv descriptor for the thin, separately auditable bridge.
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict
 import json
 import os
 from pathlib import Path
@@ -38,6 +37,8 @@ from ecgcert.official_baselines import (
     source_tree_sha256,
 )
 from ecgcert.protocol import PRIMARY_RATE_HZ, configuration_panel_sha256
+from ecgcert.protocol import PRIMARY_SEGMENTS
+from ecgcert.training_inclusion import TrainingInclusion, load_training_inclusion
 
 try:
     from experiments.reconstruction_benchmark_v3 import (
@@ -72,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--upstreams", type=Path, required=True)
     parser.add_argument("--ecgrecover-integration", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--training-inclusion", type=Path)
     parser.add_argument("--seeds", type=_parse_seeds, default=RELEASE_SEEDS)
     parser.add_argument("--max-records", type=int)
     parser.add_argument("--release", action="store_true")
@@ -87,6 +89,8 @@ def validate_arguments(arguments: argparse.Namespace) -> None:
             violations.append("--max-records is forbidden")
         if tuple(arguments.seeds) != RELEASE_SEEDS:
             violations.append("release seeds must be exactly 0,1,2,3,4")
+        if getattr(arguments, "training_inclusion", None) is None:
+            violations.append("--training-inclusion is required")
         try:
             arguments.output_dir.resolve().relative_to((Path.cwd() / "artifacts").resolve())
         except ValueError:
@@ -113,6 +117,7 @@ def _method_configs(
     source_dirs: Mapping[str, Path],
     source_trees: Mapping[str, str],
     integration: Any,
+    training_inclusion: TrainingInclusion,
     seeds: Sequence[int],
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Build per-run configs plus the combined no-outcome-tuning config."""
@@ -121,6 +126,7 @@ def _method_configs(
     impute_data = final_data / "imputeecg"
     ecgrecover_data = final_data / "ecgrecover"
     bridge_replacements = {
+        "python": sys.executable,
         "source_dir": str(source_dirs["ecgrecover"]),
         "data_dir": str(ecgrecover_data),
         "bridge_root": str(integration.bridge_root),
@@ -128,12 +134,11 @@ def _method_configs(
     train_command = replace_markers(integration.train_command, bridge_replacements)
     inference_command = replace_markers(integration.inference_command, bridge_replacements)
     checkpoint = replace_markers([integration.checkpoint], bridge_replacements)[0]
-    if "{source_dir}" in "\n".join(inference_command + train_command):
-        raise ValueError("unresolved {source_dir} in ECGrecover integration")
-    if "{data_dir}" in "\n".join(inference_command + train_command):
-        raise ValueError("unresolved {data_dir} in ECGrecover integration")
-    if "{bridge_root}" in "\n".join(inference_command + train_command):
-        raise ValueError("unresolved {bridge_root} in ECGrecover integration")
+    unresolved = ("python", "source_dir", "data_dir", "bridge_root")
+    joined_commands = "\n".join(inference_command + train_command)
+    for marker in unresolved:
+        if "{" + marker + "}" in joined_commands:
+            raise ValueError(f"unresolved {{{marker}}} in ECGrecover integration")
 
     imputeecg = {
         "schema_version": CONFIG_SCHEMA_VERSION,
@@ -145,6 +150,9 @@ def _method_configs(
         "source_tree_sha256": source_trees["imputeecg"],
         "manifest_sha256": contract.manifest_sha256,
         "split_sha256": contract.split_sha256,
+        "training_inclusion_sha256": training_inclusion.inclusion_sha256,
+        "training_record_ids_sha256": training_inclusion.record_ids_sha256,
+        "training_patient_ids_sha256": training_inclusion.patient_ids_sha256,
         "train_role": "folds1-7/train",
         "official_data_path": str(impute_data),
         "parameters": dict(IMPUTE_ECG_PARAMETERS),
@@ -153,6 +161,7 @@ def _method_configs(
             "train_data_mask.npy": arrays["imputeecg_masked_observation"]["sha256"],
             "training_records.v3.json": arrays["record_order"]["sha256"],
         },
+        "training_records_path": str(final_data / "training_records.v3.json"),
         "seeds": list(seeds),
     }
     ecgrecover = {
@@ -165,9 +174,15 @@ def _method_configs(
         "source_tree_sha256": source_trees["ecgrecover"],
         "manifest_sha256": contract.manifest_sha256,
         "split_sha256": contract.split_sha256,
+        "training_inclusion_sha256": training_inclusion.inclusion_sha256,
+        "training_record_ids_sha256": training_inclusion.record_ids_sha256,
+        "training_patient_ids_sha256": training_inclusion.patient_ids_sha256,
         "train_role": "folds1-7/train",
         "input_lead": integration.input_lead,
         "native_rate_hz": integration.native_rate_hz,
+        "model_samples": integration.model_samples,
+        "inference_records_per_process": integration.inference_records_per_process,
+        "inference_micro_batch_size": integration.inference_micro_batch_size,
         "benchmark_rate_hz": PRIMARY_RATE_HZ,
         "official_data_path": str(ecgrecover_data),
         "ground_truth_path": str(impute_data / "train_data_gt.npy"),
@@ -179,12 +194,17 @@ def _method_configs(
         "upstream_source_files": list(integration.upstream_source_files),
         "bridge_root": str(integration.bridge_root),
         "bridge_files": list(integration.bridge_files),
+        "license_spdx": integration.license_spdx,
+        "redistribution": integration.redistribution,
+        "permission_basis": integration.permission_basis,
+        "adaptation_disclosure": list(integration.adaptation_disclosure),
         "array_sha256": {
             "ground_truth": arrays["imputeecg_ground_truth"]["sha256"],
             "single_lead_input": arrays["ecgrecover_single_lead_input"]["sha256"],
             "dataset.v3.json": arrays["ecgrecover_dataset"]["sha256"],
             "training_records.v3.json": arrays["record_order"]["sha256"],
         },
+        "training_records_path": str(final_data / "training_records.v3.json"),
         "scope": "published single-input-lead task; never treated as arbitrary-mask parity",
         "seeds": list(seeds),
     }
@@ -193,6 +213,9 @@ def _method_configs(
         "status": "complete",
         "manifest_sha256": contract.manifest_sha256,
         "split_sha256": contract.split_sha256,
+        "training_inclusion_sha256": training_inclusion.inclusion_sha256,
+        "training_record_ids_sha256": training_inclusion.record_ids_sha256,
+        "training_patient_ids_sha256": training_inclusion.patient_ids_sha256,
         "configuration_panel_sha256": configuration_panel_sha256(),
         "methods": {
             "imputeecg": {
@@ -206,7 +229,13 @@ def _method_configs(
                     "published_task": "single-input",
                     "input_lead": integration.input_lead,
                     "native_rate_hz": integration.native_rate_hz,
+                    "model_samples": integration.model_samples,
+                    "inference_records_per_process": (
+                        integration.inference_records_per_process
+                    ),
+                    "inference_micro_batch_size": integration.inference_micro_batch_size,
                     "benchmark_rate_hz": PRIMARY_RATE_HZ,
+                    "adaptation_disclosure": list(integration.adaptation_disclosure),
                 },
                 "method_config": str(final_output / "ecgrecover.config.v3.json"),
             },
@@ -237,16 +266,31 @@ def _rebase_artifact_paths(
     return copied
 
 
+def _remove_orphan_staging_directories(output: Path) -> None:
+    """Clean only UUID staging directories owned by this exact output bundle."""
+
+    parent = output.resolve().parent
+    prefix = f".{output.name}.tmp-"
+    for path in sorted(parent.glob(f"{prefix}*")):
+        resolved = path.resolve()
+        if resolved.parent != parent or not resolved.name.startswith(prefix):
+            raise ValueError("unsafe official-baseline staging cleanup target")
+        if not resolved.is_dir():
+            raise ValueError("official-baseline staging residue is not a directory")
+        shutil.rmtree(resolved)
+
+
 def run(arguments: argparse.Namespace) -> dict[str, Any]:
     validate_arguments(arguments)
     output = arguments.output_dir.resolve()
     if output.exists():
         raise FileExistsError(f"refusing to overwrite official baseline artifact: {output}")
+    _remove_orphan_staging_directories(output)
     upstreams = arguments.upstreams.resolve()
     if not upstreams.is_dir():
         raise FileNotFoundError(upstreams)
 
-    contract = load_ptbxl_manifest(arguments.manifest)
+    contract = load_ptbxl_manifest(arguments.manifest, release=arguments.release)
     all_ids = tuple(
         record_id
         for role in ("train", "tune", "calibration", "test")
@@ -255,6 +299,21 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
     _verify_manifest_files(contract, all_ids, rate=PRIMARY_RATE_HZ)
     db = PTBXL(contract.root)
     _validate_database_identity(db, contract, all_ids)
+    requested_train_ids = contract.record_ids("train", arguments.max_records)
+    if arguments.training_inclusion is None:
+        raise ValueError("official baseline preparation requires --training-inclusion")
+    training_inclusion = load_training_inclusion(
+        arguments.training_inclusion,
+        source_manifest_path=arguments.manifest,
+        source_manifest_sha256=contract.manifest_sha256,
+        split_sha256=contract.split_sha256,
+        expected_record_ids=requested_train_ids,
+        expected_records=contract.records,
+        rate_hz=PRIMARY_RATE_HZ,
+        segments=PRIMARY_SEGMENTS,
+        delineator="dwt",
+        configuration_panel_sha256=configuration_panel_sha256(),
+    )
 
     source_dirs = {
         "imputeecg": pinned_source_dir(upstreams, IMPUTE_ECG),
@@ -276,20 +335,21 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
         arguments.ecgrecover_integration,
         source_dir=source_dirs["ecgrecover"],
     )
-    record_ids = contract.record_ids("train", arguments.max_records)
-    if arguments.release and tuple(record_ids) != tuple(contract.split["train"]):
+    record_ids = training_inclusion.included_record_ids
+    if arguments.release and tuple(requested_train_ids) != tuple(contract.split["train"]):
         raise ValueError("release preparation must contain the complete folds 1-7 train split")
     def training_records():
-        for record_id in record_ids:
-            signal, audit = db.signal_with_audit(int(record_id), rate=PRIMARY_RATE_HZ)
+        for record_id, patient_id, signal, audit in training_inclusion.iter_validated_signals(
+            db, contract.records
+        ):
             audit_value = {
                 key: value
-                for key, value in asdict(audit).items()
+                for key, value in dict(audit).items()
                 if value is not None
             }
             yield OfficialTrainingRecord(
                 record_id=record_id,
-                patient_id=str(contract.records[record_id]["patient_id"]),
+                patient_id=patient_id,
                 signal=signal,
                 source_audit=audit_value,
             )
@@ -305,6 +365,17 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
             ecgrecover_input_lead=integration.input_lead,
             n_records=len(record_ids),
         )
+        record_order = arrays.get("record_order", {})
+        if (
+            not isinstance(record_order, Mapping)
+            or record_order.get("record_ids_sha256")
+            != training_inclusion.record_ids_sha256
+            or record_order.get("patient_ids_sha256")
+            != training_inclusion.patient_ids_sha256
+        ):
+            raise ValueError(
+                "official arrays changed the shared ordered training record/patient cohort"
+            )
         imputeecg, ecgrecover, combined = _method_configs(
             final_output=output,
             contract=contract,
@@ -312,6 +383,7 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
             source_dirs=source_dirs,
             source_trees=source_trees,
             integration=integration,
+            training_inclusion=training_inclusion,
             seeds=arguments.seeds,
         )
         # Paths inside the array lineage are made final before it is persisted.
@@ -349,6 +421,19 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
                 "verified_500hz_records": len(all_ids),
             },
             "train_role": "folds1-7/train",
+            "training_inclusion": {
+                "path": str(training_inclusion.path),
+                "file_sha256": sha256_file(training_inclusion.path),
+                "sha256": training_inclusion.inclusion_sha256,
+                "record_ids_sha256": training_inclusion.record_ids_sha256,
+                "patient_ids_sha256": training_inclusion.patient_ids_sha256,
+                "n_requested_records": len(training_inclusion.requested_record_ids),
+                "n_included_records": len(training_inclusion.included_record_ids),
+                "n_excluded_records": (
+                    len(training_inclusion.requested_record_ids)
+                    - len(training_inclusion.included_record_ids)
+                ),
+            },
             "n_train_records": len(record_ids),
             "rate_hz": PRIMARY_RATE_HZ,
             "normalization": "raw_mV",

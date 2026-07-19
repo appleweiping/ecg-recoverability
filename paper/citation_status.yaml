@@ -77,13 +77,13 @@ citations:
     status: "verified_primary"
     verified_fields:
       - "title"
+      - "authors"
       - "arXiv identifier"
       - "submission year"
     source: "https://arxiv.org/abs/2607.05009"
     note: >-
-      The author list in refs.bib is abbreviated with `and others`; expand it
-      from the primary record during the Stage 5 citation freeze if required by
-      the destination style.
+      The complete author list in refs.bib was expanded from the primary arXiv
+      record and rechecked during the Stage 5 citation audit.
 
   - key: "pagotto2025minimal"
     work: >-

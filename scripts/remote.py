@@ -6,7 +6,11 @@ Usage:
   python scripts/remote.py get remotepath localpath
   python scripts/remote.py put_dir localdir remotedir   # recursive upload
 
-Host settings come from env; authentication is key/agent only and host keys are pinned.
+Host settings come from env; authentication is explicit-key-only and host keys are pinned.
+
+This legacy convenience helper is forbidden for run-workspace ``artifacts/gates``
+controls. Use ``scripts/publish_remote_control.py`` for atomic no-overwrite upload
+and remote SHA-256 readback.
 """
 from __future__ import annotations
 
@@ -24,6 +28,14 @@ PORT = int(os.environ.get("REMOTE_PORT", "22"))
 USER = os.environ.get("REMOTE_USER", "root")
 KNOWN_HOSTS = os.environ.get("REMOTE_KNOWN_HOSTS")
 KEY_PATH = os.environ.get("REMOTE_KEY_PATH")
+
+
+def _reject_gate_control_target(remote: str) -> None:
+    normalized = str(remote).replace("\\", "/").rstrip("/")
+    if "/workspace/artifacts/gates" in normalized + "/":
+        raise RuntimeError(
+            "run control artifacts require scripts/publish_remote_control.py"
+        )
 
 
 def client():
@@ -56,6 +68,7 @@ def run(cmd: str, get_pty: bool = False) -> int:
 
 
 def put(local: str, remote: str) -> None:
+    _reject_gate_control_target(remote)
     c = client()
     sf = c.open_sftp()
     _mkdirs(sf, str(Path(remote).parent).replace("\\", "/"))
@@ -87,6 +100,7 @@ def _mkdirs(sf, remote_dir: str) -> None:
 
 
 def put_dir(localdir: str, remotedir: str) -> None:
+    _reject_gate_control_target(remotedir)
     c = client()
     sf = c.open_sftp()
     localdir = str(localdir)

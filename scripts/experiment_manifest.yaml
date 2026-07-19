@@ -1,6 +1,16 @@
 schema_version: 1
 nodes:
   # Frozen v3 primary line.  Every output is an isolated runner artifact bundle.
+  - id: repository_secret_scan
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/scan_repository_secrets.py", "--output", "artifacts/control/security/repository-secret-scan.v1.json"]
+    resource: {kind: cpu, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: []
+    inputs: []
+    outputs: ["artifacts/control/security/repository-secret-scan.v1.json"]
+    timeout: 1800
+    seed: 0
+
   - id: ptbxl_manifest
     profile: [icassp, extended]
     command: ["{python}", "scripts/prepare_data_manifests.py", "--cohort", "ptbxl", "--root", "data/ptbxl", "--output", "artifacts/manifests/ptbxl.json"]
@@ -33,30 +43,31 @@ nodes:
 
   - id: public_baseline_checkouts
     profile: [icassp, extended]
-    command: ["{python}", "scripts/checkout_upstreams.py", "--model", "all", "--destination", "artifacts/upstreams"]
+    command: ["{python}", "scripts/checkout_upstreams.py", "--model", "all", "--source-root", "upstreams", "--offline", "--destination", "artifacts/upstreams"]
     resource: {kind: cpu, cpus: 2, memory_gb: 8, gpus: 0}
     deps: []
-    inputs: []
+    inputs: ["upstreams"]
     outputs: ["artifacts/upstreams"]
     timeout: 7200
     seed: 0
 
-  - id: arc_stage5_control
+  - id: arc_stage5_waiting
     profile: [icassp, extended]
-    command: ["{python}", "scripts/wait_for_arc_control.py", "--bundle", "artifacts/gates/arc-stage5", "--stage", "5", "--output", "artifacts/control/arc/stage5/report.v1.json", "--timeout-hours", "24"]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "waiting", "--bundle", "artifacts/gates/arc-stage5-waiting", "--stage", "5", "--output", "artifacts/control/arc/stage5/waiting.v1.json", "--timeout-hours", "24"]
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
     deps: []
     inputs: []
-    outputs: ["artifacts/control/arc/stage5/report.v1.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage5-waiting"]
+    outputs: ["artifacts/control/arc/stage5/waiting.v1.json"]
     timeout: 86700
     seed: 0
 
   - id: stage5_gate
     profile: [icassp, extended]
-    command: ["{python}", "experiments/stage_gates_v3.py", "--mode", "stage5", "--arc-control", "artifacts/control/arc/stage5/report.v1.json", "--manuscript", "paper/main_v2.tex", "--registry", "arc_audit/verified_registry.v1.json", "--output-dir", "artifacts/control/stage5"]
+    command: ["{python}", "experiments/stage_gates_v3.py", "--mode", "stage5", "--arc-control", "artifacts/control/arc/stage5/waiting.v1.json", "--manuscript", "paper/main_v2.tex", "--registry", "arc_audit/verified_registry.v1.json", "--output-dir", "artifacts/control/stage5"]
     resource: {kind: paper, cpus: 2, memory_gb: 8, gpus: 0}
-    deps: [arc_stage5_control]
-    inputs: ["artifacts/control/arc/stage5/report.v1.json", "paper/main_v2.tex", "arc_audit/verified_registry.v1.json"]
+    deps: [arc_stage5_waiting]
+    inputs: ["artifacts/control/arc/stage5/waiting.v1.json", "paper/main_v2.tex", "arc_audit/verified_registry.v1.json"]
     outputs: ["artifacts/control/stage5"]
     timeout: 1800
     seed: 0
@@ -67,26 +78,49 @@ nodes:
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
     deps: [stage5_gate]
     inputs: ["artifacts/control/stage5", "security/reviewer_ed25519.pub"]
+    late_control_inputs: ["artifacts/gates/stage5.approval.v3.json"]
     outputs: ["artifacts/control/stage5_review"]
     timeout: 86700
     seed: 0
 
-  - id: arc_stage9_control
+  - id: arc_stage5_forward
     profile: [icassp, extended]
-    command: ["{python}", "scripts/wait_for_arc_control.py", "--bundle", "artifacts/gates/arc-stage9", "--stage", "9", "--output", "artifacts/control/arc/stage9/report.v1.json", "--timeout-hours", "24"]
+    command: ["{python}", "scripts/forward_arc_stage_review.py", "--waiting-report", "artifacts/control/arc/stage5/waiting.v1.json", "--reviewed-gate", "artifacts/control/stage5_review/decision.v3.json", "--public-key", "security/reviewer_ed25519.pub", "--output", "artifacts/gates/arc-operator-responses/stage-05/operator-response.v2.json"]
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
-    deps: [stage5_review]
-    inputs: ["artifacts/control/stage5_review"]
-    outputs: ["artifacts/control/arc/stage9/report.v1.json"]
+    deps: [stage5_review, arc_stage5_waiting]
+    inputs: ["artifacts/control/arc/stage5/waiting.v1.json", "artifacts/control/stage5_review/decision.v3.json", "security/reviewer_ed25519.pub"]
+    outputs: ["artifacts/gates/arc-operator-responses/stage-05/operator-response.v2.json"]
+    timeout: 600
+    seed: 0
+
+  - id: arc_stage5_control
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "final", "--bundle", "artifacts/gates/arc-stage5", "--stage", "5", "--output", "artifacts/control/arc/stage5/report.v1.json", "--timeout-hours", "24"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [arc_stage5_forward]
+    inputs: ["artifacts/gates/arc-operator-responses/stage-05/operator-response.v2.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage5"]
+    outputs: ["artifacts/control/arc/stage5/report.v1.json"]
+    timeout: 86700
+    seed: 0
+
+  - id: arc_stage9_waiting
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "waiting", "--bundle", "artifacts/gates/arc-stage9-waiting", "--stage", "9", "--previous-report", "artifacts/control/arc/stage5/report.v1.json", "--output", "artifacts/control/arc/stage9/waiting.v1.json", "--timeout-hours", "24"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [arc_stage5_control]
+    inputs: ["artifacts/control/arc/stage5/report.v1.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage9-waiting"]
+    outputs: ["artifacts/control/arc/stage9/waiting.v1.json"]
     timeout: 86700
     seed: 0
 
   - id: stage9_gate
     profile: [icassp, extended]
-    command: ["{python}", "experiments/stage_gates_v3.py", "--mode", "stage9", "--arc-control", "artifacts/control/arc/stage9/report.v1.json", "--protocol", "docs/research_protocol.md", "--experiment-manifest", "scripts/experiment_manifest.yaml", "--arc-config", "arc_audit/config.arc.yaml", "--security-status", "security/remote_status.v1.json", "--output-dir", "artifacts/control/stage9"]
+    command: ["{python}", "experiments/stage_gates_v3.py", "--mode", "stage9", "--arc-control", "artifacts/control/arc/stage9/waiting.v1.json", "--protocol", "docs/research_protocol.md", "--experiment-manifest", "scripts/experiment_manifest.yaml", "--arc-config", "arc_audit/config.arc.yaml", "--security-status", "security/remote_status.v2.json", "--repository-secret-scan", "artifacts/control/security/repository-secret-scan.v1.json", "--ecgrecover-integration", "config/ecgrecover.integration.v3.json", "--ecgrecover-upstream", "config/ecgrecover.upstream.v1.json", "--ecgrecover-permission", "security/ecgrecover_permission_attestation.v1.json", "--remote-legacy-archive", "security/remote_legacy_archive.v1.json", "--output-dir", "artifacts/control/stage9"]
     resource: {kind: paper, cpus: 2, memory_gb: 8, gpus: 0}
-    deps: [arc_stage9_control]
-    inputs: ["artifacts/control/arc/stage9/report.v1.json", "docs/research_protocol.md", "scripts/experiment_manifest.yaml", "arc_audit/config.arc.yaml", "security/remote_status.v1.json"]
+    deps: [arc_stage9_waiting, repository_secret_scan]
+    inputs: ["artifacts/control/arc/stage9/waiting.v1.json", "artifacts/control/security/repository-secret-scan.v1.json", "docs/research_protocol.md", "scripts/experiment_manifest.yaml", "arc_audit/config.arc.yaml", "security/remote_status.v2.json", "config/ecgrecover.integration.v3.json", "config/ecgrecover.upstream.v1.json", "security/ecgrecover_permission_attestation.v1.json", "security/remote_legacy_archive.v1.json"]
     outputs: ["artifacts/control/stage9"]
     timeout: 1800
     seed: 0
@@ -97,13 +131,24 @@ nodes:
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
     deps: [stage9_gate]
     inputs: ["artifacts/control/stage9", "security/reviewer_ed25519.pub"]
+    late_control_inputs: ["artifacts/gates/stage9.approval.v3.json"]
     outputs: ["artifacts/control/stage9_review"]
     timeout: 86700
     seed: 0
 
+  - id: cuda_contract_tests
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/run_cuda_contract_tests.py", "--repo", ".", "--upstreams", "artifacts/upstreams", "--output-dir", "artifacts/control/cuda_contract_tests", "--timeout-seconds", "10800"]
+    resource: {kind: gpu, cpus: 8, memory_gb: 56, gpus: 1}
+    deps: [public_baseline_checkouts, stage9_review]
+    inputs: ["artifacts/upstreams", "artifacts/control/stage9_review"]
+    outputs: ["artifacts/control/cuda_contract_tests"]
+    timeout: 14400
+    seed: 27
+
   - id: robust_rank_maps
     profile: [icassp, extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--manifest", "artifacts/manifests/ptbxl.json", "--segments", "QRS,ST,T", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/primary/robust_rank_maps"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--manifest", "artifacts/manifests/ptbxl.json", "--segments", "QRS,ST,T", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/primary/robust_rank_maps"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, stage9_review]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/control/stage9_review"]
@@ -113,20 +158,30 @@ nodes:
 
   - id: reconstruction_candidates
     profile: [icassp, extended]
-    command: ["{python}", "experiments/reconstruction_candidates_v3.py", "--manifest", "artifacts/manifests/ptbxl.json", "--output-dir", "artifacts/primary/reconstruction_candidates", "--device", "cuda:0", "--release"]
+    command: ["{python}", "experiments/reconstruction_candidates_v3.py", "--manifest", "artifacts/manifests/ptbxl.json", "--training-inclusion", "artifacts/primary/reconstruction_training_inclusion/training_inclusion.v1.json", "--output-dir", "artifacts/primary/reconstruction_candidates", "--device", "cuda:0", "--release"]
     resource: {kind: gpu, cpus: 8, memory_gb: 56, gpus: 1}
-    deps: [ptbxl_manifest, stage9_review]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/control/stage9_review"]
+    deps: [ptbxl_manifest, reconstruction_training_inclusion, stage9_review, cuda_contract_tests]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/reconstruction_training_inclusion", "artifacts/control/stage9_review", "artifacts/control/cuda_contract_tests"]
     outputs: ["artifacts/primary/reconstruction_candidates"]
     timeout: 86400
     seed: 0
 
+  - id: reconstruction_training_inclusion
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/prepare_training_inclusion_v3.py", "--manifest", "artifacts/manifests/ptbxl.json", "--output-dir", "artifacts/primary/reconstruction_training_inclusion", "--release"]
+    resource: {kind: cpu, cpus: 8, memory_gb: 16, gpus: 0}
+    deps: [ptbxl_manifest, stage9_review]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/control/stage9_review"]
+    outputs: ["artifacts/primary/reconstruction_training_inclusion"]
+    timeout: 43200
+    seed: 0
+
   - id: official_baseline_preparation
     profile: [icassp, extended]
-    command: ["{python}", "scripts/prepare_official_baselines_v3.py", "--manifest", "artifacts/manifests/ptbxl.json", "--upstreams", "artifacts/upstreams", "--ecgrecover-integration", "config/ecgrecover.integration.v3.json", "--output-dir", "artifacts/primary/official_baselines", "--seeds", "0,1,2,3,4", "--release"]
+    command: ["{python}", "scripts/prepare_official_baselines_v3.py", "--manifest", "artifacts/manifests/ptbxl.json", "--training-inclusion", "artifacts/primary/reconstruction_training_inclusion/training_inclusion.v1.json", "--upstreams", "artifacts/upstreams", "--ecgrecover-integration", "config/ecgrecover.integration.v3.json", "--output-dir", "artifacts/primary/official_baselines", "--seeds", "0,1,2,3,4", "--release"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
-    deps: [ptbxl_manifest, public_baseline_checkouts, stage9_review]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/upstreams", "artifacts/control/stage9_review", "config/ecgrecover.integration.v3.json"]
+    deps: [ptbxl_manifest, reconstruction_training_inclusion, public_baseline_checkouts, stage9_review, cuda_contract_tests]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/reconstruction_training_inclusion", "artifacts/upstreams", "artifacts/control/stage9_review", "artifacts/control/cuda_contract_tests", "config/ecgrecover.integration.v3.json"]
     outputs: ["artifacts/primary/official_baselines"]
     timeout: 28800
     seed: 0
@@ -143,50 +198,50 @@ nodes:
 
   - id: benchmark_lowrank
     profile: [icassp, extended]
-    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "lowrank", "--manifest", "artifacts/manifests/ptbxl.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--release", "--output-dir", "artifacts/primary/reconstruction/lowrank"]
+    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "lowrank", "--manifest", "artifacts/manifests/ptbxl.json", "--training-inclusion", "artifacts/primary/reconstruction_training_inclusion/training_inclusion.v1.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--release", "--output-dir", "artifacts/primary/reconstruction/lowrank"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
-    deps: [ptbxl_manifest, robust_rank_maps, reconstruction_tuning]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction_tuning.v3.json"]
+    deps: [ptbxl_manifest, reconstruction_training_inclusion, robust_rank_maps, reconstruction_tuning]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/reconstruction_training_inclusion", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction_tuning.v3.json"]
     outputs: ["artifacts/primary/reconstruction/lowrank"]
     timeout: 21600
     seed: 0
 
   - id: benchmark_ridge
     profile: [icassp, extended]
-    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "ridge", "--manifest", "artifacts/manifests/ptbxl.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--release", "--output-dir", "artifacts/primary/reconstruction/ridge"]
+    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "ridge", "--manifest", "artifacts/manifests/ptbxl.json", "--training-inclusion", "artifacts/primary/reconstruction_training_inclusion/training_inclusion.v1.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--release", "--output-dir", "artifacts/primary/reconstruction/ridge"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
-    deps: [ptbxl_manifest, robust_rank_maps, reconstruction_tuning]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction_tuning.v3.json"]
+    deps: [ptbxl_manifest, reconstruction_training_inclusion, robust_rank_maps, reconstruction_tuning]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/reconstruction_training_inclusion", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction_tuning.v3.json"]
     outputs: ["artifacts/primary/reconstruction/ridge"]
     timeout: 21600
     seed: 0
 
   - id: benchmark_masked_unet
     profile: [icassp, extended]
-    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "masked-unet", "--manifest", "artifacts/manifests/ptbxl.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--device", "cuda:0", "--seeds", "0,1,2,3,4", "--release", "--output-dir", "artifacts/primary/reconstruction/masked_unet"]
+    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "masked-unet", "--manifest", "artifacts/manifests/ptbxl.json", "--training-inclusion", "artifacts/primary/reconstruction_training_inclusion/training_inclusion.v1.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--device", "cuda:0", "--seeds", "0,1,2,3,4", "--release", "--output-dir", "artifacts/primary/reconstruction/masked_unet"]
     resource: {kind: gpu, cpus: 8, memory_gb: 56, gpus: 1}
-    deps: [ptbxl_manifest, robust_rank_maps, reconstruction_tuning]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction_tuning.v3.json"]
+    deps: [ptbxl_manifest, reconstruction_training_inclusion, robust_rank_maps, reconstruction_tuning]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/reconstruction_training_inclusion", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction_tuning.v3.json"]
     outputs: ["artifacts/primary/reconstruction/masked_unet"]
     timeout: 86400
     seed: 0
 
   - id: benchmark_imputeecg
     profile: [icassp, extended]
-    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "imputeecg", "--manifest", "artifacts/manifests/ptbxl.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--upstreams", "artifacts/upstreams", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--official-config", "artifacts/primary/official_baselines/imputeecg.config.v3.json", "--device", "cuda:0", "--seeds", "0,1,2,3,4", "--release", "--output-dir", "artifacts/primary/reconstruction/imputeecg"]
+    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "imputeecg", "--manifest", "artifacts/manifests/ptbxl.json", "--training-inclusion", "artifacts/primary/reconstruction_training_inclusion/training_inclusion.v1.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--upstreams", "artifacts/upstreams", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--official-config", "artifacts/primary/official_baselines/imputeecg.config.v3.json", "--device", "cuda:0", "--seeds", "0,1,2,3,4", "--release", "--output-dir", "artifacts/primary/reconstruction/imputeecg"]
     resource: {kind: gpu, cpus: 8, memory_gb: 56, gpus: 1}
-    deps: [ptbxl_manifest, public_baseline_checkouts, robust_rank_maps, official_baseline_preparation, reconstruction_tuning]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/upstreams", "artifacts/primary/robust_rank_maps", "artifacts/primary/official_baselines", "artifacts/primary/reconstruction_tuning.v3.json"]
+    deps: [ptbxl_manifest, reconstruction_training_inclusion, public_baseline_checkouts, robust_rank_maps, official_baseline_preparation, reconstruction_tuning]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/reconstruction_training_inclusion", "artifacts/upstreams", "artifacts/primary/robust_rank_maps", "artifacts/primary/official_baselines", "artifacts/primary/reconstruction_tuning.v3.json"]
     outputs: ["artifacts/primary/reconstruction/imputeecg"]
     timeout: 86400
     seed: 0
 
   - id: benchmark_ecgrecover
     profile: [icassp, extended]
-    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "ecgrecover", "--manifest", "artifacts/manifests/ptbxl.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--upstreams", "artifacts/upstreams", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--official-config", "artifacts/primary/official_baselines/ecgrecover.config.v3.json", "--seeds", "0,1,2,3,4", "--release", "--output-dir", "artifacts/primary/reconstruction/ecgrecover"]
+    command: ["{python}", "experiments/reconstruction_benchmark_v3.py", "--method", "ecgrecover", "--manifest", "artifacts/manifests/ptbxl.json", "--training-inclusion", "artifacts/primary/reconstruction_training_inclusion/training_inclusion.v1.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--upstreams", "artifacts/upstreams", "--tuning-config", "artifacts/primary/reconstruction_tuning.v3.json", "--official-config", "artifacts/primary/official_baselines/ecgrecover.config.v3.json", "--seeds", "0,1,2,3,4", "--release", "--output-dir", "artifacts/primary/reconstruction/ecgrecover"]
     resource: {kind: gpu, cpus: 8, memory_gb: 56, gpus: 1}
-    deps: [ptbxl_manifest, public_baseline_checkouts, robust_rank_maps, official_baseline_preparation, reconstruction_tuning]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/upstreams", "artifacts/primary/robust_rank_maps", "artifacts/primary/official_baselines", "artifacts/primary/reconstruction_tuning.v3.json"]
+    deps: [ptbxl_manifest, reconstruction_training_inclusion, public_baseline_checkouts, robust_rank_maps, official_baseline_preparation, reconstruction_tuning]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/reconstruction_training_inclusion", "artifacts/upstreams", "artifacts/primary/robust_rank_maps", "artifacts/primary/official_baselines", "artifacts/primary/reconstruction_tuning.v3.json"]
     outputs: ["artifacts/primary/reconstruction/ecgrecover"]
     timeout: 86400
     seed: 0
@@ -195,8 +250,8 @@ nodes:
     profile: [icassp, extended]
     command: ["{python}", "experiments/external_validation_v3.py", "--mode", "zero-transfer", "--cohort", "chapman", "--source-manifest", "artifacts/manifests/ptbxl.json", "--target-manifest", "artifacts/manifests/chapman.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--benchmark", "artifacts/primary/reconstruction/lowrank", "--benchmark", "artifacts/primary/reconstruction/ridge", "--benchmark", "artifacts/primary/reconstruction/masked_unet", "--benchmark", "artifacts/primary/reconstruction/imputeecg", "--benchmark", "artifacts/primary/reconstruction/ecgrecover", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/primary/zero_transfer/chapman"]
     resource: {kind: gpu, cpus: 8, memory_gb: 56, gpus: 1}
-    deps: [ptbxl_manifest, chapman_manifest, robust_rank_maps, benchmark_lowrank, benchmark_ridge, benchmark_masked_unet, benchmark_imputeecg, benchmark_ecgrecover]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/manifests/chapman.json", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction/lowrank", "artifacts/primary/reconstruction/ridge", "artifacts/primary/reconstruction/masked_unet", "artifacts/primary/reconstruction/imputeecg", "artifacts/primary/reconstruction/ecgrecover"]
+    deps: [ptbxl_manifest, chapman_manifest, public_baseline_checkouts, robust_rank_maps, benchmark_lowrank, benchmark_ridge, benchmark_masked_unet, benchmark_imputeecg, benchmark_ecgrecover]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/manifests/chapman.json", "artifacts/upstreams", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction/lowrank", "artifacts/primary/reconstruction/ridge", "artifacts/primary/reconstruction/masked_unet", "artifacts/primary/reconstruction/imputeecg", "artifacts/primary/reconstruction/ecgrecover"]
     outputs: ["artifacts/primary/zero_transfer/chapman"]
     timeout: 86400
     seed: 0
@@ -205,40 +260,65 @@ nodes:
     profile: [icassp, extended]
     command: ["{python}", "experiments/external_validation_v3.py", "--mode", "zero-transfer", "--cohort", "cpsc2018", "--source-manifest", "artifacts/manifests/ptbxl.json", "--target-manifest", "artifacts/manifests/cpsc2018.json", "--rank-maps", "artifacts/primary/robust_rank_maps", "--benchmark", "artifacts/primary/reconstruction/lowrank", "--benchmark", "artifacts/primary/reconstruction/ridge", "--benchmark", "artifacts/primary/reconstruction/masked_unet", "--benchmark", "artifacts/primary/reconstruction/imputeecg", "--benchmark", "artifacts/primary/reconstruction/ecgrecover", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/primary/zero_transfer/cpsc2018"]
     resource: {kind: gpu, cpus: 8, memory_gb: 56, gpus: 1}
-    deps: [ptbxl_manifest, cpsc_manifest, robust_rank_maps, benchmark_lowrank, benchmark_ridge, benchmark_masked_unet, benchmark_imputeecg, benchmark_ecgrecover]
-    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/manifests/cpsc2018.json", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction/lowrank", "artifacts/primary/reconstruction/ridge", "artifacts/primary/reconstruction/masked_unet", "artifacts/primary/reconstruction/imputeecg", "artifacts/primary/reconstruction/ecgrecover"]
+    deps: [ptbxl_manifest, cpsc_manifest, public_baseline_checkouts, robust_rank_maps, benchmark_lowrank, benchmark_ridge, benchmark_masked_unet, benchmark_imputeecg, benchmark_ecgrecover]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/manifests/cpsc2018.json", "artifacts/upstreams", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction/lowrank", "artifacts/primary/reconstruction/ridge", "artifacts/primary/reconstruction/masked_unet", "artifacts/primary/reconstruction/imputeecg", "artifacts/primary/reconstruction/ecgrecover"]
     outputs: ["artifacts/primary/zero_transfer/cpsc2018"]
     timeout: 86400
     seed: 0
 
   - id: meta_analysis
     profile: [icassp, extended]
-    command: ["{python}", "experiments/meta_analysis_v3.py", "--mode", "analyze", "--rank-maps", "artifacts/primary/robust_rank_maps", "--benchmark", "artifacts/primary/reconstruction/lowrank", "--benchmark", "artifacts/primary/reconstruction/ridge", "--benchmark", "artifacts/primary/reconstruction/masked_unet", "--benchmark", "artifacts/primary/reconstruction/imputeecg", "--benchmark", "artifacts/primary/reconstruction/ecgrecover", "--external", "artifacts/primary/zero_transfer/chapman", "--external", "artifacts/primary/zero_transfer/cpsc2018", "--bootstrap-replicates", "2000", "--release", "--output-dir", "artifacts/primary/meta_analysis"]
+    command: ["{python}", "experiments/meta_analysis_v3.py", "--mode", "analyze", "--rank-maps", "artifacts/primary/robust_rank_maps", "--ptbxl-manifest", "artifacts/manifests/ptbxl.json", "--external-manifest", "artifacts/manifests/chapman.json", "--external-manifest", "artifacts/manifests/cpsc2018.json", "--benchmark", "artifacts/primary/reconstruction/lowrank", "--benchmark", "artifacts/primary/reconstruction/ridge", "--benchmark", "artifacts/primary/reconstruction/masked_unet", "--benchmark", "artifacts/primary/reconstruction/imputeecg", "--benchmark", "artifacts/primary/reconstruction/ecgrecover", "--external", "artifacts/primary/zero_transfer/chapman", "--external", "artifacts/primary/zero_transfer/cpsc2018", "--bootstrap-replicates", "2000", "--release", "--output-dir", "artifacts/primary/meta_analysis"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
-    deps: [robust_rank_maps, benchmark_lowrank, benchmark_ridge, benchmark_masked_unet, benchmark_imputeecg, benchmark_ecgrecover, zero_transfer_chapman, zero_transfer_cpsc]
-    inputs: ["artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction/lowrank", "artifacts/primary/reconstruction/ridge", "artifacts/primary/reconstruction/masked_unet", "artifacts/primary/reconstruction/imputeecg", "artifacts/primary/reconstruction/ecgrecover", "artifacts/primary/zero_transfer/chapman", "artifacts/primary/zero_transfer/cpsc2018"]
+    deps: [ptbxl_manifest, chapman_manifest, cpsc_manifest, robust_rank_maps, benchmark_lowrank, benchmark_ridge, benchmark_masked_unet, benchmark_imputeecg, benchmark_ecgrecover, zero_transfer_chapman, zero_transfer_cpsc]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/manifests/chapman.json", "artifacts/manifests/cpsc2018.json", "artifacts/primary/robust_rank_maps", "artifacts/primary/reconstruction/lowrank", "artifacts/primary/reconstruction/ridge", "artifacts/primary/reconstruction/masked_unet", "artifacts/primary/reconstruction/imputeecg", "artifacts/primary/reconstruction/ecgrecover", "artifacts/primary/zero_transfer/chapman", "artifacts/primary/zero_transfer/cpsc2018"]
     outputs: ["artifacts/primary/meta_analysis"]
-    timeout: 28800
+    timeout: 43200
     seed: 0
 
-  - id: arc_stage15_control
+  # The signed Stage-9 protocol decision unlocks native experiments, while ARC
+  # itself remains blocked at Stage 9.  Forward only after all Stage-15 numeric
+  # evidence exists, preventing ARC from starting its 24-hour Stage-15 clock early.
+  - id: arc_stage9_forward
     profile: [icassp, extended]
-    command: ["{python}", "scripts/wait_for_arc_control.py", "--bundle", "artifacts/gates/arc-stage15", "--stage", "15", "--output", "artifacts/control/arc/stage15/report.v1.json", "--timeout-hours", "24"]
+    command: ["{python}", "scripts/forward_arc_stage_review.py", "--waiting-report", "artifacts/control/arc/stage9/waiting.v1.json", "--reviewed-gate", "artifacts/control/stage9_review/decision.v3.json", "--public-key", "security/reviewer_ed25519.pub", "--output", "artifacts/gates/arc-operator-responses/stage-09/operator-response.v2.json"]
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
-    deps: [meta_analysis]
-    inputs: ["artifacts/primary/meta_analysis"]
-    outputs: ["artifacts/control/arc/stage15/report.v1.json"]
+    deps: [stage9_review, meta_analysis, arc_stage9_waiting]
+    inputs: ["artifacts/control/arc/stage9/waiting.v1.json", "artifacts/control/stage9_review/decision.v3.json", "artifacts/primary/meta_analysis", "security/reviewer_ed25519.pub"]
+    outputs: ["artifacts/gates/arc-operator-responses/stage-09/operator-response.v2.json"]
+    timeout: 600
+    seed: 0
+
+  - id: arc_stage9_control
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "final", "--bundle", "artifacts/gates/arc-stage9", "--stage", "9", "--previous-report", "artifacts/control/arc/stage5/report.v1.json", "--output", "artifacts/control/arc/stage9/report.v1.json", "--timeout-hours", "24"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [arc_stage9_forward, arc_stage5_control]
+    inputs: ["artifacts/gates/arc-operator-responses/stage-09/operator-response.v2.json", "artifacts/control/arc/stage5/report.v1.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage9"]
+    outputs: ["artifacts/control/arc/stage9/report.v1.json"]
+    timeout: 86700
+    seed: 0
+
+  - id: arc_stage15_waiting
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "waiting", "--bundle", "artifacts/gates/arc-stage15-waiting", "--stage", "15", "--previous-report", "artifacts/control/arc/stage9/report.v1.json", "--output", "artifacts/control/arc/stage15/waiting.v1.json", "--timeout-hours", "24"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [meta_analysis, arc_stage9_control]
+    inputs: ["artifacts/primary/meta_analysis", "artifacts/control/arc/stage9/report.v1.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage15-waiting"]
+    outputs: ["artifacts/control/arc/stage15/waiting.v1.json"]
     timeout: 86700
     seed: 0
 
   - id: stage15_gate
     profile: [icassp, extended]
-    command: ["{python}", "experiments/meta_analysis_v3.py", "--mode", "stage15", "--meta-analysis", "artifacts/primary/meta_analysis", "--arc-control", "artifacts/control/arc/stage15/report.v1.json", "--output-dir", "artifacts/primary/stage15"]
+    command: ["{python}", "experiments/meta_analysis_v3.py", "--mode", "stage15", "--meta-analysis", "artifacts/primary/meta_analysis", "--arc-control", "artifacts/control/arc/stage15/waiting.v1.json", "--output-dir", "artifacts/primary/stage15"]
     resource: {kind: cpu, cpus: 4, memory_gb: 16, gpus: 0}
-    deps: [meta_analysis, arc_stage15_control]
-    inputs: ["artifacts/primary/meta_analysis", "artifacts/control/arc/stage15/report.v1.json"]
+    deps: [meta_analysis, arc_stage15_waiting]
+    inputs: ["artifacts/primary/meta_analysis", "artifacts/control/arc/stage15/waiting.v1.json"]
     outputs: ["artifacts/primary/stage15"]
-    timeout: 3600
+    timeout: 14400
     seed: 0
 
   - id: stage15_review
@@ -247,6 +327,7 @@ nodes:
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
     deps: [stage15_gate]
     inputs: ["artifacts/primary/stage15/decision.v3.json", "security/reviewer_ed25519.pub"]
+    late_control_inputs: ["artifacts/gates/stage15.approval.v3.json"]
     outputs: ["artifacts/primary/stage15_review"]
     timeout: 86700
     seed: 0
@@ -271,32 +352,57 @@ nodes:
     timeout: 1800
     seed: 0
 
-  - id: compile_submission
+  - id: stage20_review_draft
     profile: [icassp, extended]
-    command: ["{python}", "scripts/compile_submission_v3.py", "--claims", "artifacts/paper/claims", "--figures", "artifacts/paper/figures", "--output-dir", "artifacts/paper/submission"]
+    command: ["{python}", "scripts/compile_stage20_review_draft_v3.py", "--claims", "artifacts/paper/claims", "--figures", "artifacts/paper/figures", "--output-dir", "artifacts/paper/stage20_review_draft"]
     resource: {kind: paper, cpus: 4, memory_gb: 16, gpus: 0}
     deps: [primary_figures, claim_sync]
     inputs: ["artifacts/paper/figures", "artifacts/paper/claims"]
-    outputs: ["artifacts/paper/submission"]
+    outputs: ["artifacts/paper/stage20_review_draft"]
     timeout: 3600
     seed: 0
 
-  - id: arc_stage20_control
+  # Hold native ARC at Stage 15 while the reviewed decision drives paper
+  # construction.  Only the conspicuously non-submission Stage-20 review draft
+  # releases ARC toward 20; author facts and the official kit are not asserted.
+  - id: arc_stage15_forward
     profile: [icassp, extended]
-    command: ["{python}", "scripts/wait_for_arc_control.py", "--bundle", "artifacts/gates/arc-stage20", "--stage", "20", "--output", "artifacts/control/arc/stage20/report.v1.json", "--timeout-hours", "24"]
+    command: ["{python}", "scripts/forward_arc_stage_review.py", "--waiting-report", "artifacts/control/arc/stage15/waiting.v1.json", "--reviewed-gate", "artifacts/primary/stage15_review/decision.v3.json", "--public-key", "security/reviewer_ed25519.pub", "--output", "artifacts/gates/arc-operator-responses/stage-15/operator-response.v2.json"]
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
-    deps: [stage15_review, claim_sync, compile_submission]
-    inputs: ["artifacts/primary/stage15_review", "artifacts/paper/claims", "artifacts/paper/submission"]
-    outputs: ["artifacts/control/arc/stage20/report.v1.json"]
+    deps: [stage15_review, stage20_review_draft, arc_stage15_waiting]
+    inputs: ["artifacts/control/arc/stage15/waiting.v1.json", "artifacts/primary/stage15_review/decision.v3.json", "artifacts/paper/stage20_review_draft", "security/reviewer_ed25519.pub"]
+    outputs: ["artifacts/gates/arc-operator-responses/stage-15/operator-response.v2.json"]
+    timeout: 600
+    seed: 0
+
+  - id: arc_stage15_control
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "final", "--bundle", "artifacts/gates/arc-stage15", "--stage", "15", "--previous-report", "artifacts/control/arc/stage9/report.v1.json", "--output", "artifacts/control/arc/stage15/report.v1.json", "--timeout-hours", "24"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [arc_stage15_forward, arc_stage9_control]
+    inputs: ["artifacts/gates/arc-operator-responses/stage-15/operator-response.v2.json", "artifacts/control/arc/stage9/report.v1.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage15"]
+    outputs: ["artifacts/control/arc/stage15/report.v1.json"]
+    timeout: 86700
+    seed: 0
+
+  - id: arc_stage20_waiting
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "waiting", "--bundle", "artifacts/gates/arc-stage20-waiting", "--stage", "20", "--previous-report", "artifacts/control/arc/stage15/report.v1.json", "--output", "artifacts/control/arc/stage20/waiting.v1.json", "--timeout-hours", "24"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [stage15_review, claim_sync, stage20_review_draft, arc_stage15_control]
+    inputs: ["artifacts/primary/stage15_review", "artifacts/paper/claims", "artifacts/paper/stage20_review_draft", "artifacts/control/arc/stage15/report.v1.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage20-waiting"]
+    outputs: ["artifacts/control/arc/stage20/waiting.v1.json"]
     timeout: 86700
     seed: 0
 
   - id: stage20_gate
     profile: [icassp, extended]
-    command: ["{python}", "experiments/stage_gates_v3.py", "--mode", "stage20", "--arc-control", "artifacts/control/arc/stage20/report.v1.json", "--stage15", "artifacts/primary/stage15_review", "--submission-build", "artifacts/paper/submission", "--claims", "artifacts/paper/claims", "--manuscript", "paper/main_v2.tex", "--registry", "artifacts/paper/claims/verified_registry.v1.json", "--reviewer-public-key", "security/reviewer_ed25519.pub", "--output-dir", "artifacts/control/stage20"]
+    command: ["{python}", "experiments/stage_gates_v3.py", "--mode", "stage20", "--arc-control", "artifacts/control/arc/stage20/waiting.v1.json", "--stage15", "artifacts/primary/stage15_review", "--review-draft", "artifacts/paper/stage20_review_draft", "--claims", "artifacts/paper/claims", "--manuscript", "paper/main_v2.tex", "--registry", "artifacts/paper/claims/verified_registry.v1.json", "--reviewer-public-key", "security/reviewer_ed25519.pub", "--output-dir", "artifacts/control/stage20"]
     resource: {kind: paper, cpus: 2, memory_gb: 8, gpus: 0}
-    deps: [stage15_review, claim_sync, compile_submission, arc_stage20_control]
-    inputs: ["artifacts/control/arc/stage20/report.v1.json", "artifacts/primary/stage15_review", "artifacts/paper/claims", "artifacts/paper/submission", "paper/main_v2.tex", "artifacts/paper/claims/verified_registry.v1.json", "security/reviewer_ed25519.pub"]
+    deps: [stage15_review, claim_sync, stage20_review_draft, arc_stage20_waiting]
+    inputs: ["artifacts/control/arc/stage20/waiting.v1.json", "artifacts/primary/stage15_review", "artifacts/paper/claims", "artifacts/paper/stage20_review_draft", "paper/main_v2.tex", "artifacts/paper/claims/verified_registry.v1.json", "security/reviewer_ed25519.pub"]
     outputs: ["artifacts/control/stage20"]
     timeout: 1800
     seed: 0
@@ -307,14 +413,49 @@ nodes:
     resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
     deps: [stage20_gate]
     inputs: ["artifacts/control/stage20", "security/reviewer_ed25519.pub"]
+    late_control_inputs: ["artifacts/gates/stage20.approval.v3.json"]
     outputs: ["artifacts/control/stage20_review"]
     timeout: 86700
+    seed: 0
+
+  - id: arc_stage20_forward
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/forward_arc_stage_review.py", "--waiting-report", "artifacts/control/arc/stage20/waiting.v1.json", "--reviewed-gate", "artifacts/control/stage20_review/decision.v3.json", "--public-key", "security/reviewer_ed25519.pub", "--output", "artifacts/gates/arc-operator-responses/stage-20/operator-response.v2.json"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [stage20_review, arc_stage20_waiting]
+    inputs: ["artifacts/control/arc/stage20/waiting.v1.json", "artifacts/control/stage20_review/decision.v3.json", "security/reviewer_ed25519.pub"]
+    outputs: ["artifacts/gates/arc-operator-responses/stage-20/operator-response.v2.json"]
+    timeout: 600
+    seed: 0
+
+  - id: arc_stage20_control
+    profile: [icassp, extended]
+    command: ["{python}", "scripts/wait_for_arc_control.py", "--phase", "final", "--bundle", "artifacts/gates/arc-stage20", "--stage", "20", "--previous-report", "artifacts/control/arc/stage15/report.v1.json", "--output", "artifacts/control/arc/stage20/report.v1.json", "--timeout-hours", "24"]
+    resource: {kind: paper, cpus: 1, memory_gb: 4, gpus: 0}
+    deps: [arc_stage20_forward, arc_stage15_control]
+    inputs: ["artifacts/gates/arc-operator-responses/stage-20/operator-response.v2.json", "artifacts/control/arc/stage15/report.v1.json"]
+    late_control_inputs: ["artifacts/gates/arc-stage20"]
+    outputs: ["artifacts/control/arc/stage20/report.v1.json"]
+    timeout: 86700
+    seed: 0
+
+  # Final submission is deliberately last.  It is impossible to build until
+  # the author has signed the factual declarations, the official venue kit is
+  # bound, and all four formal ARC receipts exist.
+  - id: compile_submission
+    profile: [icassp]
+    command: ["{python}", "scripts/compile_submission_v3.py", "--claims", "artifacts/paper/claims", "--figures", "artifacts/paper/figures", "--author-declaration", "artifacts/gates/paper/author_declaration.v1.json", "--tool-provenance", "artifacts/gates/paper/tool_provenance.v1.json", "--venue-policy", "artifacts/gates/paper/venue_policy.v1.json", "--author-public-key", "artifacts/gates/paper/author_ed25519.pub", "--author-kit", "artifacts/gates/paper/icassp2027-author-kit.zip", "--arc-receipts-root", "artifacts/control/arc", "--output-dir", "artifacts/paper/submission"]
+    resource: {kind: paper, cpus: 4, memory_gb: 16, gpus: 0}
+    deps: [primary_figures, claim_sync, stage20_review, arc_stage5_control, arc_stage9_control, arc_stage15_control, arc_stage20_control]
+    inputs: ["artifacts/paper/figures", "artifacts/paper/claims", "artifacts/control/stage20_review/decision.v3.json", "artifacts/control/arc/stage5/report.v1.json", "artifacts/control/arc/stage9/report.v1.json", "artifacts/control/arc/stage15/report.v1.json", "artifacts/control/arc/stage20/report.v1.json", "artifacts/gates/paper/author_declaration.v1.json", "artifacts/gates/paper/tool_provenance.v1.json", "artifacts/gates/paper/venue_policy.v1.json", "artifacts/gates/paper/author_ed25519.pub", "artifacts/gates/paper/icassp2027-author-kit.zip"]
+    outputs: ["artifacts/paper/submission"]
+    timeout: 3600
     seed: 0
 
   # Extended-only sensitivities.  These cannot feed the frozen primary claim.
   - id: sensitivity_p_wave
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "p-wave", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/p_wave"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "p-wave", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/p_wave"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -324,7 +465,7 @@ nodes:
 
   - id: sensitivity_100hz
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "100hz", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/100hz"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "100hz", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/100hz"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -334,7 +475,7 @@ nodes:
 
   - id: sensitivity_delineator
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "delineator", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/delineator"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "delineator", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/delineator"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -344,7 +485,7 @@ nodes:
 
   - id: sensitivity_raw12
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "raw12", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/raw12"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "raw12", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/raw12"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -352,9 +493,31 @@ nodes:
     timeout: 14400
     seed: 0
 
+  - id: sensitivity_sample_cap_80
+    profile: [extended]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "sample-cap", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "80", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/sample_cap_80"]
+    resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
+    deps: [ptbxl_manifest, robust_rank_maps]
+    inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
+    outputs: ["artifacts/extended/sensitivity/sample_cap_80"]
+    timeout: 21600
+    seed: 0
+
+  # This is distinct from the diagnosis-specific map refits below.  It only
+  # subsets frozen fold-10 prediction moments and can never feed Stage 15.
+  - id: sensitivity_diagnostic_subgroup_prediction
+    profile: [extended]
+    command: ["{python}", "experiments/diagnostic_subgroup_v3.py", "--meta-analysis", "artifacts/primary/meta_analysis", "--ptbxl-manifest", "artifacts/manifests/ptbxl.json", "--bootstrap-replicates", "2000", "--seed", "20260719", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnostic_subgroup_prediction"]
+    resource: {kind: cpu, cpus: 4, memory_gb: 16, gpus: 0}
+    deps: [meta_analysis, ptbxl_manifest]
+    inputs: ["artifacts/primary/meta_analysis", "artifacts/manifests/ptbxl.json"]
+    outputs: ["artifacts/extended/sensitivity/diagnostic_subgroup_prediction"]
+    timeout: 7200
+    seed: 20260719
+
   - id: sensitivity_diagnosis_norm
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "NORM", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_norm"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "NORM", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_norm"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -364,7 +527,7 @@ nodes:
 
   - id: sensitivity_diagnosis_mi
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "MI", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_mi"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "MI", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_mi"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -374,7 +537,7 @@ nodes:
 
   - id: sensitivity_diagnosis_sttc
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "STTC", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_sttc"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "STTC", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_sttc"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -384,7 +547,7 @@ nodes:
 
   - id: sensitivity_diagnosis_cd
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "CD", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_cd"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "CD", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_cd"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]
@@ -394,7 +557,7 @@ nodes:
 
   - id: sensitivity_diagnosis_hyp
     profile: [extended]
-    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "HYP", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_hyp"]
+    command: ["{python}", "experiments/robust_maps_v3.py", "--mode", "sensitivity", "--sensitivity", "diagnosis", "--diagnosis-class", "HYP", "--manifest", "artifacts/manifests/ptbxl.json", "--primary-rank-maps", "artifacts/primary/robust_rank_maps", "--max-per-record", "40", "--sampling-seed", "20260719", "--n-bootstrap", "2000", "--release", "--output-dir", "artifacts/extended/sensitivity/diagnosis_hyp"]
     resource: {kind: cpu, cpus: 10, memory_gb: 56, gpus: 0}
     deps: [ptbxl_manifest, robust_rank_maps]
     inputs: ["artifacts/manifests/ptbxl.json", "artifacts/primary/robust_rank_maps"]

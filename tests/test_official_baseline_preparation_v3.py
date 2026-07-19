@@ -2,10 +2,12 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
+from ecgcert import lineage
 from ecgcert.estimators.official import ECG_RECOVER, IMPUTE_ECG
 from ecgcert.official_baselines import (
     INTEGRATION_SCHEMA_VERSION,
@@ -29,10 +31,23 @@ def _write_integration(tmp_path: Path, source: Path) -> Path:
     payload = {
         "schema_version": INTEGRATION_SCHEMA_VERSION,
         "upstream_commit": ECG_RECOVER.commit,
+        "upstream_root_tree": ECG_RECOVER.root_tree,
         "input_lead": "I",
         "native_rate_hz": 500,
+        "model_samples": 512,
+        "inference_records_per_process": 8,
+        "inference_micro_batch_size": 4,
+        "license_spdx": "NOASSERTION",
+        "redistribution": False,
+        "permission_basis": "author_permission_reported_by_project_owner",
+        "adaptation_disclosure": [
+            "The upstream U-Net architecture is unchanged.",
+            "The upstream hybrid loss is unchanged.",
+            "Fixed training-only scaling prevents target leakage.",
+            "The adapter remains restricted to the published single-input task.",
+        ],
         "train_command": [
-            "python",
+            "{python}",
             "{bridge_root}/ecgrecover_bridge.py",
             "train",
             "--source-dir",
@@ -45,7 +60,7 @@ def _write_integration(tmp_path: Path, source: Path) -> Path:
             "{output_dir}",
         ],
         "inference_command": [
-            "python",
+            "{python}",
             "{bridge_root}/ecgrecover_bridge.py",
             "infer",
             "--source-dir",
@@ -56,6 +71,8 @@ def _write_integration(tmp_path: Path, source: Path) -> Path:
             "{output}",
             "--checkpoint",
             "{checkpoint}",
+            "--micro-batch-size",
+            "4",
         ],
         "checkpoint": "{output_dir}/model.pth",
         "upstream_source_files": [
@@ -79,6 +96,11 @@ def test_ecgrecover_integration_is_commit_and_file_hash_bound(tmp_path):
     loaded = load_ecgrecover_integration(descriptor, source_dir=source)
     assert loaded.input_lead == "I"
     assert loaded.native_rate_hz == 500
+    assert loaded.model_samples == 512
+    assert loaded.inference_records_per_process == 8
+    assert loaded.inference_micro_batch_size == 4
+    assert loaded.license_spdx == "NOASSERTION"
+    assert loaded.redistribution is False
     assert len(loaded.descriptor_sha256) == 64
 
     (source / "main.py").write_text("# changed after audit\n", encoding="utf-8")
@@ -102,6 +124,24 @@ def test_ecgrecover_inference_descriptor_cannot_receive_training_truth(tmp_path)
     payload["inference_command"].extend(["--truth", "{data_dir}/train_data_gt.npy"])
     descriptor.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="must not receive"):
+        load_ecgrecover_integration(descriptor, source_dir=source)
+
+
+def test_ecgrecover_integration_fails_closed_on_undisclosed_or_relicensed_adapter(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "main.py").write_text("# official fixture\n", encoding="utf-8")
+    descriptor = _write_integration(tmp_path, source)
+    payload = json.loads(descriptor.read_text(encoding="utf-8"))
+    payload["license_spdx"] = "MIT"
+    descriptor.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="license assertion"):
+        load_ecgrecover_integration(descriptor, source_dir=source)
+
+    payload["license_spdx"] = "NOASSERTION"
+    payload["adaptation_disclosure"] = ["single-input only"]
+    descriptor.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="disclose every"):
         load_ecgrecover_integration(descriptor, source_dir=source)
 
 
@@ -203,7 +243,9 @@ def test_end_to_end_preparation_writes_configs_but_never_a_checkpoint(tmp_path, 
     (impute_source / "datasets" / "ptbxl.py").write_text("# data\n", encoding="utf-8")
     descriptor = _write_integration(tmp_path, sources[ECG_RECOVER.name])
 
-    monkeypatch.setattr(preparation, "load_ptbxl_manifest", lambda _: contract)
+    monkeypatch.setattr(
+        preparation, "load_ptbxl_manifest", lambda _path, **_kwargs: contract
+    )
     monkeypatch.setattr(preparation, "_verify_manifest_files", lambda *args, **kwargs: None)
     monkeypatch.setattr(preparation, "_validate_database_identity", lambda *args: None)
     monkeypatch.setattr(preparation, "PTBXL", _FakeDB)
@@ -218,6 +260,28 @@ def test_end_to_end_preparation_writes_configs_but_never_a_checkpoint(tmp_path, 
         return hashlib.sha256(repr(entries).encode()).hexdigest(), entries
 
     monkeypatch.setattr(preparation, "source_tree_sha256", fake_tree)
+    inclusion_path = tmp_path / "training_inclusion.v1.json"
+    inclusion_path.write_text("{}\n", encoding="utf-8")
+    record_ids_sha256 = lineage.canonical_sha256(["1"])
+    patient_ids_sha256 = lineage.canonical_sha256(["p1"])
+
+    def iter_validated_signals(db, _records):
+        signal, audit = db.signal_with_audit(1, 500)
+        yield "1", "p1", signal, audit.__dict__
+
+    fake_inclusion = SimpleNamespace(
+        path=inclusion_path,
+        inclusion_sha256="c" * 64,
+        split_sha256=contract.split_sha256,
+        record_ids_sha256=record_ids_sha256,
+        patient_ids_sha256=patient_ids_sha256,
+        requested_record_ids=("1",),
+        included_record_ids=("1",),
+        iter_validated_signals=iter_validated_signals,
+    )
+    monkeypatch.setattr(
+        preparation, "load_training_inclusion", lambda *_args, **_kwargs: fake_inclusion
+    )
     output = tmp_path / "official"
     summary = preparation.run(
         argparse.Namespace(
@@ -225,6 +289,7 @@ def test_end_to_end_preparation_writes_configs_but_never_a_checkpoint(tmp_path, 
             upstreams=upstreams,
             ecgrecover_integration=descriptor,
             output_dir=output,
+            training_inclusion=inclusion_path,
             seeds=(0,),
             max_records=None,
             release=False,
@@ -238,6 +303,8 @@ def test_end_to_end_preparation_writes_configs_but_never_a_checkpoint(tmp_path, 
     combined = json.loads((output / "official-reconstruction-config-v3.json").read_text())
     assert impute_config["commit"] == IMPUTE_ECG.commit
     assert ecgrecover_config["commit"] == ECG_RECOVER.commit
+    assert ecgrecover_config["inference_records_per_process"] == 8
+    assert ecgrecover_config["inference_micro_batch_size"] == 4
     assert "{input}" in "\n".join(ecgrecover_config["official_inference_bridge"])
     assert set(combined["methods"]) == {"imputeecg", "ecgrecover"}
     assert Path(impute_config["official_data_path"]).is_dir()
@@ -254,6 +321,20 @@ def test_release_preparation_rejects_subsampling(tmp_path):
         release=True,
         seeds=(0, 1, 2, 3, 4),
         output_dir=tmp_path / "not-artifacts",
+        training_inclusion=None,
     )
     with pytest.raises(ValueError, match="max-records is forbidden"):
         preparation.validate_arguments(arguments)
+
+
+def test_official_preparation_cleans_only_its_interrupted_staging(tmp_path):
+    output = tmp_path / "official"
+    orphan = tmp_path / ".official.tmp-deadbeef"
+    unrelated = tmp_path / "other"
+    orphan.mkdir()
+    unrelated.mkdir()
+    (orphan / "train_data_gt.npy").write_bytes(b"partial")
+    (unrelated / "keep.txt").write_text("keep", encoding="utf-8")
+    preparation._remove_orphan_staging_directories(output)
+    assert not orphan.exists()
+    assert (unrelated / "keep.txt").read_text(encoding="utf-8") == "keep"

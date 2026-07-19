@@ -24,6 +24,7 @@ from ecgcert import lineage
 from ecgcert.data import PTBXL
 from ecgcert.data.audit import AuditTrail, SignalAudit
 from ecgcert.data.common import CANONICAL_LEADS
+from ecgcert.data.manifest import PTBXL_RELEASE_CONTRACT
 from ecgcert.estimators import (
     ECG_RECOVER,
     IMPUTE_ECG,
@@ -46,17 +47,20 @@ from ecgcert.protocol import (
 from ecgcert.physics.dipolar_subspace import INDEPENDENT_LEADS
 from ecgcert.reconstruction import (
     TRAINING_PREDICTORS_FILENAME,
+    MetricDatasetWriter,
+    MetricShardKey,
     OfficialCommandBridgeReconstructor,
     SCHEMA_VERSION,
     checkpoint_descriptor,
     evaluate_reconstructor,
     evaluation_records_sha256,
-    write_benchmark_artifacts,
+    metric_coverage_contract,
     write_bundle_metadata,
     EvaluationRecord,
     TrainingPredictorAccumulator,
     training_predictor_lookup,
 )
+from ecgcert.training_inclusion import TrainingInclusion, load_training_inclusion
 
 
 METHODS = ("lowrank", "ridge", "masked-unet", "imputeecg", "ecgrecover")
@@ -120,6 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--upstreams", type=Path)
     parser.add_argument("--tuning-config", type=Path)
     parser.add_argument("--official-config", type=Path)
+    parser.add_argument("--training-inclusion", type=Path)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--rate", type=int, default=PRIMARY_RATE_HZ)
     parser.add_argument("--segments", type=_parse_csv, default=PRIMARY_SEGMENTS)
@@ -163,6 +168,8 @@ def validate_release_arguments(arguments: argparse.Namespace) -> None:
         violations.append("--delineator must be dwt")
     if arguments.tuning_config is None:
         violations.append("--tuning-config is required (frozen fold-8 choices)")
+    if getattr(arguments, "training_inclusion", None) is None:
+        violations.append("--training-inclusion is required (shared folds1-7 cohort)")
     try:
         arguments.output_dir.resolve().relative_to((Path.cwd() / "artifacts").resolve())
     except ValueError:
@@ -171,7 +178,9 @@ def validate_release_arguments(arguments: argparse.Namespace) -> None:
         raise ValueError("release protocol violation: " + "; ".join(violations))
 
 
-def load_ptbxl_manifest(path: str | Path) -> PTBXLManifestV3:
+def load_ptbxl_manifest(
+    path: str | Path, *, release: bool = False
+) -> PTBXLManifestV3:
     manifest_path = Path(path).resolve()
     try:
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -248,6 +257,71 @@ def load_ptbxl_manifest(path: str | Path) -> PTBXLManifestV3:
     leaking = sorted(patient for patient, values in patient_roles.items() if len(values) != 1)
     if leaking:
         raise ValueError(f"patient leakage across PTB-XL roles: {leaking[:5]}")
+    if release:
+        release_required = {
+            "version",
+            "source_url",
+            "population",
+            "split_algorithm",
+            "structure",
+        }
+        release_missing = release_required - set(payload)
+        if release_missing:
+            raise ValueError(
+                "PTB-XL release manifest is missing fields: "
+                f"{sorted(release_missing)}"
+            )
+        mismatches = [
+            field
+            for field in ("version", "source_url", "population", "split_algorithm")
+            if payload[field] != PTBXL_RELEASE_CONTRACT[field]
+        ]
+        n_patients = len({str(record["patient_id"]) for record in records.values()})
+        if len(records) != PTBXL_RELEASE_CONTRACT["n_records"]:
+            mismatches.append("n_records")
+        if n_patients != PTBXL_RELEASE_CONTRACT["n_patients"]:
+            mismatches.append("n_patients")
+        structure = payload["structure"]
+        if not isinstance(structure, Mapping):
+            mismatches.append("structure")
+        else:
+            expected_split_counts = {
+                role: {
+                    "n_records": len(split[role]),
+                    "n_patients": len(
+                        {str(records[value]["patient_id"]) for value in split[role]}
+                    ),
+                }
+                for role in roles
+            }
+            expected_fold_counts = {
+                str(fold): {
+                    "n_records": sum(
+                        int(record["strat_fold"]) == fold for record in records.values()
+                    ),
+                    "n_patients": len(
+                        {
+                            str(record["patient_id"])
+                            for record in records.values()
+                            if int(record["strat_fold"]) == fold
+                        }
+                    ),
+                }
+                for fold in range(1, 11)
+            }
+            if structure.get("n_records") != len(records):
+                mismatches.append("structure.n_records")
+            if structure.get("n_patients") != n_patients:
+                mismatches.append("structure.n_patients")
+            if structure.get("split") != expected_split_counts:
+                mismatches.append("structure.split")
+            if structure.get("folds") != expected_fold_counts:
+                mismatches.append("structure.folds")
+        if mismatches:
+            raise ValueError(
+                "PTB-XL release manifest violates its official v1.0.3 contract: "
+                f"{sorted(set(mismatches))}"
+            )
     root = Path(str(payload["root"])).resolve()
     if not root.is_dir():
         raise FileNotFoundError(root)
@@ -348,7 +422,9 @@ def _materialize_training_manifest(
                 raise ValueError(
                     f"signal shape {signal.shape} differs from common shape {common_shape}"
                 )
-            segment_indices = PTBXL.segment_indices(signal, fs=rate, method=delineator)
+            segment_indices = PTBXL.segment_indices(
+                signal, fs=rate, method=delineator, strict=True
+            )
             selected = {
                 segment: np.asarray(segment_indices.get(segment, ()), dtype=np.int64)
                 for segment in segments
@@ -374,7 +450,10 @@ def _materialize_training_manifest(
                         "n_samples": base_audit.n_samples,
                         "input_leads": base_audit.input_leads,
                         "input_units": base_audit.input_units,
+                        "canonical_leads": base_audit.canonical_leads,
+                        "source_channel_indices": base_audit.source_channel_indices,
                         "unit_scales_to_mv": base_audit.unit_scales_to_mv,
+                        "output_unit": base_audit.output_unit,
                     }
                 )
             trail.append(
@@ -411,9 +490,9 @@ def _materialize_training_manifest(
         compact.flush()
         del compact, source
         full_path.unlink()
-    patient_ids = sorted(
-        {str(contract.records[value]["patient_id"]) for value in included_records}
-    )
+    patient_ids = [
+        str(contract.records[value]["patient_id"]) for value in included_records
+    ]
     train_manifest = TrainManifest(
         dataset="PTB-XL",
         split="folds1-7/train",
@@ -449,7 +528,9 @@ def _load_evaluation_records(
                 raise ValueError(f"unexpected canonical signal shape {signal.shape}")
             if not np.isfinite(signal).all():
                 raise ValueError("signal contains non-finite samples")
-            indices = PTBXL.segment_indices(signal.T, fs=rate, method=delineator)
+            indices = PTBXL.segment_indices(
+                signal.T, fs=rate, method=delineator, strict=True
+            )
             selected = {
                 segment: np.asarray(indices.get(segment, ()), dtype=np.int64)
                 for segment in segments
@@ -482,7 +563,10 @@ def _load_evaluation_records(
                         "n_samples": base_audit.n_samples,
                         "input_leads": base_audit.input_leads,
                         "input_units": base_audit.input_units,
+                        "canonical_leads": base_audit.canonical_leads,
+                        "source_channel_indices": base_audit.source_channel_indices,
                         "unit_scales_to_mv": base_audit.unit_scales_to_mv,
+                        "output_unit": base_audit.output_unit,
                     }
                 )
             trail.append(
@@ -518,13 +602,24 @@ def _score_partitions(
     model_seed: int,
     segments: Sequence[str],
     training_predictors: Mapping[tuple[str, str, str], tuple[float, float]],
+    metric_writer: MetricDatasetWriter | None = None,
 ) -> list[pd.DataFrame]:
     required = ("tune", "calibration", "test")
     missing = set(required) - set(evaluation_records)
     if missing:
         raise ValueError(f"evaluation partitions are missing: {sorted(missing)}")
-    return [
-        evaluate_reconstructor(
+    frames = []
+    for partition in required:
+        key = MetricShardKey.from_values(
+            cohort="PTB-XL",
+            partition=partition,
+            method=method,
+            model_seed=model_seed,
+            configuration=configuration,
+        )
+        if metric_writer is not None and metric_writer.is_complete(key):
+            continue
+        frame = evaluate_reconstructor(
             model,
             evaluation_records[partition],
             configuration=configuration,
@@ -535,8 +630,15 @@ def _score_partitions(
             cohort="PTB-XL",
             partition=partition,
         )
-        for partition in required
-    ]
+        if metric_writer is None:
+            frames.append(frame)
+        else:
+            metric_writer.write_shard(
+                frame,
+                key,
+                observed_sample_integrity=True,
+            )
+    return frames
 
 
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
@@ -676,7 +778,8 @@ def _fit_and_score_native_linear(
     output_dir: Path,
     segments: Sequence[str],
     training_predictors: Mapping[tuple[str, str, str], tuple[float, float]],
-) -> tuple[list[pd.DataFrame], list[dict[str, Any]], str]:
+    metric_writer: MetricDatasetWriter,
+) -> tuple[list[dict[str, Any]], str]:
     mean, scatter, sample_count = _streaming_training_moments(train_manifest)
     covariance = None
     ridge_lambda = None
@@ -695,7 +798,6 @@ def _fit_and_score_native_linear(
         ridge_lambda = float(tuning.get("ridge_lambda", 1e-3))
         if not np.isfinite(ridge_lambda) or ridge_lambda < 0:
             raise ValueError("ridge_lambda must be finite and non-negative")
-    frames = []
     checkpoints = []
     for config_index, configuration in enumerate(configurations):
         model_dir = output_dir / "models" / "seed-0" / f"config-{config_index:03d}"
@@ -748,23 +850,22 @@ def _fit_and_score_native_linear(
                 configuration=list(configuration),
             )
         )
-        frames.extend(
-            _score_partitions(
-                model,
-                evaluation_records,
-                configuration=configuration,
-                method=method,
-                model_seed=0,
-                segments=segments,
-                training_predictors=training_predictors,
-            )
+        _score_partitions(
+            model,
+            evaluation_records,
+            configuration=configuration,
+            method=method,
+            model_seed=0,
+            segments=segments,
+            training_predictors=training_predictors,
+            metric_writer=metric_writer,
         )
     adapter = (
         "ecgcert.estimators.LowRankConditionalMeanReconstructor"
         if method == "lowrank"
         else "ecgcert.estimators.RidgeLeadReconstructor"
     )
-    return frames, checkpoints, adapter
+    return checkpoints, adapter
 
 
 def _fit_and_score_masked_unet(
@@ -779,8 +880,8 @@ def _fit_and_score_masked_unet(
     device: str,
     release: bool,
     training_predictors: Mapping[tuple[str, str, str], tuple[float, float]],
-) -> tuple[list[pd.DataFrame], list[dict[str, Any]], str]:
-    frames = []
+    metric_writer: MetricDatasetWriter,
+) -> tuple[list[dict[str, Any]], str]:
     checkpoints = []
     parameters = dict(tuning)
     n_train_records = int(np.load(train_manifest.signals_path, mmap_mode="r").shape[0])
@@ -805,18 +906,83 @@ def _fit_and_score_masked_unet(
         checkpoint = model_dir / "masked_unet.pt"
         checkpoints.append(checkpoint_descriptor(checkpoint, output_dir, seed=int(seed)))
         for configuration in configurations:
-            frames.extend(
-                _score_partitions(
-                    model,
-                    evaluation_records,
-                    configuration=configuration,
-                    method="masked-unet",
-                    model_seed=int(seed),
-                    segments=segments,
-                    training_predictors=training_predictors,
-                )
+            _score_partitions(
+                model,
+                evaluation_records,
+                configuration=configuration,
+                method="masked-unet",
+                model_seed=int(seed),
+                segments=segments,
+                training_predictors=training_predictors,
+                metric_writer=metric_writer,
             )
-    return frames, checkpoints, "ecgcert.estimators.MaskedUNetReconstructor"
+    return checkpoints, "ecgcert.estimators.MaskedUNetReconstructor"
+
+
+def _validate_official_training_cohort(
+    train_manifest: TrainManifest,
+    official_config: Mapping[str, Any],
+    *,
+    method: str,
+    release: bool,
+) -> int:
+    """Bind official arrays and their row order to the shared inclusion artifact."""
+
+    train_manifest.validate()
+    expected_records = int(np.load(train_manifest.signals_path, mmap_mode="r").shape[0])
+    if release and (
+        not train_manifest.training_inclusion_sha256
+        or not train_manifest.record_ids_sha256
+    ):
+        raise ValueError(f"release {method} lacks the shared training inclusion identity")
+    if (
+        official_config.get("split_sha256") != train_manifest.split_sha256
+        or official_config.get("training_inclusion_sha256")
+        != train_manifest.training_inclusion_sha256
+        or official_config.get("training_record_ids_sha256")
+        != train_manifest.record_ids_sha256
+        or official_config.get("training_patient_ids_sha256")
+        != train_manifest.patient_ids_sha256
+    ):
+        raise ValueError(f"{method} official data do not match the shared training cohort")
+    records_path = Path(str(official_config.get("training_records_path", ""))).resolve()
+    if not records_path.is_file():
+        raise FileNotFoundError(f"{method} training record order is missing: {records_path}")
+    array_hashes = official_config.get("array_sha256", {})
+    if not isinstance(array_hashes, Mapping):
+        raise ValueError(f"{method} official config lacks array hashes")
+    expected_records_hash = str(array_hashes.get("training_records.v3.json", ""))
+    if len(expected_records_hash) != 64 or sha256_file(records_path) != expected_records_hash:
+        raise ValueError(f"{method} training record order hash mismatch")
+    records_payload = _load_json_object(records_path, f"{method} training record order")
+    ordered = records_payload.get("records")
+    if (
+        records_payload.get("schema_version") != "official-baseline-preparation-v3"
+        or records_payload.get("rate_hz") != PRIMARY_RATE_HZ
+        or records_payload.get("normalization") != "raw_mV"
+        or tuple(records_payload.get("lead_order", ())) != CANONICAL_LEADS
+        or not isinstance(ordered, list)
+        or len(ordered) != expected_records
+    ):
+        raise ValueError(f"{method} training record order contract is invalid")
+    record_ids = []
+    patient_ids = []
+    for index, record in enumerate(ordered):
+        if (
+            not isinstance(record, Mapping)
+            or record.get("index") != index
+            or not str(record.get("record_id", ""))
+            or not str(record.get("patient_id", ""))
+        ):
+            raise ValueError(f"{method} training record order contains an invalid row")
+        record_ids.append(str(record["record_id"]))
+        patient_ids.append(str(record["patient_id"]))
+    if (
+        lineage.canonical_sha256(record_ids) != train_manifest.record_ids_sha256
+        or lineage.canonical_sha256(patient_ids) != train_manifest.patient_ids_sha256
+    ):
+        raise ValueError(f"{method} official arrays silently changed training membership")
+    return expected_records
 
 
 def _fit_and_score_imputeecg(
@@ -833,40 +999,46 @@ def _fit_and_score_imputeecg(
     device: str,
     release: bool,
     training_predictors: Mapping[tuple[str, str, str], tuple[float, float]],
-) -> tuple[list[pd.DataFrame], list[dict[str, Any]], str, dict[str, Any]]:
+    metric_writer: MetricDatasetWriter,
+) -> tuple[list[dict[str, Any]], str, dict[str, Any]]:
     official_data = official_config.get("official_data_path")
     if not official_data:
         raise ValueError("ImputeECG official config requires official_data_path")
-    frames = []
     checkpoints = []
-    if release and official_config.get("split_sha256") != train_manifest.split_sha256:
-        raise ValueError("ImputeECG official data split_sha256 does not match PTB-XL manifest")
-    expected_records = int(np.load(train_manifest.signals_path, mmap_mode="r").shape[0])
+    expected_records = _validate_official_training_cohort(
+        train_manifest, official_config, method="ImputeECG", release=release
+    )
+    array_hashes = official_config["array_sha256"]
+    if "{seed}" in str(official_data):
+        raise ValueError("ImputeECG shared official data path must not vary by seed")
+    official_root = Path(str(official_data)).resolve()
+    ground_truth = official_root / "train_data_gt.npy"
+    masks = official_root / "train_data_mask.npy"
+    if not ground_truth.is_file() or not masks.is_file():
+        raise FileNotFoundError(f"ImputeECG official arrays are incomplete under {official_root}")
+    if (
+        sha256_file(ground_truth) != array_hashes.get("train_data_gt.npy")
+        or sha256_file(masks) != array_hashes.get("train_data_mask.npy")
+    ):
+        raise ValueError("ImputeECG official training array hash mismatch")
+    gt_shape = np.load(ground_truth, mmap_mode="r").shape
+    mask_shape = np.load(masks, mmap_mode="r").shape
+    if (
+        gt_shape != mask_shape
+        or len(gt_shape) != 3
+        or gt_shape[0] != expected_records
+        or gt_shape[1:] not in {(5000, 12), (12, 5000)}
+    ):
+        raise ValueError(
+            "ImputeECG official arrays must align exactly with the selected training records"
+        )
     for seed in seeds:
         model_dir = output_dir / "models" / f"seed-{seed}"
         parameters = {
             **dict(tuning),
             **dict(official_config.get("parameters", {})),
-            "official_data_path": str(official_data).replace("{seed}", str(seed)),
+            "official_data_path": str(official_root),
         }
-        official_root = Path(parameters["official_data_path"]).resolve()
-        ground_truth = official_root / "train_data_gt.npy"
-        masks = official_root / "train_data_mask.npy"
-        if not ground_truth.is_file() or not masks.is_file():
-            raise FileNotFoundError(
-                f"ImputeECG official arrays are incomplete under {official_root}"
-            )
-        gt_shape = np.load(ground_truth, mmap_mode="r").shape
-        mask_shape = np.load(masks, mmap_mode="r").shape
-        if (
-            gt_shape != mask_shape
-            or len(gt_shape) != 3
-            or gt_shape[0] != expected_records
-            or gt_shape[1:] not in {(5000, 12), (12, 5000)}
-        ):
-            raise ValueError(
-                "ImputeECG official arrays must align exactly with the selected training records"
-            )
         config = ReconstructorConfig(
             observed_leads=tuple(configurations[0]),
             seed=int(seed),
@@ -889,16 +1061,15 @@ def _fit_and_score_imputeecg(
             )
         )
         for configuration in configurations:
-            frames.extend(
-                _score_partitions(
-                    model,
-                    evaluation_records,
-                    configuration=configuration,
-                    method="imputeecg",
-                    model_seed=int(seed),
-                    segments=segments,
-                    training_predictors=training_predictors,
-                )
+            _score_partitions(
+                model,
+                evaluation_records,
+                configuration=configuration,
+                method="imputeecg",
+                model_seed=int(seed),
+                segments=segments,
+                training_predictors=training_predictors,
+                metric_writer=metric_writer,
             )
     official = {
         "name": IMPUTE_ECG.name,
@@ -907,7 +1078,7 @@ def _fit_and_score_imputeecg(
         "source_dir": _workspace_relative(source_dir),
         "inference": "in-process pinned ImputeECGReconstructor.load",
     }
-    return frames, checkpoints, "ecgcert.estimators.ImputeECGReconstructor", official
+    return checkpoints, "ecgcert.estimators.ImputeECGReconstructor", official
 
 
 def _fit_and_score_ecgrecover(
@@ -921,22 +1092,37 @@ def _fit_and_score_ecgrecover(
     segments: Sequence[str],
     release: bool,
     training_predictors: Mapping[tuple[str, str, str], tuple[float, float]],
-) -> tuple[list[pd.DataFrame], list[dict[str, Any]], str, dict[str, Any], tuple[str, ...]]:
+    metric_writer: MetricDatasetWriter,
+) -> tuple[list[dict[str, Any]], str, dict[str, Any], tuple[str, ...]]:
     input_lead = str(official_config.get("input_lead", ""))
     if input_lead not in INDEPENDENT_LEADS:
         raise ValueError("ECGrecover input_lead must be one independent canonical lead")
     train_template = official_config.get("official_train_command")
     bridge_template = official_config.get("official_inference_bridge")
     checkpoint_template = official_config.get("checkpoint")
+    records_per_process = int(official_config.get("inference_records_per_process", 0))
+    micro_batch_size = int(official_config.get("inference_micro_batch_size", 0))
     if not isinstance(train_template, list) or not train_template:
         raise ValueError("ECGrecover requires official_train_command argv")
     if not isinstance(bridge_template, list) or not bridge_template:
         raise ValueError("ECGrecover requires official_inference_bridge argv")
     if not checkpoint_template:
         raise ValueError("ECGrecover requires the official checkpoint output path")
-    if release and official_config.get("split_sha256") != train_manifest.split_sha256:
-        raise ValueError("ECGrecover official config split_sha256 does not match PTB-XL manifest")
-    frames = []
+    if records_per_process < 1 or micro_batch_size < 1:
+        raise ValueError("ECGrecover requires positive frozen inference batch sizes")
+    if micro_batch_size > records_per_process:
+        raise ValueError("ECGrecover micro-batch cannot exceed records per process")
+    _validate_official_training_cohort(
+        train_manifest, official_config, method="ECGrecover", release=release
+    )
+    array_hashes = official_config["array_sha256"]
+    for key, raw_path in (
+        ("ground_truth", official_config.get("ground_truth_path")),
+        ("single_lead_input", official_config.get("single_lead_input_path")),
+    ):
+        path = Path(str(raw_path or "")).resolve()
+        if not path.is_file() or sha256_file(path) != array_hashes.get(key):
+            raise ValueError(f"ECGrecover official {key} array hash mismatch")
     checkpoints = []
     for seed in seeds:
         model_dir = (output_dir / "models" / f"seed-{seed}").resolve()
@@ -981,6 +1167,8 @@ def _fit_and_score_ecgrecover(
                 configuration=[input_lead],
                 inference_bridge=bridge,
                 train_command=train_command,
+                inference_records_per_process=records_per_process,
+                inference_micro_batch_size=micro_batch_size,
             )
         )
         bridge_model = OfficialCommandBridgeReconstructor(
@@ -988,17 +1176,17 @@ def _fit_and_score_ecgrecover(
             checkpoint=checkpoint,
             source_dir=source_dir,
             single_input_only=True,
+            records_per_process=records_per_process,
         )
-        frames.extend(
-            _score_partitions(
-                bridge_model,
-                evaluation_records,
-                configuration=(input_lead,),
-                method="ecgrecover",
-                model_seed=int(seed),
-                segments=segments,
-                training_predictors=training_predictors,
-            )
+        _score_partitions(
+            bridge_model,
+            evaluation_records,
+            configuration=(input_lead,),
+            method="ecgrecover",
+            model_seed=int(seed),
+            segments=segments,
+            training_predictors=training_predictors,
+            metric_writer=metric_writer,
         )
     official = {
         "name": ECG_RECOVER.name,
@@ -1006,13 +1194,22 @@ def _fit_and_score_ecgrecover(
         "commit": ECG_RECOVER.commit,
         "source_dir": _workspace_relative(source_dir),
         "input_lead": input_lead,
+        "inference_records_per_process": records_per_process,
+        "inference_micro_batch_size": micro_batch_size,
         "inference_bridge": list(bridge_template),
         "expected_input_schema": OfficialCommandBridgeReconstructor.expected_input_schema,
         "expected_output_schema": OfficialCommandBridgeReconstructor.expected_output_schema,
         "scope": "official single-input task only; not part of multi-input parity claims",
+        "license_spdx": official_config.get("license_spdx"),
+        "redistribution": official_config.get("redistribution"),
+        "permission_basis": official_config.get("permission_basis"),
+        "adaptation_disclosure": official_config.get("adaptation_disclosure"),
+        "integration_descriptor_sha256": official_config.get(
+            "integration_descriptor_sha256"
+        ),
+        "bridge_files": official_config.get("bridge_files"),
     }
     return (
-        frames,
         checkpoints,
         "ecgcert.reconstruction.OfficialCommandBridgeReconstructor",
         official,
@@ -1032,7 +1229,7 @@ def _require_parquet_engine() -> None:
 def run(arguments: argparse.Namespace) -> dict[str, Any]:
     validate_release_arguments(arguments)
     seeds = resolve_model_seeds(arguments)
-    manifest = load_ptbxl_manifest(arguments.manifest)
+    manifest = load_ptbxl_manifest(arguments.manifest, release=arguments.release)
     rank_maps = arguments.rank_maps.resolve()
     rank_maps_sha256 = _path_sha256(rank_maps)
     tuning, tuning_source = _load_tuning(arguments)
@@ -1042,7 +1239,24 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
         source_dir, official_config = _resolve_official_source(arguments)
     _require_parquet_engine()
 
-    train_ids = manifest.record_ids("train", arguments.max_records)
+    requested_train_ids = manifest.record_ids("train", arguments.max_records)
+    training_inclusion: TrainingInclusion | None = None
+    if arguments.training_inclusion is not None:
+        training_inclusion = load_training_inclusion(
+            arguments.training_inclusion,
+            source_manifest_path=arguments.manifest,
+            source_manifest_sha256=manifest.manifest_sha256,
+            split_sha256=manifest.split_sha256,
+            expected_record_ids=requested_train_ids,
+            expected_records=manifest.records,
+            rate_hz=arguments.rate,
+            segments=arguments.segments,
+            delineator=arguments.delineator,
+            configuration_panel_sha256=configuration_panel_sha256(),
+        )
+        train_ids = training_inclusion.included_record_ids
+    else:
+        train_ids = requested_train_ids
     partition_ids = {
         role: manifest.record_ids(role, arguments.max_records)
         for role in ("tune", "calibration", "test")
@@ -1050,7 +1264,10 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
     verification_ids = (
         tuple(manifest.records)
         if arguments.release
-        else (train_ids + tuple(value for ids in partition_ids.values() for value in ids))
+        else (
+            requested_train_ids
+            + tuple(value for ids in partition_ids.values() for value in ids)
+        )
     )
     _verify_manifest_files(manifest, verification_ids, rate=arguments.rate)
     db = PTBXL(manifest.root)
@@ -1090,24 +1307,115 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
             records, segments=arguments.segments
         )
     with TemporaryDirectory(prefix=".ecgcert-train-", dir=output_dir) as temporary:
-        train_manifest, training_predictors, training_audit = _materialize_training_manifest(
-            db,
-            manifest,
-            train_ids,
-            rate=arguments.rate,
-            work_dir=Path(temporary),
-            segments=arguments.segments,
-            delineator=arguments.delineator,
-            configurations=configurations,
-        )
-        predictor_lookup = training_predictor_lookup(training_predictors)
         training_predictor_path = output_dir / TRAINING_PREDICTORS_FILENAME
-        training_predictors.to_parquet(
-            training_predictor_path, index=False, compression="zstd"
+        if training_inclusion is not None:
+            train_manifest = training_inclusion.materialize_signals(
+                db,
+                manifest.records,
+                Path(temporary) / "train_signals.npy",
+            )
+            training_inclusion.copy_predictors(training_predictor_path)
+            training_predictors = pd.read_parquet(training_predictor_path)
+            training_audit = dict(training_inclusion.audit)
+        else:
+            train_manifest, training_predictors, training_audit = (
+                _materialize_training_manifest(
+                    db,
+                    manifest,
+                    train_ids,
+                    rate=arguments.rate,
+                    work_dir=Path(temporary),
+                    segments=arguments.segments,
+                    delineator=arguments.delineator,
+                    configurations=configurations,
+                )
+            )
+            training_predictors.to_parquet(
+                training_predictor_path, index=False, compression="zstd"
+            )
+        predictor_lookup = training_predictor_lookup(training_predictors)
+        scored_configurations = configurations
+        if arguments.method == "ecgrecover":
+            scored_configurations = ((str(official_config.get("input_lead", "")),),)
+        expected_metric_shards = tuple(
+            MetricShardKey.from_values(
+                cohort="PTB-XL",
+                partition=partition,
+                method=arguments.method,
+                model_seed=seed,
+                configuration=configuration,
+            )
+            for seed in seeds
+            for configuration in scored_configurations
+            for partition in ("tune", "calibration", "test")
+        )
+        coverage_by_partition_configuration = {
+            (partition, tuple(configuration)): metric_coverage_contract(
+                evaluation_records[partition],
+                configuration=configuration,
+                segments=arguments.segments,
+            )
+            for partition in ("tune", "calibration", "test")
+            for configuration in scored_configurations
+        }
+        metric_writer = MetricDatasetWriter(
+            output_dir,
+            expected_shards=expected_metric_shards,
+            expected_coverage={
+                key: coverage_by_partition_configuration[
+                    (key.partition, tuple(key.configuration.split("+")))
+                ]
+                for key in expected_metric_shards
+            },
+            dataset_identity={
+                "schema_version": SCHEMA_VERSION,
+                "cohort": "PTB-XL",
+                "method": arguments.method,
+                "manifest_sha256": manifest.manifest_sha256,
+                "split_sha256": manifest.split_sha256,
+                "rank_maps_sha256": rank_maps_sha256,
+                "evaluation_records_sha256": case_sha256,
+                "train_signals_sha256": train_manifest.signals_sha256,
+                "training_inclusion_sha256": (
+                    training_inclusion.inclusion_sha256
+                    if training_inclusion is not None
+                    else "not_applicable"
+                ),
+                "training_record_ids_sha256": (
+                    training_inclusion.record_ids_sha256
+                    if training_inclusion is not None
+                    else "not_applicable"
+                ),
+                "training_patient_ids_sha256": (
+                    training_inclusion.patient_ids_sha256
+                    if training_inclusion is not None
+                    else "not_applicable"
+                ),
+                "training_predictors_sha256": lineage.artifact_sha256(
+                    training_predictor_path
+                ),
+                "rate_hz": arguments.rate,
+                "segments": list(arguments.segments),
+                "delineator": arguments.delineator,
+                "device": arguments.device,
+                "tuning_config": dict(tuning),
+                "tuning_source": tuning_source,
+                "official_config_sha256": (
+                    lineage.artifact_sha256(arguments.official_config.resolve())
+                    if arguments.official_config is not None
+                    else "not_applicable"
+                ),
+                "seeds": list(seeds),
+                "configurations": [list(value) for value in scored_configurations],
+            },
+            # A fresh training attempt can produce a numerically different GPU
+            # checkpoint.  Reusing pre-crash shards across such checkpoints is
+            # forbidden; DAG retry uses a fresh isolated node attempt instead.
+            allow_resume=False,
         )
         official_metadata: dict[str, Any] | None = None
         if arguments.method in {"lowrank", "ridge"}:
-            frames, checkpoints, adapter_class = _fit_and_score_native_linear(
+            checkpoints, adapter_class = _fit_and_score_native_linear(
                 arguments.method,
                 train_manifest,
                 evaluation_records,
@@ -1116,9 +1424,10 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
                 output_dir=output_dir,
                 segments=arguments.segments,
                 training_predictors=predictor_lookup,
+                metric_writer=metric_writer,
             )
         elif arguments.method == "masked-unet":
-            frames, checkpoints, adapter_class = _fit_and_score_masked_unet(
+            checkpoints, adapter_class = _fit_and_score_masked_unet(
                 train_manifest,
                 evaluation_records,
                 configurations,
@@ -1129,10 +1438,11 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
                 device=arguments.device,
                 release=arguments.release,
                 training_predictors=predictor_lookup,
+                metric_writer=metric_writer,
             )
         elif arguments.method == "imputeecg":
             assert source_dir is not None
-            frames, checkpoints, adapter_class, official_metadata = _fit_and_score_imputeecg(
+            checkpoints, adapter_class, official_metadata = _fit_and_score_imputeecg(
                 train_manifest,
                 evaluation_records,
                 configurations,
@@ -1145,11 +1455,11 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
                 device=arguments.device,
                 release=arguments.release,
                 training_predictors=predictor_lookup,
+                metric_writer=metric_writer,
             )
         else:
             assert source_dir is not None
             (
-                frames,
                 checkpoints,
                 adapter_class,
                 official_metadata,
@@ -1164,6 +1474,7 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
                 segments=arguments.segments,
                 release=arguments.release,
                 training_predictors=predictor_lookup,
+                metric_writer=metric_writer,
             )
             configurations = (ecgrecover_configuration,)
         training_signal_sha256 = train_manifest.signals_sha256
@@ -1191,13 +1502,33 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
         },
         "configuration_panel_sha256": configuration_panel_sha256(configurations),
         "n_configurations": len(configurations),
-        "n_train_records": len(train_ids),
+        "n_train_records": len(requested_train_ids),
         "n_train_records_included": training_audit["summary"]["n_included"],
         "n_train_records_excluded": training_audit["summary"]["n_excluded"],
         "n_evaluation_records_requested": {
             partition: len(record_ids) for partition, record_ids in partition_ids.items()
         },
         "train_signals_sha256": training_signal_sha256,
+        "training_inclusion_sha256": (
+            training_inclusion.inclusion_sha256
+            if training_inclusion is not None
+            else "not_applicable"
+        ),
+        "training_inclusion_file_sha256": (
+            lineage.artifact_sha256(training_inclusion.path)
+            if training_inclusion is not None
+            else "not_applicable"
+        ),
+        "training_record_ids_sha256": (
+            training_inclusion.record_ids_sha256
+            if training_inclusion is not None
+            else "not_applicable"
+        ),
+        "training_patient_ids_sha256": (
+            training_inclusion.patient_ids_sha256
+            if training_inclusion is not None
+            else "not_applicable"
+        ),
         "model_seeds": list(seeds),
         "release": bool(arguments.release),
         "subsampled": arguments.max_records is not None
@@ -1262,8 +1593,7 @@ def run(arguments: argparse.Namespace) -> dict[str, Any]:
             },
         },
     }
-    metrics = pd.concat(frames, ignore_index=True)
-    return write_benchmark_artifacts(metrics, output_dir, summary=summary)
+    return metric_writer.finalize(summary=summary)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

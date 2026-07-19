@@ -11,15 +11,18 @@ import json
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_arc_disclosure_matches_bounded_probe() -> None:
-    probe = json.loads(
-        (ROOT / "arc_audit" / "arc_probe_status.v1.json").read_text(encoding="utf-8")
-    )
+def test_arc_disclosure_is_generated_from_authenticated_current_provenance() -> None:
     compliance = (ROOT / "paper" / "compliance.tex").read_text(encoding="utf-8")
-    assert probe["result"]["artifacts_count"] == 0
-    assert probe["result"]["arc_review_claim_permitted"] is False
-    assert "queue owner" in compliance
-    assert "bridge was unavailable" not in compliance
+    manuscript = (ROOT / "paper" / "main_v2.tex").read_text(encoding="utf-8")
+    provenance = json.loads(
+        (ROOT / "paper" / "tool_provenance.v1.template.json").read_text(encoding="utf-8")
+    )
+    assert r"\SubmissionToolDisclosure" in compliance
+    assert r"\input{auto/tool_provenance}" in manuscript
+    assert "queue owner" not in compliance
+    assert "Stage~01 failed" not in manuscript
+    assert provenance["status"] == "PENDING_HUMAN_VERIFICATION"
+    assert provenance["autoresearchclaw_formal_receipts"] == {}
 
 
 def _claim_surfaces() -> dict[str, str]:
@@ -93,3 +96,20 @@ def test_package_metadata_matches_primary_research_scope():
 def test_readme_contains_no_final_empirical_percentage():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert re.search(r"(?<![\w.])\d+(?:\.\d+)?\s*%", readme) is None
+
+
+def test_arc_gate_register_matches_the_sandboxed_control_plane() -> None:
+    register = (ROOT / "arc_audit" / "STAGE_GATES.md").read_text(encoding="utf-8")
+    config = (ROOT / "arc_audit" / "config.arc.yaml").read_text(encoding="utf-8")
+    assert "experiment profile is real (`ssh_remote`)" not in register
+    assert "local sandboxed control plane" in register
+    assert "acp_runtime.v1.json" not in config
+    assert "acpx_version.txt" in config
+    assert "arc_probe_status.v1.json" in config
+
+
+def test_precompiled_paper_pdfs_are_not_source_artifacts() -> None:
+    for relative in ("paper/main_v2.pdf", "paper/arxiv_long.pdf"):
+        assert not (ROOT / relative).exists()
+    gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert "paper/*.pdf" in gitignore

@@ -51,6 +51,11 @@ class RidgeLeadReconstructor(Reconstructor):
             y_mean=self.y_mean,
             observed=self.observed,
             ridge_lambda=np.asarray([ridge_lambda]),
+            training_record_ids_sha256=np.asarray([train_manifest.record_ids_sha256]),
+            training_patient_ids_sha256=np.asarray([train_manifest.patient_ids_sha256]),
+            training_inclusion_sha256=np.asarray(
+                [train_manifest.training_inclusion_sha256]
+            ),
         )
         self._fitted = True
         return self
@@ -96,6 +101,11 @@ class LowRankConditionalMeanReconstructor(Reconstructor):
             observed=self.observed,
             rank=np.asarray([rank]),
             noise_variance=np.asarray([shrinkage]),
+            training_record_ids_sha256=np.asarray([train_manifest.record_ids_sha256]),
+            training_patient_ids_sha256=np.asarray([train_manifest.patient_ids_sha256]),
+            training_inclusion_sha256=np.asarray(
+                [train_manifest.training_inclusion_sha256]
+            ),
         )
         self._fitted = True
         return self

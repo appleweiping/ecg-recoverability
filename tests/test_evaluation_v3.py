@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 import ecgcert.evaluation as evaluation
 from ecgcert.evaluation import (
@@ -60,17 +61,136 @@ def test_stage15_gate_is_fail_closed():
     weak = BootstrapEffect(0.01, (-0.02, 0.1), 2000, 1)
     proceed = stage15_decision(
         ptbxl=good,
-        external={"Chapman": weak, "CPSC": good},
-        method_deltas={"a": 0.1, "b": 0.1, "c": 0.1, "d": -0.1},
+        external={"Chapman": good, "CPSC": weak},
+        method_deltas={
+            "lowrank": 0.1,
+            "ridge": 0.1,
+            "masked-unet": 0.1,
+            "imputeecg": -0.1,
+        },
     )
     assert proceed.status == "PROCEED"
+    assert proceed.qualifying_external_cohorts == ("Chapman",)
+    cpsc_cannot_rescue = stage15_decision(
+        ptbxl=good,
+        external={"Chapman": weak, "CPSC2018": good},
+        method_deltas={
+            "lowrank": 0.1,
+            "ridge": 0.1,
+            "masked-unet": 0.1,
+            "imputeecg": -0.1,
+        },
+    )
+    assert cpsc_cannot_rescue.status == "PIVOT"
+    assert cpsc_cannot_rescue.qualifying_external_cohorts == ()
+    assert "patient-key-eligible" in cpsc_cannot_rescue.reasons[0]
     pivot = stage15_decision(
         ptbxl=weak,
         external={"Chapman": weak},
-        method_deltas={"a": 0.1, "b": -0.1, "c": -0.1, "d": -0.1},
+        method_deltas={
+            "lowrank": 0.1,
+            "ridge": -0.1,
+            "masked-unet": -0.1,
+            "imputeecg": -0.1,
+        },
     )
     assert pivot.status == "PIVOT"
     assert len(pivot.reasons) == 3
+
+
+@pytest.mark.parametrize(
+    "effect, message",
+    [
+        (BootstrapEffect(np.nan, (-0.1, 0.1), 2000, 1), "must be finite"),
+        (BootstrapEffect(0.1, (np.nan, 0.2), 2000, 1), "must be finite"),
+        (BootstrapEffect(0.1, (0.2, 0.0), 2000, 1), "reversed"),
+        (BootstrapEffect(0.3, (0.1, 0.2), 2000, 1), "outside"),
+        (BootstrapEffect(0.1, (0.0, 0.2), 0, 1), "metadata"),
+        (BootstrapEffect(True, (0.0, 1.0), 2000, 1), "invalid point/interval"),
+    ],
+)
+def test_stage15_rejects_invalid_effects_before_comparison(effect, message):
+    good = BootstrapEffect(0.1, (0.02, 0.2), 2000, 1)
+    methods = {
+        "lowrank": 0.1,
+        "ridge": 0.1,
+        "masked-unet": 0.1,
+        "imputeecg": -0.1,
+    }
+    with pytest.raises(ValueError, match=message):
+        stage15_decision(
+            ptbxl=effect,
+            external={"Chapman": good, "cpsc2018": good},
+            method_deltas=methods,
+        )
+
+
+@pytest.mark.parametrize(
+    "methods",
+    [
+        {"lowrank": 0.1, "ridge": 0.1, "masked-unet": 0.1},
+        {
+            "lowrank": 0.1,
+            "ridge": 0.1,
+            "masked-unet": 0.1,
+            "imputeecg": -0.1,
+            "extra": 1.0,
+        },
+        {
+            "lowrank": 0.1,
+            "ridge": np.inf,
+            "masked-unet": 0.1,
+            "imputeecg": -0.1,
+        },
+    ],
+)
+def test_stage15_requires_exact_finite_common_method_panel(methods):
+    good = BootstrapEffect(0.1, (0.02, 0.2), 2000, 1)
+    with pytest.raises(ValueError, match="four-method panel|must be finite"):
+        stage15_decision(
+            ptbxl=good,
+            external={"Chapman": good, "cpsc2018": good},
+            method_deltas=methods,
+        )
+
+
+def test_stage15_signed_zero_never_counts_as_positive():
+    good = BootstrapEffect(0.1, (0.02, 0.2), 2000, 1)
+    decision = stage15_decision(
+        ptbxl=good,
+        external={"Chapman": good, "cpsc2018": good},
+        method_deltas={
+            "lowrank": 0.1,
+            "ridge": 0.1,
+            "masked-unet": +0.0,
+            "imputeecg": -0.0,
+        },
+    )
+    assert decision.status == "PIVOT"
+    assert decision.positive_methods == 2
+
+
+def test_stage15_validates_every_external_effect_and_casefold_unique_cohort():
+    good = BootstrapEffect(0.1, (0.02, 0.2), 2000, 1)
+    bad = BootstrapEffect(0.1, (0.02, np.inf), 2000, 1)
+    methods = {
+        "lowrank": 0.1,
+        "ridge": 0.1,
+        "masked-unet": 0.1,
+        "imputeecg": -0.1,
+    }
+    with pytest.raises(ValueError, match="must be finite"):
+        stage15_decision(
+            ptbxl=good,
+            external={"Chapman": good, "cpsc2018": bad},
+            method_deltas=methods,
+        )
+    with pytest.raises(ValueError, match="names must be non-empty and unique"):
+        stage15_decision(
+            ptbxl=good,
+            external={"Chapman": good, "chapman": good},
+            method_deltas=methods,
+        )
 
 
 def test_meta_alpha_is_selected_using_loco_tune_rows():

@@ -20,6 +20,8 @@ so signal columns are used positionally.
 from __future__ import annotations
 
 import ast
+import hashlib
+import json
 from pathlib import Path
 
 import numpy as np
@@ -27,11 +29,66 @@ import pandas as pd
 
 from ecgcert.data.audit import AuditTrail, SignalAudit
 from ecgcert.data.common import canonicalize_wfdb_record
+from ecgcert.protocol import (
+    PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+    SEGMENT_SAMPLING_ALGORITHM,
+)
 
 # PTB-XL diagnostic superclasses (scp_statements.diagnostic_class).
 SUPERCLASSES = ("NORM", "MI", "STTC", "CD", "HYP")
 
 _DEFAULT_ROOT = Path(__file__).resolve().parents[3] / "data" / "ptbxl"
+
+
+def sample_segment_timepoints(
+    indices: np.ndarray,
+    *,
+    cap: int,
+    seed: int,
+    namespace: str,
+    record_id: int | str,
+    segment: str,
+) -> np.ndarray:
+    """Select a deterministic, nested uniform-without-replacement prefix.
+
+    SHA-256 derives an independent PCG64 stream for each
+    ``namespace x record x segment`` cell.  A full permutation is generated and
+    its first ``cap`` entries are retained, so a larger-cap sensitivity contains
+    every timepoint selected by the primary cap when all other inputs agree.
+    Returned indices are sorted back into temporal order.
+    """
+
+    if isinstance(cap, bool) or not isinstance(cap, int) or cap < 1:
+        raise ValueError("segment timepoint cap must be a positive integer")
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise ValueError("segment sampling seed must be an integer")
+    if not isinstance(namespace, str) or not namespace:
+        raise ValueError("segment sampling namespace must be non-empty")
+    if not isinstance(segment, str) or not segment:
+        raise ValueError("segment name must be non-empty")
+    raw = np.asarray(indices)
+    if raw.ndim != 1 or not np.issubdtype(raw.dtype, np.integer):
+        raise ValueError("segment indices must be a one-dimensional integer array")
+    canonical = np.sort(raw.astype(np.int64, copy=False))
+    if canonical.size != np.unique(canonical).size:
+        raise ValueError("segment indices must be unique")
+    if canonical.size <= cap:
+        return canonical.copy()
+
+    key = json.dumps(
+        [
+            SEGMENT_SAMPLING_ALGORITHM,
+            int(seed),
+            namespace,
+            str(record_id),
+            segment,
+        ],
+        ensure_ascii=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    derived_seed = int.from_bytes(hashlib.sha256(key).digest()[:16], "big")
+    generator = np.random.Generator(np.random.PCG64(derived_seed))
+    return np.sort(generator.permutation(canonical)[:cap])
 
 
 class PTBXL:
@@ -98,7 +155,10 @@ class PTBXL:
             n_samples=int(signal.shape[0]),
             input_leads=conversion["input_leads"],
             input_units=conversion["input_units"],
+            canonical_leads=conversion["canonical_leads"],
+            source_channel_indices=conversion["source_channel_indices"],
             unit_scales_to_mv=conversion["unit_scales_to_mv"],
+            output_unit=conversion["output_unit"],
         )
         return signal, audit
 
@@ -110,7 +170,8 @@ class PTBXL:
     # --------------------------------------------------------------- delineation
     @staticmethod
     def segment_indices(sig: np.ndarray, fs: int, rpeak_lead: int = 1,
-                        method: str | None = None) -> dict[str, np.ndarray]:
+                        method: str | None = None,
+                        strict: bool = False) -> dict[str, np.ndarray]:
         """P/QRS/ST/T time indices via NeuroKit2 delineation.
 
         Delineation runs on one lead (default II) to locate fiducials shared across
@@ -122,7 +183,9 @@ class PTBXL:
             T   : T onset -> T offset
 
         Returns ``{segment: int array of sample indices}``; missing waves yield
-        empty arrays.  Robust to NeuroKit failures (returns empties).
+        empty arrays.  By default NeuroKit failures also return empties for legacy
+        exploratory callers. Audited release paths set ``strict=True`` so the
+        underlying segmentation failure is retained as an exclusion reason.
         """
         import neurokit2 as nk
 
@@ -132,7 +195,9 @@ class PTBXL:
             import os
             meth = method or os.environ.get("ECG_DELINEATOR", "dwt")   # robustness: ECG_DELINEATOR=peak
             _, waves = nk.ecg_delineate(x, rpeaks, sampling_rate=fs, method=meth)
-        except Exception:
+        except Exception as exc:
+            if strict:
+                raise RuntimeError(f"NeuroKit2 delineation failed: {exc}") from exc
             return {s: np.array([], dtype=int) for s in ("P", "QRS", "ST", "T")}
 
         def arr(key):
@@ -164,15 +229,20 @@ class PTBXL:
         segs["ST"] = np.asarray(sorted(set(i for i in st_idx if 0 <= i < n)), dtype=int)
         return segs
 
-    def collect_all_segments(self, ecg_ids, rate: int = 100, max_per_record: int = 40,
-                             max_records: int | None = None, seed: int = 0
-                             ) -> dict[str, np.ndarray]:
+    def collect_all_segments(
+        self,
+        ecg_ids,
+        rate: int = 100,
+        max_per_record: int = PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        max_records: int | None = None,
+        seed: int = 0,
+        sampling_namespace: str = "PTB-XL",
+    ) -> dict[str, np.ndarray]:
         """Pool per-segment 12-lead sample vectors, delineating each record ONCE.
 
         Returns ``{segment: (N, 12)}``.  Much faster than calling
         :meth:`collect_segment_samples` per segment (which re-delineates).
         """
-        rng = np.random.default_rng(seed)
         ids = list(ecg_ids)
         if max_records is not None:
             ids = ids[:max_records]
@@ -186,14 +256,26 @@ class PTBXL:
             for s, idx in segs.items():
                 if idx.size == 0:
                     continue
-                if idx.size > max_per_record:
-                    idx = rng.choice(idx, max_per_record, replace=False)
+                idx = sample_segment_timepoints(
+                    idx,
+                    cap=max_per_record,
+                    seed=seed,
+                    namespace=sampling_namespace,
+                    record_id=eid,
+                    segment=s,
+                )
                 rows[s].append(sig[idx])
         return {s: (np.vstack(v) if v else np.zeros((0, 12))) for s, v in rows.items()}
 
-    def collect_all_segments_with_ids(self, ecg_ids, rate: int = 100, max_per_record: int = 40,
-                                      max_records: int | None = None, seed: int = 0
-                                      ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    def collect_all_segments_with_ids(
+        self,
+        ecg_ids,
+        rate: int = 100,
+        max_per_record: int = PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        max_records: int | None = None,
+        seed: int = 0,
+        sampling_namespace: str = "PTB-XL",
+    ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
         """Like :meth:`collect_all_segments` but also returns the source record id per sample.
 
         Returns ``{segment: (X (N,12), rec_ids (N,))}``. Needed for record-level bootstrap:
@@ -201,7 +283,6 @@ class PTBXL:
         records and refit -- pooled-sample bootstrap understates uncertainty because
         multiple samples from one record are not exchangeable.
         """
-        rng = np.random.default_rng(seed)
         ids = list(ecg_ids)
         if max_records is not None:
             ids = ids[:max_records]
@@ -216,8 +297,14 @@ class PTBXL:
             for s, idx in segs.items():
                 if idx.size == 0:
                     continue
-                if idx.size > max_per_record:
-                    idx = rng.choice(idx, max_per_record, replace=False)
+                idx = sample_segment_timepoints(
+                    idx,
+                    cap=max_per_record,
+                    seed=seed,
+                    namespace=sampling_namespace,
+                    record_id=eid,
+                    segment=s,
+                )
                 rows[s].append(sig[idx])
                 rids[s].append(np.full(idx.size, int(eid), dtype=np.int64))
         out = {}
@@ -232,16 +319,16 @@ class PTBXL:
         self,
         ecg_ids,
         rate: int = 500,
-        max_per_record: int = 40,
+        max_per_record: int = PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
         max_records: int | None = None,
         seed: int = 0,
+        sampling_namespace: str = "PTB-XL",
     ):
         """Collect samples with record/patient clusters and explicit exclusions.
 
         Returns ``({segment: (X, record_ids, patient_ids)}, AuditTrail)``.
         """
 
-        rng = np.random.default_rng(seed)
         ids = list(ecg_ids)
         if max_records is not None:
             ids = ids[:max_records]
@@ -251,14 +338,27 @@ class PTBXL:
         trail = AuditTrail()
         for eid in ids:
             patient_id = self.patient_id(int(eid))
+            base_audit = None
             try:
                 signal, base_audit = self.signal_with_audit(int(eid), rate=rate)
-                segments = self.segment_indices(signal, fs=rate)
+                segments = self.segment_indices(signal, fs=rate, strict=True)
                 counts = {segment: int(index.size) for segment, index in segments.items()}
                 if not any(counts.values()):
                     raise ValueError("no valid delineated segments")
                 trail.append(SignalAudit(**{**base_audit.__dict__, "segment_counts": counts}))
             except Exception as exc:
+                retained = {}
+                if base_audit is not None:
+                    retained = {
+                        "source_rate_hz": base_audit.source_rate_hz,
+                        "n_samples": base_audit.n_samples,
+                        "input_leads": base_audit.input_leads,
+                        "input_units": base_audit.input_units,
+                        "canonical_leads": base_audit.canonical_leads,
+                        "source_channel_indices": base_audit.source_channel_indices,
+                        "unit_scales_to_mv": base_audit.unit_scales_to_mv,
+                        "output_unit": base_audit.output_unit,
+                    }
                 trail.append(
                     SignalAudit(
                         cohort="PTB-XL",
@@ -267,14 +367,21 @@ class PTBXL:
                         status="excluded",
                         reason=f"{type(exc).__name__}: {exc}",
                         requested_rate_hz=rate,
+                        **retained,
                     )
                 )
                 continue
             for segment, index in segments.items():
                 if index.size == 0:
                     continue
-                if index.size > max_per_record:
-                    index = rng.choice(index, max_per_record, replace=False)
+                index = sample_segment_timepoints(
+                    index,
+                    cap=max_per_record,
+                    seed=seed,
+                    namespace=sampling_namespace,
+                    record_id=eid,
+                    segment=segment,
+                )
                 rows[segment].append(signal[index])
                 record_groups[segment].append(np.full(index.size, int(eid), dtype=np.int64))
                 patient_groups[segment].append(np.full(index.size, patient_id, dtype=object))
@@ -295,12 +402,25 @@ class PTBXL:
                 )
         return out, trail
 
-    def collect_segment_samples(self, ecg_ids, segment: str, rate: int = 100,
-                                max_per_record: int = 40, max_records: int | None = None,
-                                seed: int = 0) -> np.ndarray:
+    def collect_segment_samples(
+        self,
+        ecg_ids,
+        segment: str,
+        rate: int = 100,
+        max_per_record: int = PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        max_records: int | None = None,
+        seed: int = 0,
+        sampling_namespace: str = "PTB-XL",
+    ) -> np.ndarray:
         """Pool per-segment 12-lead sample vectors across records -> (N, 12)."""
-        return self.collect_all_segments(ecg_ids, rate=rate, max_per_record=max_per_record,
-                                         max_records=max_records, seed=seed)[segment]
+        return self.collect_all_segments(
+            ecg_ids,
+            rate=rate,
+            max_per_record=max_per_record,
+            max_records=max_records,
+            seed=seed,
+            sampling_namespace=sampling_namespace,
+        )[segment]
 
 
 def _pair(on: np.ndarray, off: np.ndarray, n: int):

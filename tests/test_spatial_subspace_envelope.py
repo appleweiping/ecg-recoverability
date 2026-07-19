@@ -1,8 +1,10 @@
 """Record-cluster bootstrap and conservative rank-path envelopes."""
 
 from collections import defaultdict
+from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from ecgcert.recoverability import (
     DEFAULT_RANK_GRID,
@@ -107,3 +109,21 @@ def test_envelope_contains_every_full_sample_rank_path_member():
     )
     assert np.all(envelope.model_sensitivity_span >= 0.0)
     assert not envelope.eta_normalized_upper.flags.writeable
+
+
+def test_bootstrap_rank_path_rejects_missing_or_duplicated_draw_cells():
+    path = _bootstrap()
+
+    with pytest.raises(ValueError, match="exactly one entry per bootstrap/model cell"):
+        replace(path, replicates=path.replicates[:-1])
+
+    corrupted = list(path.replicates)
+    source = corrupted[0]
+    replacement_index = next(
+        index
+        for index, entry in enumerate(corrupted)
+        if entry.model_key == source.model_key and entry.bootstrap_index != source.bootstrap_index
+    )
+    corrupted[replacement_index] = source
+    with pytest.raises(ValueError, match="cover every accepted draw exactly once"):
+        replace(path, replicates=tuple(corrupted))

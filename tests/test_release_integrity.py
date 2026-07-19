@@ -20,7 +20,7 @@ CITED_JSON = ["fair_baselines", "st_safety", "recoverability_maps", "tier2_confo
               "delineator_robustness", "certificate_floor_diffusion", "active_selection"]
 MACROS = ["paper/auto/fair_baselines_macros.tex", "paper/auto/fair_baselines_table.tex",
           "paper/auto/long_results_macros.tex"]
-PDFS = ["paper/main_v2.pdf", "paper/arxiv_long.pdf"]
+SOURCE_PDFS = ["paper/main_v2.pdf", "paper/arxiv_long.pdf"]
 BANNED = [
     r"1\.[36]\s*\\?sigma", r"1\.[36]\$?\\sigma", r"\\NegSigmaHi",     # sigma-significance language
     r"certified floor", r"reconstructor-invariant", r"certified numeric floor",
@@ -45,11 +45,14 @@ def test_all_cited_json_exist_with_lineage():
         assert lin and lin.get("commit") and lin["commit"] != "unknown", f"{n}: no lineage commit"
 
 
-def test_macros_and_pdfs_exist():
+def test_macros_exist_and_stale_precompiled_pdfs_are_absent():
     for m in MACROS:
         assert (ROOT / m).exists(), f"missing macro file {m}"
-    for p in PDFS:
-        assert (ROOT / p).exists(), f"missing PDF {p}"
+    for p in SOURCE_PDFS:
+        assert not (ROOT / p).exists(), (
+            f"precompiled source-tree PDF is stale-prone: {p}; "
+            "build the hash-bound submission into the external artifact directory"
+        )
 
 
 def test_main_page_count():

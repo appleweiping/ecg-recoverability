@@ -42,6 +42,8 @@ def figure_summary(
         "stage15_status": stage15_status,
         "figures": ["figure1_robust_map.pdf", "figure2_prediction_gain.pdf"],
         "source_tables": ["figure1_source.parquet", "figure2_source.parquet"],
+        "figure1_population": "missing_targets_only",
+        "figure1_observed_target_policy": "masked_to_null",
         "artifacts_sha256": artifact_sha256,
         "input_sha256": {
             name: lineage.artifact_sha256(path) for name, path in input_paths.items()
@@ -51,27 +53,84 @@ def figure_summary(
 
 def robust_map_figure(map_cells: pd.DataFrame, output: Path) -> pd.DataFrame:
     panel_ids = [_configuration_id(configuration) for configuration in deep_configuration_panel()]
+    required = {
+        "segment",
+        "configuration",
+        "target",
+        "target_observed",
+        "ambiguity_robust_mv",
+    }
+    missing = required - set(map_cells.columns)
+    if missing:
+        raise ValueError(f"primary map figure lacks columns: {sorted(missing)}")
     source = map_cells[
         map_cells["configuration"].isin(panel_ids) & map_cells["segment"].isin(("QRS", "ST", "T"))
     ].copy()
+    keys = ["segment", "configuration", "target"]
+    if source.duplicated(keys).any():
+        raise ValueError("primary map figure contains duplicate frozen cells")
+    expected_keys = {
+        (segment, _configuration_id(configuration), target)
+        for segment in ("QRS", "ST", "T")
+        for configuration in deep_configuration_panel()
+        for target in LEADS
+    }
+    actual_keys = set(source[keys].itertuples(index=False, name=None))
+    if actual_keys != expected_keys:
+        raise ValueError("primary map figure requires all 64 x 12 x 3 frozen cells")
+    flags = source["target_observed"]
+    if not flags.map(lambda value: isinstance(value, (bool, np.bool_))).all():
+        raise ValueError("primary map target_observed must contain strict booleans")
+    observed_by_configuration = {
+        _configuration_id(configuration): set(configuration)
+        for configuration in deep_configuration_panel()
+    }
+    expected_observed = np.fromiter(
+        (
+            str(row.target) in observed_by_configuration[str(row.configuration)]
+            for row in source.itertuples(index=False)
+        ),
+        dtype=bool,
+        count=len(source),
+    )
+    if not np.array_equal(flags.to_numpy(dtype=bool), expected_observed):
+        raise ValueError(
+            "primary map target_observed disagrees with configuration membership"
+        )
+    values = pd.to_numeric(source["ambiguity_robust_mv"], errors="coerce").to_numpy(
+        dtype=float
+    )
+    if not np.isfinite(values).all() or np.any(values < 0.0):
+        raise ValueError("primary map ambiguity values must be finite and non-negative")
+    source["ambiguity_robust_mv"] = values
+    source.loc[expected_observed, "ambiguity_robust_mv"] = np.nan
     source["configuration"] = pd.Categorical(
         source["configuration"], categories=panel_ids, ordered=True
     )
     source["target"] = pd.Categorical(source["target"], categories=LEADS, ordered=True)
     source = source.sort_values(["segment", "configuration", "target"])
-    if len(source) != 3 * len(panel_ids) * len(LEADS):
-        raise ValueError("primary map figure requires all 64 x 12 x 3 frozen cells")
-
-    values = source["ambiguity_robust_mv"].to_numpy(dtype=float)
-    vmax = float(np.nanquantile(values, 0.99))
+    display_values = source.loc[
+        ~source["target_observed"].to_numpy(dtype=bool), "ambiguity_robust_mv"
+    ].to_numpy(dtype=float)
+    if not display_values.size or not np.isfinite(display_values).all():
+        raise ValueError("primary map figure has no finite missing-target values")
+    vmax = float(np.quantile(display_values, 0.99))
     vmax = max(vmax, np.finfo(float).eps)
     figure, axes = plt.subplots(1, 3, figsize=(9.0, 6.2), sharex=True, sharey=True)
     image = None
+    colormap = plt.get_cmap("magma").copy()
+    colormap.set_bad(color="#d9d9d9")
     for axis, segment in zip(axes, ("QRS", "ST", "T")):
         rows = source[source["segment"] == segment]
         matrix = rows.pivot(index="configuration", columns="target", values="ambiguity_robust_mv")
         matrix = matrix.reindex(index=panel_ids, columns=LEADS)
-        image = axis.imshow(matrix.to_numpy(), aspect="auto", cmap="magma", vmin=0, vmax=vmax)
+        image = axis.imshow(
+            np.ma.masked_invalid(matrix.to_numpy(dtype=float)),
+            aspect="auto",
+            cmap=colormap,
+            vmin=0,
+            vmax=vmax,
+        )
         axis.set_title(segment)
         axis.set_xticks(range(len(LEADS)), LEADS, rotation=90, fontsize=6)
         axis.set_xlabel("target lead")

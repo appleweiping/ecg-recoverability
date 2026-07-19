@@ -9,10 +9,13 @@ import pytest
 
 from ecgcert import lineage
 from ecgcert.benchmarking import (
+    COHORT_MAP_RANKING_SCHEMA_VERSION,
     EXPECTED_METHODS,
+    compare_cohort_maps,
     evaluate_zero_transfer_bundles,
     load_benchmark_bundles,
 )
+from ecgcert.data.audit import SignalAudit
 from ecgcert.data.common import CANONICAL_LEADS
 from ecgcert.data.manifest import DatasetManifest, ManifestRecord
 from ecgcert.estimators.official import ECG_RECOVER, IMPUTE_ECG
@@ -116,6 +119,64 @@ def _evaluation_records(
     return tuple(out)
 
 
+def test_external_exclusion_retains_completed_signal_normalization_audit(
+    tmp_path, monkeypatch
+):
+    manifest = _external_manifest(tmp_path)
+    selected = tuple(record.record_id for record in manifest.records[:2])
+
+    class Cohort:
+        def __init__(self, _manifest):
+            pass
+
+        def signal_with_audit(self, record_id, rate):
+            n_samples = external.WINDOW_SAMPLES if record_id == selected[0] else 4
+            patient_id = next(
+                record.patient_id
+                for record in manifest.records
+                if record.record_id == record_id
+            )
+            audit = SignalAudit(
+                cohort=manifest.cohort,
+                record_id=record_id,
+                patient_id=patient_id,
+                status="included",
+                reason=None,
+                requested_rate_hz=rate,
+                source_rate_hz=500,
+                n_samples=n_samples,
+                input_leads=CANONICAL_LEADS,
+                input_units=("uV",) * 12,
+                canonical_leads=CANONICAL_LEADS,
+                source_channel_indices=tuple(range(12)),
+                unit_scales_to_mv=(1e-3,) * 12,
+                output_unit="mV",
+            )
+            return np.zeros((n_samples, 12)), audit
+
+    monkeypatch.setattr(
+        external.PTBXL,
+        "segment_indices",
+        staticmethod(
+            lambda *_args, **_kwargs: {
+                segment: np.asarray([0], dtype=int) for segment in PRIMARY_SEGMENTS
+            }
+        ),
+    )
+    records, trail = external._load_external_records(
+        manifest,
+        selected,
+        delineator="dwt",
+        cohort_factory=Cohort,
+    )
+    assert len(records) == 1
+    excluded = next(record for record in trail.records if record.status == "excluded")
+    assert excluded.canonical_leads == CANONICAL_LEADS
+    assert excluded.source_channel_indices == tuple(range(12))
+    assert excluded.unit_scales_to_mv == (1e-3,) * 12
+    assert excluded.output_unit == "mV"
+
+
 def _artifact_descriptor(path: Path) -> dict:
     return {"path": path.name, "sha256": lineage.artifact_sha256(path)}
 
@@ -191,6 +252,7 @@ def _write_benchmark_bundle(root: Path, method: str) -> Path:
             "commit": ECG_RECOVER.commit,
             "source_dir": "upstreams/ECGrecover",
             "input_lead": "I",
+            "inference_records_per_process": 128,
             "inference_bridge": bridge,
             "integration_config_sha256": "f" * 64,
         }
@@ -292,9 +354,7 @@ def _zero_arguments(tmp_path: Path, bundles: list[Path]) -> argparse.Namespace:
     )
 
 
-def test_zero_transfer_scores_locked_panel_and_writes_patient_metrics(
-    tmp_path, parquet_store
-):
+def test_zero_transfer_scores_locked_panel_and_writes_patient_metrics(tmp_path):
     manifest = _external_manifest(tmp_path)
     records = _evaluation_records(manifest, manifest.split().test)
     bundles = _benchmark_bundles(tmp_path)
@@ -316,7 +376,7 @@ def test_zero_transfer_scores_locked_panel_and_writes_patient_metrics(
     )
 
     metrics_path = (arguments.output_dir / "patient_metrics.parquet").resolve()
-    metrics = parquet_store[metrics_path]
+    metrics = pd.read_parquet(metrics_path)
     assert set(metrics["cohort"]) == {"chapman"}
     assert set(metrics["partition"]) == {"test"}
     assert set(metrics["segment"]) == set(PRIMARY_SEGMENTS)
@@ -335,6 +395,14 @@ def test_zero_transfer_scores_locked_panel_and_writes_patient_metrics(
     assert summary["external_training_or_adaptation"] == "forbidden_and_not_performed"
     assert summary["observed_sample_integrity"] == "passed_exact_pointwise"
     assert len(summary["training_predictors_content_sha256"]) == 64
+    inventory = json.loads(
+        (arguments.output_dir / "patient_metrics.inventory.v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert inventory["status"] == "complete"
+    assert inventory["n_completed_shards"] == 4 * 64 + 1
+    assert inventory["total_rows"] == len(metrics)
     audit = json.loads(
         (arguments.output_dir / "evaluation_audit.json").read_text(encoding="utf-8")
     )
@@ -440,6 +508,10 @@ def _primary_rank_map(root: Path) -> pd.DataFrame:
                         "configuration": "+".join(configuration),
                         "target": target,
                         "target_observed": target in configuration,
+                        "ambiguity_robust_mv": float(
+                            segment_index * 10000 + config_index * 20 + target_index
+                        )
+                        / 30000.0,
                         "recoverability_lower": float(
                             segment_index * 10000 + config_index * 20 + target_index
                         )
@@ -533,7 +605,12 @@ def test_cohort_maps_fit_only_train60_and_compare_ptb_rankings(
                 map_rows.append(
                     {
                         **common,
-                        "recoverability_lower": float(
+                        "ambiguity_robust_mv": float(
+                            segment_index * 10000 + config_index * 20 + target_index
+                        )
+                        / 30000.0,
+                        "recoverability_lower": 1.0
+                        - float(
                             segment_index * 10000 + config_index * 20 + target_index
                         )
                         / 30000.0,
@@ -573,16 +650,104 @@ def test_cohort_maps_fit_only_train60_and_compare_ptb_rankings(
     assert set(captured_patient_ids) == train_patients
     assert not set(captured_patient_ids) & test_patients
     assert summary["test_records_accessed"] == 0
-    assert summary["overall_spearman_rho"] == pytest.approx(1.0)
+    assert "overall_spearman_rho" not in summary
+    ranking = summary["ranking_stability"]
+    assert ranking["schema_version"] == COHORT_MAP_RANKING_SCHEMA_VERSION
+    assert ranking["primary"] == {
+        "metric": "ambiguity_robust_mv",
+        "symbol": "A_robust",
+        "unit": "mV",
+        "recoverability_order": "lower_is_more_recoverable",
+        "headline_eligible": True,
+        "overall_spearman_rho": pytest.approx(1.0),
+        "overall_spearman_pvalue": pytest.approx(0.0),
+    }
+    assert ranking["secondary_diagnostic"]["metric"] == "recoverability_lower"
+    assert ranking["secondary_diagnostic"]["headline_eligible"] is False
+    assert ranking["secondary_diagnostic"]["overall_spearman_rho"] == pytest.approx(
+        -1.0
+    )
     agreement = parquet_store[
         (arguments.output_dir / "ranking_spearman.parquet").resolve()
     ]
-    assert agreement.iloc[0]["ranking_metric"].endswith("missing targets only")
+    assert set(agreement["score_role"]) == {"primary", "secondary_diagnostic"}
+    primary_rows = agreement[agreement["score_role"] == "primary"]
+    diagnostic_rows = agreement[agreement["score_role"] == "secondary_diagnostic"]
+    assert set(primary_rows["source_metric"]) == {"ambiguity_robust_mv"}
+    assert set(primary_rows["recoverability_order"]) == {
+        "lower_is_more_recoverable"
+    }
+    assert primary_rows["headline_eligible"].all()
+    assert not diagnostic_rows["headline_eligible"].any()
+    assert primary_rows.iloc[0]["ranking_metric"].endswith("missing targets only")
     audit = json.loads(
         (arguments.output_dir / "evaluation_audit.json").read_text(encoding="utf-8")
     )
     assert audit["partition"] == "train"
     assert audit["test_records_accessed"] == 0
+
+
+def test_cohort_map_comparison_makes_a_robust_primary_and_r_lower_diagnostic():
+    common = {
+        "schema_version": [MAP_SCHEMA_VERSION] * 3,
+        "segment": ["QRS"] * 3,
+        "configuration": ["I"] * 3,
+        "target": ["II", "V1", "V2"],
+        "target_observed": [False] * 3,
+    }
+    ptb = pd.DataFrame(
+        {
+            **common,
+            "ambiguity_robust_mv": [0.1, 0.2, 0.3],
+            "recoverability_lower": [0.2, 0.5, 0.8],
+        }
+    )
+    external_cells = pd.DataFrame(
+        {
+            **common,
+            "ambiguity_robust_mv": [0.01, 0.02, 0.03],
+            "recoverability_lower": [0.9, 0.5, 0.1],
+        }
+    )
+
+    comparison = compare_cohort_maps(external_cells, ptb)
+    overall = comparison[
+        (comparison["segment"] == "__all__")
+        & (comparison["target"] == "__all__")
+    ].set_index("score_role")
+    assert overall.loc["primary", "source_metric"] == "ambiguity_robust_mv"
+    assert overall.loc["primary", "recoverability_order"] == "lower_is_more_recoverable"
+    assert bool(overall.loc["primary", "headline_eligible"])
+    assert overall.loc["primary", "spearman_rho"] == pytest.approx(1.0)
+    assert overall.loc["secondary_diagnostic", "source_metric"] == "recoverability_lower"
+    assert not bool(overall.loc["secondary_diagnostic", "headline_eligible"])
+    assert overall.loc["secondary_diagnostic", "spearman_rho"] == pytest.approx(-1.0)
+
+
+def test_cohort_map_comparison_fails_closed_on_invalid_primary_metric_or_flags():
+    valid = pd.DataFrame(
+        {
+            "schema_version": [MAP_SCHEMA_VERSION, MAP_SCHEMA_VERSION],
+            "segment": ["QRS", "QRS"],
+            "configuration": ["I", "I"],
+            "target": ["II", "V1"],
+            "target_observed": [False, False],
+            "ambiguity_robust_mv": [0.1, 0.2],
+            "recoverability_lower": [0.8, 0.6],
+        }
+    )
+    with pytest.raises(ValueError, match="ambiguity_robust_mv"):
+        compare_cohort_maps(valid.drop(columns="ambiguity_robust_mv"), valid)
+
+    negative = valid.copy()
+    negative.loc[0, "ambiguity_robust_mv"] = -0.1
+    with pytest.raises(ValueError, match="non-negative"):
+        compare_cohort_maps(negative, valid)
+
+    string_flags = valid.copy()
+    string_flags["target_observed"] = ["False", "False"]
+    with pytest.raises(ValueError, match="strict booleans"):
+        compare_cohort_maps(string_flags, valid)
 
 
 def test_release_argument_validation_requires_full_protocol(tmp_path):

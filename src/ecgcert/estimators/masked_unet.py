@@ -73,6 +73,7 @@ class MaskedUNetReconstructor(Reconstructor):
     """One model trained across the predeclared 64 whole-lead masks."""
 
     method_id = "masked_unet"
+    preferred_batch_size = 16
 
     def fit(self, train_manifest: TrainManifest, config: ReconstructorConfig):
         torch = _torch()
@@ -154,6 +155,9 @@ class MaskedUNetReconstructor(Reconstructor):
                 "seed": seed,
                 "width": width,
                 "train_manifest_sha256": train_manifest.signals_sha256,
+                "training_record_ids_sha256": train_manifest.record_ids_sha256,
+                "training_patient_ids_sha256": train_manifest.patient_ids_sha256,
+                "training_inclusion_sha256": train_manifest.training_inclusion_sha256,
                 "panel_size": len(panel),
             },
             self._checkpoint_path,
@@ -163,10 +167,23 @@ class MaskedUNetReconstructor(Reconstructor):
         return self
 
     def _predict_missing(self, signal: np.ndarray, observed_mask: np.ndarray) -> np.ndarray:
+        return self._predict_missing_batch(
+            signal[None, ...], observed_mask[None, ...]
+        )[0]
+
+    def _predict_missing_batch(
+        self, signals: np.ndarray, observed_masks: np.ndarray
+    ) -> np.ndarray:
         torch = _torch()
         self.model.eval()
         with torch.no_grad():
-            value = torch.as_tensor(signal / self.scale[:, None], dtype=torch.float32, device=self.device)[None]
-            mask = torch.as_tensor(observed_mask, dtype=torch.float32, device=self.device)[None]
-            prediction = self.model(torch.cat([value * mask, mask], dim=1))[0]
-        return prediction.detach().cpu().numpy() * self.scale[:, None]
+            value = torch.as_tensor(
+                signals / self.scale[None, :, None],
+                dtype=torch.float32,
+                device=self.device,
+            )
+            mask = torch.as_tensor(
+                observed_masks, dtype=torch.float32, device=self.device
+            )
+            prediction = self.model(torch.cat([value * mask, mask], dim=1))
+        return prediction.detach().cpu().numpy() * self.scale[None, :, None]

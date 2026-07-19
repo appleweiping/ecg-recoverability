@@ -5,18 +5,22 @@
 
 % Stage-15 values enter only through the reviewed claim-synchronization artifact.
 \input{auto/robust_map_placeholders}
+% Identity, declarations, and tool provenance are generated only from signed artifacts.
+\input{auto/venue_policy}
+\input{auto/author_declaration}
+\input{auto/tool_provenance}
 % Keep synchronized claim text breakable in table cells.
 \newcommand{\resultcell}[1]{\begingroup\renewcommand{\text}[1]{##1}#1\endgroup}
 \newcommand{\pendingfigure}[2]{%
   \fbox{\parbox[c][#1][c]{0.92\columnwidth}{\centering\small
   \textbf{PENDING--Stage 15}\\[3pt]#2}}}
 
-\title{Robust Posterior-Ambiguity Maps for Reduced-Lead ECG Reconstruction}
-\newif\ifanon\anontrue
-\ifanon
-  \name{}\address{}
+\title{Robust Posterior-Ambiguity Maps for Reduced-Lead ECG Reconstruction%
+\SubmissionBuildTitleSuffix}
+\ifSubmissionAuthorIdentitiesVisible
+  \name{\SubmissionAuthorNames}\address{\SubmissionAuthorAffiliations}
 \else
-  \name{Author names withheld}\address{Affiliations withheld}
+  \name{}\address{}
 \fi
 
 \begin{document}
@@ -141,8 +145,8 @@ release rather than silently narrowing the interval.
   color scale: $A_{\mathrm{robust}}$ (mV)}%
 }
 \caption{Primary robust map.  The frozen 64-row panel is drawn from the complete 255-configuration
-artifact.  Observed targets remain visible for structural auditing; outcome analyses use only
-missing targets.  Final pixels must come from the reviewed \texttt{figures\_v3} artifact.}
+artifact.  Gray cells are measured targets and are masked from the color scale; outcome analyses
+use only missing targets.  Final pixels must come from the reviewed \texttt{figures\_v3} artifact.}
 \label{fig:map}
 \end{figure}
 
@@ -164,7 +168,9 @@ whole-lead masks, reversible training normalization, and missing-target scorer o
 configurations.  Predictions are returned to mV before evaluation.
 ECGrecover \cite{lence2025ecgrecover} is a strong pinned baseline for its supported single
 independent input lead.  It is reported in a separate block and is not counted among the four
-common-panel methods.  Missing source, command, data, or checkpoint artifacts are hard failures;
+common-panel methods.  Its U-Net, loss, and training loop remain upstream code; a disclosed
+folds-1--7 fixed lead scale replaces target-specific min--max preprocessing to prevent missing-target
+amplitude leakage and return predictions to mV.  Missing source, command, data, or checkpoint artifacts are hard failures;
 public methods are not replaced by local surrogates.
 
 Low-rank and ridge runs are deterministic.  The U-Net, ImputeECG, and ECGrecover use model seeds
@@ -193,7 +199,10 @@ meta-models.  No fold-10 response can affect fitting or selection.
 
 Both meta-models include categorical method, segment, and target effects.  The simple numeric
 predictors are $|S|$, observed-matrix rank, $\log_{10}$ condition number, target RMS, and the largest
-observed--target correlation.  The augmented model adds only $A_{\mathrm{robust}}$.  For every test
+observed--target correlation.  RMS and correlation are computed once from the authenticated
+folds-1--7 training-predictor table; all four common-panel methods share identical values, and both
+external cohorts reuse that PTB-XL table without replacement by rank-map sample statistics.  The
+augmented model adds only $A_{\mathrm{robust}}$.  For every test
 configuration, the fold-9 fit excludes that configuration before predicting its fold-10 patient
 rows.  The sole primary effect is
 \begin{equation}
@@ -201,8 +210,10 @@ rows.  The sole primary effect is
  \label{eq:delta}
 \end{equation}
 over the resulting LOCO predictions.  Patient-cluster bootstrap uncertainty uses 2,000 draws; each
-draw also samples one available neural seed within each neural method.  This nested seed operation
-prevents replicated checkpoints from masquerading as independent patients.
+draw resamples five times with replacement from the five fitted seeds of each neural method and
+reconstructs its cellwise seed mean, while every method shares the same patient draw.  This nested
+seed resampling matches the five-seed-mean point estimand and prevents replicated checkpoints from
+masquerading as independent patients.
 
 LOCO tests the intended generalization axis.  A conventional random split of configuration--target
 rows could let the meta-model memorize a nearly identical observed set; here, every fold-10
@@ -216,9 +227,11 @@ filtered analyses.  Method-specific point effects use those predictions only for
 count; they do not create five additional headline hypotheses.
 
 \subsection{Two zero-transfer cohorts}
-Chapman--Shaoxing--Ningbo \cite{zheng2020chapman} and CPSC~2018 \cite{liu2018cpsc} each use a frozen,
-patient-hashed 60/20/20 manifest.  The 60\% partition is reserved for a secondary cohort-map
-sensitivity and the 20\% development partition for audit/QC.  Primary zero transfer reloads PTB-XL
+Chapman--Shaoxing--Ningbo \cite{zheng2020chapman} uses a frozen patient-hashed 60/20/20 manifest.
+CPSC~2018 \cite{liu2018cpsc} publishes no verifiable cross-record patient key, so its record name is
+explicitly treated as a pseudopatient for the same salted-hash split; true patient-disjointness in
+that cohort cannot be established from the public release.  The 60\% partition is reserved for a
+secondary cohort-map sensitivity and the 20\% development partition for audit/QC.  Primary zero transfer reloads PTB-XL
 checkpoints and applies the fold-9 meta-fit, frozen $\tau^2$, frozen ridge penalty, preprocessing,
 masks, and scorer to the untouched 20\% test partition.  It performs no cohort-specific fitting,
 adaptation, or threshold selection.  Both external bundles must be complete for release; a
@@ -244,17 +257,20 @@ cohort shift visible rather than treating successful file loading as evidence of
 }
 \caption{Primary effect display for the untouched PTB-XL and zero-transfer test cohorts.  Points
 and intervals are synchronized from the reviewed Stage~15 artifact; the zero line and cohort order
-are frozen.}
+are frozen.  CPSC~2018 intervals use record-name pseudoclusters because the public release provides
+no cross-record patient key.}
 \label{fig:gain}
 \end{figure}
 
 \section{Evidence gate and responsible scope}
 Stage~15 is fail-closed.  The automatic decision is \textsc{Proceed} only when (i) the PTB-XL
 fold-10 lower 95\% bootstrap bound for $\Delta R^2$ is greater than zero; (ii) the corresponding
-lower bound is greater than zero in at least one of Chapman or CPSC~2018; and (iii) at least three
+lower bound is greater than zero for Chapman; and (iii) at least three
 of the four common-panel methods have positive point $\Delta R^2$.  Every other outcome is
 \textsc{Pivot}.  Either automatic outcome awaits user review for up to 24 hours; the claim macros
-and two final figures are released only after a valid human review signature.
+and two final figures are released only after a valid human review signature.  CPSC~2018 remains a
+required zero-transfer sensitivity but cannot trigger the patient-level external hard gate because
+its public release has no cross-record patient identity key.
 
 \noindent\textbf{Presentation contract.}  The main paper has two claim-bearing figures and one
 claim table.  Figure~\ref{fig:map} is purely structural and must contain all $64\times12\times3$
@@ -290,8 +306,9 @@ Patient/seed uncertainty & \resultcell{\ResultBootstrapUncertainty} \\
 from a workflow failure.  If the PTB-XL interval crosses zero, adding
 $A_{\mathrm{robust}}$ has not improved held-out prediction and the central claim is unsupported.
 If the pooled effect is positive but fewer than three common-panel methods have positive point
-effects, the result is too method-specific for the proposed scope.  If neither external lower bound
-is positive, transfer is unsupported even when the PTB-XL effect passes.  A favorable raw
+effects, the result is too method-specific for the proposed scope.  If the Chapman external lower
+bound is not positive, transfer is unsupported even when the PTB-XL effect or CPSC pseudocluster
+effect passes.  A favorable raw
 association, rank-specific fit, external-train cohort map, or ECGrecover single-input result cannot
 override any of these outcomes.  Incompatibility of a required official adapter, incomplete external
 test coverage, leakage, or failure to retain the required bootstrap draws blocks the gate rather than
@@ -309,16 +326,14 @@ analysis proposed after opening fold~10 is labeled exploratory in the ledger and
 claim synchronization.
 
 \noindent\textbf{Artifact and leakage contract.}  Patient identities are disjoint across every
-PTB-XL role and across each external manifest partition.  The evaluation loader freezes record
+PTB-XL role and every Chapman partition.  CPSC record-name pseudopatients are disjoint across its
+partitions, while the unavailable cross-record identity remains an explicit limitation.  The evaluation loader freezes record
 membership, first-window boundaries, segment indices, and whole-lead masks before inference.
 Observed samples must be preserved pointwise, and only missing targets enter the response.  Every
-claim-bearing prediction carries cohort and split hashes, the ordered configuration-panel hash,
-method and seed, source revision, environment, tuning artifact, and checkpoint hash.  Failed records
-and bootstrap refits remain in audit files with reasons.  The two figures are generated from source
-tables whose hashes are tied to the same Stage~15 decision; the manuscript never reads ad hoc result
-paths.  Claim macros are produced by the synchronization script only, and a valid review signature
-is checked again during the five-page submission build.  This contract makes a rerun traceable from
-the PDF cell back to patient-level predictions without exposing patient data in the paper.
+claim-bearing prediction binds cohort, split, panel, method, seed, source, environment, tuning, and
+checkpoint identities; failures remain audited.  Figure source tables and generated claim macros
+bind the same signed Stage~15 decision, whose signature is rechecked by the submission build.  Thus
+each PDF cell traces to patient-level predictions without exposing patient data in the paper.
 
 \noindent\textbf{Scope and limitations.}  The Gaussian prior and linear spatial representation are
 empirical approximations; learned reconstructors may use repeatable nonlinear or temporal
@@ -330,22 +345,14 @@ clinical safety, and $R_{\mathrm{lower}}$, $\eta$, $\log_{10}\kappa$, and rank s
 not guarantees.  Null effects, reversals, failed seeds, exclusions under frozen rules, and adapter
 failures stay in the evidence ledger.
 
-\noindent\textbf{Data, anonymity, and AI disclosure.}  The submission is anonymous and uses only
-public, de-identified PTB-XL, Chapman, and CPSC~2018 data; it collects no new human-subject data.
-OpenAI Codex and Anthropic Claude Code assisted repository analysis, code/manuscript review, and
-editing.  A bounded AutoResearchClaw v0.5.0 co-pilot probe was run with pinned ACP adapters, but
-Stage~01 failed before producing an artifact; no AutoResearchClaw research or review output was used. AI
-systems are not authors; a human remains responsible for protocol decisions, citation and source
-verification, execution, interpretation, every numerical value, and the submitted text.  The
-tool/model/version ledger and venue-policy wording must be frozen before submission.
-
 \section{Conclusion}
 This study asks a deliberately narrow question: does a conservative Gaussian posterior ambiguity
-in mV improve out-of-sample prediction of patient reconstruction difficulty?  The answer is
-reserved for one fold-9-to-fold-10 LOCO analysis, four common-panel methods, two zero-transfer
-cohorts, nested patient/seed uncertainty, and the hard Stage~15 thresholds.  \ResultConclusion
+in mV improve out-of-sample prediction of patient reconstruction difficulty?  Only the
+prespecified Stage~15 evidence rule determines the answer.  \ResultConclusion
+\label{technical-content-end}
 
 \clearpage
 \bibliographystyle{IEEEbib}
 \bibliography{refs}
+\input{compliance}
 \end{document}

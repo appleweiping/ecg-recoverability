@@ -1,9 +1,15 @@
 # Audited external integration inputs
 
-The release DAG expects `ecgrecover.integration.v3.json` in this directory.  It is deliberately not
-present yet: the pinned upstream checkout is currently a blobless partial clone and the five source
-files needed to audit its real training/preprocessing/inference interface were unavailable from the
-upstream server.  A guessed command would invalidate the baseline.  Once those exact-commit blobs
-are available, create the descriptor with `schema_version: ecgrecover-integration-v3`, bind every
-called upstream/bridge file by SHA-256, and review it at Stage 9.  The preparation command rejects
-missing, unpinned, unhashed, or truth-leaking integrations.
+The release DAG consumes `ecgrecover.integration.v3.json`. The descriptor is bound to official
+GitLab commit `ed49dddf8e5e599b8af702e871a1f66b1d628518`, its root tree object, every imported
+upstream source file, and the project-owned bridge by SHA-256. `ecgrecover.upstream.v1.json`
+records the independently verified ref and licensing status.
+
+The upstream repository has no license file and GitLab reports no detected license, so its SPDX
+status is `NOASSERTION`; this repository neither vendors nor redistributes it. The project owner
+reports author permission, whose author-controlled evidence must be reviewed at ARC Stage 9 before
+redistribution. The integration also discloses the fixed folds-1-7 scaling required to remove the
+published preprocessing's missing-target amplitude leakage. Preparation rejects missing, unpinned,
+unhashed, truth-leaking, or undisclosed integrations. The same descriptor freezes a 128-record
+process batch and 64-record device micro-batch; these values are carried into generated configs and
+result metadata so throughput settings remain auditable.

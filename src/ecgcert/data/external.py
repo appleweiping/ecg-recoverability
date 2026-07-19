@@ -25,7 +25,9 @@ class ExternalWFDBCohort:
         if record_id not in self._records:
             raise KeyError(record_id)
         item = self._records[record_id]
-        source = self.root / item.record_id
+        # Read the exact header authenticated by the manifest.  ``record_id`` is
+        # an identity, not an independently trusted filesystem path.
+        source = (self.root / item.relative_header).with_suffix("")
         record = wfdb.rdrecord(str(source))
         signal, conversion = canonicalize_wfdb_record(record)
         source_rate = int(round(float(conversion["source_rate_hz"])))
@@ -45,7 +47,10 @@ class ExternalWFDBCohort:
             n_samples=int(signal.shape[0]),
             input_leads=conversion["input_leads"],
             input_units=conversion["input_units"],
+            canonical_leads=conversion["canonical_leads"],
+            source_channel_indices=conversion["source_channel_indices"],
             unit_scales_to_mv=conversion["unit_scales_to_mv"],
+            output_unit=conversion["output_unit"],
         )
         return signal, audit
 
@@ -64,16 +69,29 @@ class ExternalWFDBCohort:
         trail = AuditTrail()
         for record_id in record_ids:
             item = self._records[str(record_id)]
+            base_audit = None
             try:
                 signal, base_audit = self.signal_with_audit(str(record_id), rate=rate)
                 if signal.shape[0] < 10 * rate:
                     raise ValueError("record shorter than 10 seconds")
-                segments = PTBXL.segment_indices(signal, fs=rate)
+                segments = PTBXL.segment_indices(signal, fs=rate, strict=True)
                 counts = {segment: int(index.size) for segment, index in segments.items()}
                 if not any(counts.values()):
                     raise ValueError("no valid delineated segments")
                 trail.append(SignalAudit(**{**base_audit.__dict__, "segment_counts": counts}))
             except Exception as exc:
+                retained = {}
+                if base_audit is not None:
+                    retained = {
+                        "source_rate_hz": base_audit.source_rate_hz,
+                        "n_samples": base_audit.n_samples,
+                        "input_leads": base_audit.input_leads,
+                        "input_units": base_audit.input_units,
+                        "canonical_leads": base_audit.canonical_leads,
+                        "source_channel_indices": base_audit.source_channel_indices,
+                        "unit_scales_to_mv": base_audit.unit_scales_to_mv,
+                        "output_unit": base_audit.output_unit,
+                    }
                 trail.append(
                     SignalAudit(
                         cohort=self.manifest.cohort,
@@ -82,6 +100,7 @@ class ExternalWFDBCohort:
                         status="excluded",
                         reason=f"{type(exc).__name__}: {exc}",
                         requested_rate_hz=rate,
+                        **retained,
                     )
                 )
                 continue

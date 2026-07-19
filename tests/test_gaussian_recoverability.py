@@ -41,6 +41,34 @@ def test_conditional_mean_copies_observed_samples_exactly():
     assert np.array_equal(reconstructed[:, indices], X[:20, indices])
 
 
+def test_ambiguity_has_signal_units_under_joint_mv_rescaling():
+    X, model = _model(seed=7, rank=5)
+    scale = 3.25
+    scaled = fit_spatial_subspace(
+        scale * X,
+        rank=5,
+        fit_cohort="scaled-fixture",
+    )
+    observed = ("I", "II", "V3")
+    variance_mv2 = 2e-4
+    ambiguity = gaussian_prior_ambiguity_per_lead(
+        model,
+        observed,
+        observation_variance_mv2=variance_mv2,
+    )
+    scaled_ambiguity = gaussian_prior_ambiguity_per_lead(
+        scaled,
+        observed,
+        observation_variance_mv2=scale**2 * variance_mv2,
+    )
+    np.testing.assert_allclose(
+        scaled_ambiguity,
+        scale * ambiguity,
+        rtol=2e-11,
+        atol=2e-12,
+    )
+
+
 def test_fold8_tuning_is_deterministic_and_patient_balanced():
     X, model = _model()
     patient_ids = np.asarray([f"p{index // 10}" for index in range(100)], dtype=object)

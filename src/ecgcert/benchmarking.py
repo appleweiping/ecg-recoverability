@@ -19,6 +19,9 @@ from ecgcert import lineage
 from ecgcert.data.common import CANONICAL_LEADS
 from ecgcert.estimators.official import ECG_RECOVER, IMPUTE_ECG
 from ecgcert.protocol import (
+    EXTERNAL_MAP_PRIMARY_METRIC,
+    EXTERNAL_MAP_PRIMARY_ORDER,
+    EXTERNAL_MAP_SECONDARY_DIAGNOSTIC,
     PRIMARY_RATE_HZ,
     PRIMARY_SEGMENTS,
     configuration_panel_sha256,
@@ -26,10 +29,14 @@ from ecgcert.protocol import (
 )
 from ecgcert.reconstruction import (
     BUNDLE_FILENAME,
+    METRIC_DATASET_SCHEMA_VERSION,
+    METRIC_INVENTORY_FILENAME,
     SCHEMA_VERSION,
     SUMMARY_FILENAME,
     TRAINING_PREDICTORS_FILENAME,
     EvaluationRecord,
+    MetricDatasetWriter,
+    MetricShardKey,
     ModelBundleError,
     evaluate_reconstructor,
     load_fitted_reconstructor,
@@ -42,6 +49,7 @@ PRIMARY_METHODS = ("lowrank", "ridge", "masked-unet", "imputeecg")
 SUPPLEMENTARY_METHOD = "ecgrecover"
 EXPECTED_METHODS = (*PRIMARY_METHODS, SUPPLEMENTARY_METHOD)
 RELEASE_NEURAL_SEEDS = (0, 1, 2, 3, 4)
+COHORT_MAP_RANKING_SCHEMA_VERSION = "external-cohort-map-ranking-v1"
 
 
 @dataclass(frozen=True)
@@ -209,6 +217,29 @@ def load_benchmark_bundles(
                     f"{method} summary lacks authenticated {artifact_name} artifact"
                 )
             _authenticated_artifact(root, descriptor, expected_name=expected_name)
+        inventory_descriptor = artifacts.get("patient_metrics_inventory")
+        if release and not isinstance(inventory_descriptor, Mapping):
+            raise ModelBundleError(
+                f"{method} release bundle lacks the recoverable metric dataset inventory"
+            )
+        if isinstance(inventory_descriptor, Mapping):
+            inventory_path = _authenticated_artifact(
+                root,
+                inventory_descriptor,
+                expected_name=METRIC_INVENTORY_FILENAME,
+            )
+            inventory = _read_json(inventory_path, "metric dataset inventory")
+            inventory_metrics = inventory.get("patient_metrics")
+            if (
+                inventory.get("schema_version") != METRIC_DATASET_SCHEMA_VERSION
+                or inventory.get("status") != "complete"
+                or int(inventory.get("total_rows", -1))
+                != int(summary.get("n_patient_metric_rows", -2))
+                or not isinstance(inventory_metrics, Mapping)
+                or inventory_metrics.get("sha256")
+                != artifacts["patient_metrics"].get("sha256")
+            ):
+                raise ModelBundleError(f"{method} metric dataset inventory is inconsistent")
         predictor_descriptor = metadata.get("training_predictors")
         if not isinstance(predictor_descriptor, Mapping):
             raise ModelBundleError(f"{method} bundle lacks folds1-7 training predictors")
@@ -400,10 +431,11 @@ def evaluate_zero_transfer_bundles(
     *,
     cohort: str,
     device: str,
+    metric_writer: MetricDatasetWriter | None = None,
     model_loader: Callable[..., Any] = load_fitted_reconstructor,
     predictor_loader: Callable[[str | Path], Any] = load_training_predictors,
-) -> pd.DataFrame:
-    """Reload fitted PTB models and score external records without any fit call."""
+) -> str:
+    """Reload PTB models and stream external scores to recoverable metric shards."""
 
     if tuple(bundles) != EXPECTED_METHODS:
         # Dict insertion order is not scientific, but requiring the exact method set is.
@@ -429,69 +461,160 @@ def evaluate_zero_transfer_bundles(
             )
         predictors_by_method[method] = training_predictors
 
-    frames = []
+    if metric_writer is None:
+        raise ValueError("zero-transfer evaluation requires a bounded metric dataset writer")
     for method in EXPECTED_METHODS:
         bundle = bundles[method]
         training_predictors = predictors_by_method[method]
         for seed in bundle.seeds:
+            remaining = [
+                configuration
+                for configuration in bundle.configurations
+                if not metric_writer.is_complete(
+                    MetricShardKey.from_values(
+                        cohort=cohort,
+                        partition="test",
+                        method=method,
+                        model_seed=seed,
+                        configuration=configuration,
+                    )
+                )
+            ]
+            if not remaining:
+                continue
             reconstructor = model_loader(bundle.root, method, seed, device=device)
             if not callable(getattr(reconstructor, "reconstruct", None)):
                 raise ModelBundleError(f"{method} loader did not return a reconstruction adapter")
-            for configuration in bundle.configurations:
-                frames.append(
-                    evaluate_reconstructor(
-                        reconstructor,
-                        records,
-                        configuration=configuration,
-                        method=method,
-                        model_seed=seed,
-                        segments=PRIMARY_SEGMENTS,
-                        training_predictors=training_predictors,
-                        cohort=cohort,
-                        partition="test",
-                    )
+            for configuration in remaining:
+                key = MetricShardKey.from_values(
+                    cohort=cohort,
+                    partition="test",
+                    method=method,
+                    model_seed=seed,
+                    configuration=configuration,
                 )
-    output = pd.concat(frames, ignore_index=True)
-    output.attrs["training_predictors_content_sha256"] = predictor_content_sha256
-    return output
+                frame = evaluate_reconstructor(
+                    reconstructor,
+                    records,
+                    configuration=configuration,
+                    method=method,
+                    model_seed=seed,
+                    segments=PRIMARY_SEGMENTS,
+                    training_predictors=training_predictors,
+                    cohort=cohort,
+                    partition="test",
+                )
+                metric_writer.write_shard(
+                    frame,
+                    key,
+                    observed_sample_integrity=True,
+                )
+    if predictor_content_sha256 is None:
+        raise ModelBundleError("zero-transfer predictor content fingerprint is missing")
+    return predictor_content_sha256
 
 
-def compare_recoverability_rankings(
-    external_cells: pd.DataFrame,
-    ptb_cells: pd.DataFrame,
-) -> pd.DataFrame:
-    """Spearman agreement of missing-target recoverability rankings."""
-
+def _validate_cohort_map_cells(frame: pd.DataFrame, *, label: str) -> pd.DataFrame:
     required = {
+        "schema_version",
         "segment",
         "configuration",
         "target",
         "target_observed",
-        "recoverability_lower",
+        EXTERNAL_MAP_PRIMARY_METRIC,
+        EXTERNAL_MAP_SECONDARY_DIAGNOSTIC,
     }
-    for label, frame in (("external", external_cells), ("PTB", ptb_cells)):
-        missing = required - set(frame.columns)
-        if missing:
-            raise ValueError(f"{label} map lacks columns: {sorted(missing)}")
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(f"{label} map lacks columns: {sorted(missing)}")
+    if frame.empty:
+        raise ValueError(f"{label} map is empty")
+    schema_versions = set(frame["schema_version"])
+    if len(schema_versions) != 1 or not all(
+        isinstance(value, str) and bool(value) for value in schema_versions
+    ):
+        raise ValueError(f"{label} map must declare one non-empty schema version")
+
     keys = ["segment", "configuration", "target"]
-    external = external_cells.loc[~external_cells["target_observed"].astype(bool)].copy()
-    ptb = ptb_cells.loc[~ptb_cells["target_observed"].astype(bool)].copy()
-    if external.duplicated(keys).any() or ptb.duplicated(keys).any():
+    if frame.duplicated(keys).any():
         raise ValueError("rank-map cells must be unique by segment/configuration/target")
-    ptb = ptb[ptb["segment"].isin(external["segment"].unique())]
-    merged = external[keys + ["recoverability_lower"]].merge(
-        ptb[keys + ["recoverability_lower"]],
+    for column in keys:
+        if not frame[column].map(lambda value: isinstance(value, str) and bool(value)).all():
+            raise ValueError(f"{label} map {column} values must be non-empty strings")
+
+    target_observed = frame["target_observed"]
+    if not target_observed.map(
+        lambda value: isinstance(value, (bool, np.bool_))
+    ).all():
+        raise ValueError(f"{label} map target_observed must contain strict booleans")
+    expected_observed: list[bool] = []
+    for row in frame.itertuples(index=False):
+        target = str(row.target)
+        observed = str(row.configuration).split("+")
+        if target not in CANONICAL_LEADS:
+            raise ValueError(f"{label} map contains an unknown target lead")
+        if any(lead not in CANONICAL_LEADS for lead in observed) or len(observed) != len(
+            set(observed)
+        ):
+            raise ValueError(f"{label} map contains an invalid observed configuration")
+        expected_observed.append(target in observed)
+    if not np.array_equal(
+        target_observed.to_numpy(dtype=bool), np.asarray(expected_observed, dtype=bool)
+    ):
+        raise ValueError(f"{label} map target_observed disagrees with its configuration")
+
+    for metric in (EXTERNAL_MAP_PRIMARY_METRIC, EXTERNAL_MAP_SECONDARY_DIAGNOSTIC):
+        values = frame[metric]
+        if not pd.api.types.is_numeric_dtype(values.dtype) or pd.api.types.is_bool_dtype(
+            values.dtype
+        ):
+            raise ValueError(f"{label} map {metric} must be numeric")
+        numeric = values.to_numpy(dtype=float)
+        if not np.isfinite(numeric).all():
+            raise ValueError(f"{label} map {metric} must be finite")
+        if metric == EXTERNAL_MAP_PRIMARY_METRIC and np.any(numeric < 0.0):
+            raise ValueError(f"{label} map {metric} must be non-negative")
+        if metric == EXTERNAL_MAP_SECONDARY_DIAGNOSTIC and np.any(
+            (numeric < 0.0) | (numeric > 1.0)
+        ):
+            raise ValueError(f"{label} map {metric} must lie in [0,1]")
+    return frame.copy()
+
+
+def compare_cohort_maps(
+    external_cells: pd.DataFrame,
+    ptb_cells: pd.DataFrame,
+) -> pd.DataFrame:
+    """Compare missing-target map rankings without promoting a diagnostic.
+
+    The preregistered primary comparison ranks lower ``A_robust`` as more
+    recoverable. ``R_lower`` is emitted in the same versioned artifact only as a
+    secondary decomposition diagnostic and is explicitly ineligible for a
+    headline claim.
+    """
+
+    external_cells = _validate_cohort_map_cells(external_cells, label="external")
+    ptb_cells = _validate_cohort_map_cells(ptb_cells, label="PTB")
+    if set(external_cells["schema_version"]) != set(ptb_cells["schema_version"]):
+        raise ValueError("external and PTB map schema versions disagree")
+    keys = ["segment", "configuration", "target"]
+    metrics = [EXTERNAL_MAP_PRIMARY_METRIC, EXTERNAL_MAP_SECONDARY_DIAGNOSTIC]
+    external = external_cells.loc[
+        ~external_cells["target_observed"].to_numpy(dtype=bool)
+    ].copy()
+    ptb = ptb_cells.loc[~ptb_cells["target_observed"].to_numpy(dtype=bool)].copy()
+    if external.empty:
+        raise ValueError("external map has no missing-target cells")
+    merged = external[keys + metrics].merge(
+        ptb[keys + metrics],
         on=keys,
         how="left",
         validate="one_to_one",
         suffixes=("_external", "_ptb"),
     )
-    if merged["recoverability_lower_ptb"].isna().any() or len(merged) != len(external):
+    ptb_metric_columns = [f"{metric}_ptb" for metric in metrics]
+    if merged[ptb_metric_columns].isna().any().any() or len(merged) != len(external):
         raise ValueError("external map contains cells absent from the PTB rank map")
-    if not np.isfinite(
-        merged[["recoverability_lower_external", "recoverability_lower_ptb"]].to_numpy()
-    ).all():
-        raise ValueError("recoverability ranking inputs must be finite")
 
     rows: list[dict[str, Any]] = []
     groups = [("__all__", "__all__", merged)]
@@ -499,24 +622,59 @@ def compare_recoverability_rankings(
         (str(segment), str(target), group)
         for (segment, target), group in merged.groupby(["segment", "target"], sort=True)
     )
-    for segment, target, group in groups:
-        external_score = group["recoverability_lower_external"].to_numpy(dtype=float)
-        ptb_score = group["recoverability_lower_ptb"].to_numpy(dtype=float)
-        if len(group) < 2 or np.ptp(external_score) == 0 or np.ptp(ptb_score) == 0:
-            rho, pvalue = np.nan, np.nan
-        else:
-            result = spearmanr(external_score, ptb_score)
-            rho, pvalue = float(result.statistic), float(result.pvalue)
-        rows.append(
-            {
-                "segment": segment,
-                "target": target,
-                "n_cells": int(len(group)),
-                "spearman_rho": rho,
-                "spearman_pvalue": pvalue,
-                "ranking_metric": "recoverability_lower; missing targets only",
-            }
-        )
+    specifications = (
+        {
+            "score_role": "primary",
+            "source_metric": EXTERNAL_MAP_PRIMARY_METRIC,
+            "symbol": "A_robust",
+            "unit": "mV",
+            "recoverability_order": EXTERNAL_MAP_PRIMARY_ORDER,
+            "score_multiplier": -1.0,
+            "headline_eligible": True,
+        },
+        {
+            "score_role": "secondary_diagnostic",
+            "source_metric": EXTERNAL_MAP_SECONDARY_DIAGNOSTIC,
+            "symbol": "R_lower",
+            "unit": "dimensionless",
+            "recoverability_order": "higher_is_more_recoverable",
+            "score_multiplier": 1.0,
+            "headline_eligible": False,
+        },
+    )
+    for specification in specifications:
+        metric = str(specification["source_metric"])
+        multiplier = float(specification["score_multiplier"])
+        for segment, target, group in groups:
+            external_score = multiplier * group[f"{metric}_external"].to_numpy(
+                dtype=float
+            )
+            ptb_score = multiplier * group[f"{metric}_ptb"].to_numpy(dtype=float)
+            if len(group) < 2 or np.ptp(external_score) == 0 or np.ptp(ptb_score) == 0:
+                rho, pvalue = np.nan, np.nan
+            else:
+                result = spearmanr(external_score, ptb_score)
+                rho, pvalue = float(result.statistic), float(result.pvalue)
+            rows.append(
+                {
+                    "schema_version": COHORT_MAP_RANKING_SCHEMA_VERSION,
+                    "score_role": specification["score_role"],
+                    "headline_eligible": specification["headline_eligible"],
+                    "source_metric": metric,
+                    "symbol": specification["symbol"],
+                    "unit": specification["unit"],
+                    "recoverability_order": specification["recoverability_order"],
+                    "segment": segment,
+                    "target": target,
+                    "n_cells": int(len(group)),
+                    "spearman_rho": rho,
+                    "spearman_pvalue": pvalue,
+                    "ranking_metric": (
+                        f"{specification['symbol']} ({metric}); "
+                        f"{specification['recoverability_order']}; missing targets only"
+                    ),
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -526,7 +684,8 @@ __all__ = [
     "PRIMARY_METHODS",
     "RELEASE_NEURAL_SEEDS",
     "SUPPLEMENTARY_METHOD",
-    "compare_recoverability_rankings",
+    "COHORT_MAP_RANKING_SCHEMA_VERSION",
+    "compare_cohort_maps",
     "evaluate_zero_transfer_bundles",
     "load_benchmark_bundles",
     "path_sha256",

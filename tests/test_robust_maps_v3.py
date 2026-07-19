@@ -8,16 +8,35 @@ import pytest
 
 from ecgcert import lineage
 from ecgcert.physics import LEADS
-from ecgcert.protocol import BOOTSTRAP_REPLICATES, PRIMARY_RATE_HZ, PRIMARY_SEGMENTS
-from ecgcert.recoverability import bootstrap_spatial_model_bank
+from ecgcert.protocol import (
+    BOOTSTRAP_REPLICATES,
+    PRIMARY_RATE_HZ,
+    PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+    PRIMARY_SEGMENTS,
+    SEGMENT_SAMPLING_SEED,
+    SENSITIVITY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+)
+from ecgcert.recoverability import (
+    BOOTSTRAP_ATTEMPT_SCHEMA_VERSION,
+    BOOTSTRAP_MOMENTS_SCHEMA_VERSION,
+    BOOTSTRAP_REPLAY_SCHEMA_VERSION,
+    bootstrap_spatial_model_bank,
+)
 from experiments.reconstruction_benchmark_v3 import PTBXLManifestV3
 from experiments.robust_maps_v3 import (
+    BOOTSTRAP_AUDIT_SCHEMA_VERSION,
+    BOOTSTRAP_DRAW_SCHEMA_VERSION,
+    ROBUST_MAP_INVENTORY_FILENAME,
+    SEGMENT_ARTIFACT_FILENAMES,
     SCHEMA_VERSION,
+    RobustMapSegmentStore,
     _artifact_hashes,
     _load_primary_summary,
     _resolve_sensitivity,
     _role_ids,
+    _segment_sampling_config,
     _verify_manifest_identity,
+    _write_parquet,
     summarize_model_bank,
     validate_release_arguments,
 )
@@ -51,9 +70,17 @@ def test_rank_robust_summary_uses_patient_bootstrap_and_all_targets():
     assert np.all(cells["target_rms"] > 0)
     assert np.all((cells["max_target_observed_correlation"] >= 0) &
                   (cells["max_target_observed_correlation"] <= 1 + 1e-12))
+    assert cells["target_observed"].map(
+        lambda value: isinstance(value, (bool, np.bool_))
+    ).all()
+    assert cells.apply(
+        lambda row: bool(row["target_observed"])
+        == (str(row["target"]) in str(row["configuration"]).split("+")),
+        axis=1,
+    ).all()
 
 
-def test_cross_rank_robust_score_contains_each_rank_upper_bound():
+def test_cross_rank_robust_score_is_exact_max_of_per_rank_upper_bounds():
     rng = np.random.default_rng(18)
     X = rng.normal(size=(60, 12))
     patients = [f"p{index // 6}" for index in range(60)]
@@ -72,8 +99,20 @@ def test_cross_rank_robust_score_contains_each_rank_upper_bound():
         observation_variance_mv2=1e-3,
     )
     for target, rows in rank_path.groupby("target"):
-        robust = float(cells.loc[cells["target"] == target, "ambiguity_robust_mv"].iloc[0])
-        assert robust >= float(rows["ambiguity_q975_mv"].max()) - 1e-12
+        cell = cells.loc[cells["target"] == target].iloc[0]
+        assert float(cell["ambiguity_robust_mv"]) == pytest.approx(
+            float(rows["ambiguity_q975_mv"].max()), abs=1e-15
+        )
+        assert float(cell["recoverability_lower"]) == pytest.approx(
+            np.clip(1.0 - float(rows["eta_normalized_q975"].max()), 0.0, 1.0),
+            abs=1e-15,
+        )
+        assert float(cell["log10_kappa_target_upper"]) == pytest.approx(
+            np.log10(
+                max(float(rows["kappa_target_q975"].max()), np.finfo(float).tiny)
+            ),
+            abs=1e-15,
+        )
 
 
 def _release_arguments(**overrides):
@@ -91,7 +130,8 @@ def _release_arguments(**overrides):
         "population": "all",
         "delineator": "dwt",
         "basis_variant": "independent8_lifted",
-        "max_per_record": 40,
+        "max_per_record": PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        "sampling_seed": SEGMENT_SAMPLING_SEED,
         "observation_variance_mv2": None,
     }
     values.update(overrides)
@@ -105,6 +145,12 @@ def _release_arguments(**overrides):
         ("100hz", None, "rate", 100),
         ("delineator", None, "delineator", "peak"),
         ("raw12", None, "basis_variant", "raw12_pca"),
+        (
+            "sample-cap",
+            None,
+            "max_per_record",
+            SENSITIVITY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        ),
         ("diagnosis", "MI", None, None),
     ],
 )
@@ -132,6 +178,8 @@ def test_primary_release_rejects_sensitivity_only_variants():
         {"rate": 100},
         {"delineator": "peak"},
         {"basis_variant": "raw12_pca"},
+        {"max_per_record": SENSITIVITY_SEGMENT_SAMPLE_CAP_PER_RECORD},
+        {"sampling_seed": SEGMENT_SAMPLING_SEED + 1},
         {"diagnosis_class": "NORM"},
         {"observation_variance_mv2": 1e-4},
     ):
@@ -178,10 +226,20 @@ def test_primary_summary_verifies_direct_artifact_hashes(tmp_path: Path):
         "map_cells": "map_cells.parquet",
         "regularization_tuning": "regularization_tuning.parquet",
         "patient_audit": "patient_audit.json",
+        "bootstrap_draws": "bootstrap_draws.parquet",
+        "bootstrap_patients": "bootstrap_patients.parquet",
+        "bootstrap_multiplicities": "bootstrap_multiplicities.parquet",
+        "bootstrap_audit": "bootstrap_audit.parquet",
+        "bootstrap_moments": "bootstrap_moments.parquet",
+        "bootstrap_attempts": "bootstrap_attempts.parquet",
     }
     for index, relative in enumerate(paths.values()):
         (tmp_path / relative).write_bytes(f"artifact-{index}".encode())
     hashes = _artifact_hashes(tmp_path, paths)
+    sampling = _segment_sampling_config(
+        cap_per_record=PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        seed=SEGMENT_SAMPLING_SEED,
+    )
     summary = {
         "schema_version": SCHEMA_VERSION,
         "status": "complete",
@@ -194,12 +252,25 @@ def test_primary_summary_verifies_direct_artifact_hashes(tmp_path: Path):
         "ranks": [2, 3, 4, 5],
         "bootstrap_replicates": BOOTSTRAP_REPLICATES,
         "bootstrap_unit": "patient",
+        "bootstrap_evidence_schema_version": BOOTSTRAP_AUDIT_SCHEMA_VERSION,
+        "bootstrap_draw_schema_version": BOOTSTRAP_DRAW_SCHEMA_VERSION,
+        "bootstrap_replay_schema_version": BOOTSTRAP_REPLAY_SCHEMA_VERSION,
+        "bootstrap_moments_schema_version": BOOTSTRAP_MOMENTS_SCHEMA_VERSION,
+        "bootstrap_attempt_schema_version": BOOTSTRAP_ATTEMPT_SCHEMA_VERSION,
+        "segment_sampling": sampling,
+        "segment_sampling_sha256": lineage.canonical_sha256(sampling),
         "observation_variance_mv2": 1e-4,
         "artifacts": paths,
         "artifact_sha256": hashes,
     }
     (tmp_path / "summary.v3.json").write_text(json.dumps(summary), encoding="utf-8")
     assert _load_primary_summary(tmp_path)["artifact_sha256"] == hashes
+    changed = json.loads(json.dumps(summary))
+    changed["segment_sampling"]["active_cap_per_record_per_segment"] = 41
+    (tmp_path / "summary.v3.json").write_text(json.dumps(changed), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="frozen primary map"):
+        _load_primary_summary(tmp_path)
+    (tmp_path / "summary.v3.json").write_text(json.dumps(summary), encoding="utf-8")
     (tmp_path / "map_cells.parquet").write_bytes(b"tampered")
     with pytest.raises(RuntimeError, match="SHA-256 mismatch"):
         _load_primary_summary(tmp_path)
@@ -258,3 +329,100 @@ def test_release_identity_checks_complete_manifest_and_metadata(monkeypatch, tmp
     db.meta.loc[2, "filename_hr"] = "different"
     with pytest.raises(ValueError, match="record path mismatch"):
         _verify_manifest_identity(contract, db, rate=500, release=True)
+
+
+def _write_segment_fixture(store: RobustMapSegmentStore, segment: str) -> None:
+    for index, name in enumerate(SEGMENT_ARTIFACT_FILENAMES):
+        _write_parquet(
+            pd.DataFrame(
+                {
+                    "segment": [segment, segment],
+                    "artifact_index": [index, index],
+                    "value": [1.0, 2.0],
+                }
+            ),
+            store.segment_artifact(segment, name),
+        )
+    store.commit_segment(
+        segment,
+        metadata={
+            "n_rank_rows": 2,
+            "n_map_cells": 2,
+            "n_bootstrap_draw_rows": 2,
+            "n_bootstrap_attempt_rows": 2,
+            "bootstrap_rejection": {
+                "rejected_draws": 0,
+                "rejection_fraction": 0.0,
+            },
+        },
+    )
+
+
+def test_segment_store_recovers_completed_wave_and_streams_atomic_merge(tmp_path: Path):
+    pytest.importorskip("pyarrow")
+    output = tmp_path / "maps"
+    identity = {"manifest_sha256": "a" * 64, "seed": 7}
+    first = RobustMapSegmentStore(
+        output, identity=identity, segments=("QRS", "ST")
+    )
+    _write_segment_fixture(first, "QRS")
+
+    resumed = RobustMapSegmentStore(
+        output, identity=identity, segments=("QRS", "ST")
+    )
+    assert resumed.is_complete("QRS")
+    assert not resumed.is_complete("ST")
+    _write_segment_fixture(resumed, "ST")
+    final_paths = {}
+    for name, filename in SEGMENT_ARTIFACT_FILENAMES.items():
+        resumed.merge_parquet(name, output / filename)
+        final_paths[name] = filename
+    resumed.mark_complete(final_paths)
+    resumed.cleanup_staging()
+
+    complete = RobustMapSegmentStore(
+        output, identity=identity, segments=("QRS", "ST")
+    )
+    assert complete.status == "complete"
+    assert not complete.staging_dir.exists()
+    assert (output / ROBUST_MAP_INVENTORY_FILENAME).is_file()
+    import pyarrow.parquet as pq
+
+    merged = pq.ParquetFile(output / SEGMENT_ARTIFACT_FILENAMES["bootstrap_draws"])
+    assert merged.metadata.num_row_groups == 2
+    assert merged.metadata.num_rows == 4
+
+
+def test_segment_store_fails_closed_if_completed_segment_changes(tmp_path: Path):
+    pytest.importorskip("pyarrow")
+    output = tmp_path / "maps"
+    identity = {"manifest_sha256": "a" * 64, "seed": 7}
+    store = RobustMapSegmentStore(output, identity=identity, segments=("QRS",))
+    _write_segment_fixture(store, "QRS")
+    path = store.segment_artifact("QRS", "map_cells")
+    path.write_bytes(path.read_bytes() + b"tamper")
+    with pytest.raises(ValueError, match="SHA-256"):
+        RobustMapSegmentStore(output, identity=identity, segments=("QRS",))
+
+
+def test_segment_store_resume_identity_binds_timepoint_sampling(tmp_path: Path):
+    output = tmp_path / "maps"
+    primary_sampling = _segment_sampling_config(
+        cap_per_record=PRIMARY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        seed=SEGMENT_SAMPLING_SEED,
+    )
+    RobustMapSegmentStore(
+        output,
+        identity={"segment_sampling": primary_sampling},
+        segments=("QRS",),
+    )
+    changed_sampling = _segment_sampling_config(
+        cap_per_record=SENSITIVITY_SEGMENT_SAMPLE_CAP_PER_RECORD,
+        seed=SEGMENT_SAMPLING_SEED,
+    )
+    with pytest.raises(ValueError, match="resume identity changed"):
+        RobustMapSegmentStore(
+            output,
+            identity={"segment_sampling": changed_sampling},
+            segments=("QRS",),
+        )

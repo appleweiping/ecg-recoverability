@@ -10,6 +10,7 @@ the four-page primary paper before the Stage 15 evidence decision.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -21,6 +22,11 @@ PLACEHOLDERS = PAPER_DIR / "auto" / "robust_map_placeholders.tex"
 LONG = PAPER_DIR / "arxiv_long.tex"
 FLOOR = PAPER_DIR / "theorem_floor.tex"
 CITATION_STATUS = PAPER_DIR / "citation_status.yaml"
+COMPLIANCE = PAPER_DIR / "compliance.tex"
+REFERENCES = PAPER_DIR / "refs.bib"
+AUTHOR_DECLARATION_TEMPLATE = PAPER_DIR / "author_declaration.v1.template.json"
+TOOL_PROVENANCE_TEMPLATE = PAPER_DIR / "tool_provenance.v1.template.json"
+VENUE_POLICY_TEMPLATE = PAPER_DIR / "venue_policy.v1.template.json"
 
 REQUIRED_RESULT_MACROS = (
     "ResultHeadline",
@@ -100,9 +106,6 @@ REQUIRED_PRIMARY_PATTERNS = {
     r"at\s+least\s+three\s+of\s+the\s+four": "Stage-15 method threshold",
     r"figures_v3/figure1_robust_map\.pdf": "primary robust-map figure",
     r"figures_v3/figure2_prediction_gain\.pdf": "primary prediction-gain figure",
-    r"OpenAI\s+Codex": "AI-use disclosure",
-    r"Anthropic\s+Claude\s+Code": "AI-use disclosure",
-    r"AutoResearchClaw\s+v0\.5\.0": "AutoResearchClaw provenance disclosure",
 }
 
 
@@ -114,7 +117,18 @@ def strip_tex_comments(text: str) -> str:
 
 def check() -> list[str]:
     failures: list[str] = []
-    required_files = (PRIMARY, PLACEHOLDERS, LONG, FLOOR, CITATION_STATUS)
+    required_files = (
+        PRIMARY,
+        PLACEHOLDERS,
+        LONG,
+        FLOOR,
+        CITATION_STATUS,
+        COMPLIANCE,
+        REFERENCES,
+        AUTHOR_DECLARATION_TEMPLATE,
+        TOOL_PROVENANCE_TEMPLATE,
+        VENUE_POLICY_TEMPLATE,
+    )
     for path in required_files:
         if not path.is_file():
             failures.append(f"missing required file: {path.relative_to(PAPER_DIR.parent)}")
@@ -127,8 +141,28 @@ def check() -> list[str]:
 
     if r"\input{auto/robust_map_placeholders}" not in primary:
         failures.append("main_v2.tex must input auto/robust_map_placeholders.tex")
-    if r"\anontrue" not in primary or r"\anonfalse" in primary:
-        failures.append("main_v2.tex must default to anonymous submission mode")
+    required_authenticated_inputs = (
+        r"\input{auto/venue_policy}",
+        r"\input{auto/author_declaration}",
+        r"\input{auto/tool_provenance}",
+    )
+    for token in required_authenticated_inputs:
+        if token not in primary:
+            failures.append(f"main_v2.tex lacks authenticated build input: {token}")
+    if r"\ifSubmissionAuthorIdentitiesVisible" not in primary:
+        failures.append("main_v2.tex must derive identity visibility from venue policy")
+    if r"\SubmissionBuildTitleSuffix" not in primary:
+        failures.append("main_v2.tex lacks the explicit build-mode title suffix")
+    if re.search(r"\\anon(?:true|false)|submission\s+is\s+anonymous", primary, re.I):
+        failures.append("main_v2.tex hardcodes anonymous submission mode")
+    stale_provenance = re.search(
+        r"Stage~?0?1\s+failed|queue\s+owner|failed\s+probe|"
+        r"no\s+AutoResearchClaw\s+(?:research|review)\s+output",
+        primary,
+        flags=re.IGNORECASE,
+    )
+    if stale_provenance:
+        failures.append("main_v2.tex contains stale hardcoded tool provenance")
 
     for pattern, description in PRIMARY_BANNED.items():
         match = re.search(pattern, primary, flags=re.IGNORECASE)
@@ -151,6 +185,18 @@ def check() -> list[str]:
         r"\bibliographystyle"
     ):
         failures.append("main_v2.tex must force references onto page 5")
+    page_five = primary[primary.find(r"\clearpage") :]
+    allowed_page_five = re.compile(
+        r"^\s*\\clearpage\s*"
+        r"\\bibliographystyle\{IEEEbib\}\s*"
+        r"\\bibliography\{refs\}\s*"
+        r"\\input\{compliance\}\s*"
+        r"\\end\{document\}\s*$"
+    )
+    if not allowed_page_five.fullmatch(page_five):
+        failures.append("main_v2.tex page-5 suffix violates the venue content allowlist")
+    if r"\label{technical-content-end}" not in primary:
+        failures.append("main_v2.tex lacks the technical-page boundary label")
 
     for legacy_input in LEGACY_INPUTS:
         if re.search(
@@ -230,6 +276,71 @@ def check() -> list[str]:
         flags=re.IGNORECASE,
     ):
         failures.append("2026 full-configuration benchmark metadata is not primary-source verified")
+
+    compliance = strip_tex_comments(COMPLIANCE.read_text(encoding="utf-8"))
+    sections = re.findall(r"\\section\*?\{([^}]*)\}", compliance)
+    if sections != ["Funding Acknowledgment", "Compliance with Ethical Standards"]:
+        failures.append(
+            "compliance.tex must contain only Funding Acknowledgment and the exactly titled "
+            "Compliance with Ethical Standards section"
+        )
+    required_compliance_macros = (
+        r"\SubmissionFundingStatement",
+        r"\SubmissionComplianceStatement",
+        r"\SubmissionConflictStatement",
+        r"\SubmissionToolDisclosure",
+        r"\SubmissionHumanVerificationStatement",
+    )
+    for macro in required_compliance_macros:
+        if macro not in compliance:
+            failures.append(f"compliance.tex lacks authenticated macro {macro}")
+    if re.search(r"queue\s+owner|Stage~?0?1\s+failed|Pending", compliance, re.I):
+        failures.append("compliance.tex contains stale or pending hardcoded provenance")
+
+    template_status = {
+        AUTHOR_DECLARATION_TEMPLATE: "PENDING_AUTHOR_SIGNATURE",
+        TOOL_PROVENANCE_TEMPLATE: "PENDING_HUMAN_VERIFICATION",
+        VENUE_POLICY_TEMPLATE: "PENDING_OFFICIAL_AUTHOR_KIT",
+    }
+    for path, expected_status in template_status.items():
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if value.get("status") != expected_status:
+            failures.append(f"{path.name} must remain an explicit pending template")
+        if value.get("content_sha256") or value.get("signature_ed25519"):
+            failures.append(f"{path.name} must not masquerade as a signed declaration")
+    tool_template = json.loads(TOOL_PROVENANCE_TEMPLATE.read_text(encoding="utf-8"))
+    verification = tool_template.get("human_verification", {})
+    required_ai_attestations = {
+        "any_submitted_section_entirely_generated_by_ai",
+        "most_or_significant_manuscript_components_generated_by_ai",
+        "authors_substantively_rewrote_and_verified_ai_assisted_text",
+    }
+    if not required_ai_attestations.issubset(verification):
+        failures.append("tool-provenance template lacks explicit IEEE SPS attestations")
+    if "manuscript_section_generation_used" in verification:
+        failures.append("tool-provenance template retains an ambiguous AI-generation field")
+    venue_template = json.loads(VENUE_POLICY_TEMPLATE.read_text(encoding="utf-8"))
+    if set(venue_template.get("author_kit_members", {})) != {
+        "style",
+        "bibliography_style",
+        "latex_template",
+    }:
+        failures.append("venue-policy template does not bind all required author-kit assets")
+
+    references = REFERENCES.read_text(encoding="utf-8")
+    expected_impute_authors = (
+        "Fang, Xiaocheng and Wang, Haoyu and Cai, Jieyi and Zhao, Qinghao and Li, Jun "
+        "and Zhang, Shanwei and Nie, Guangkun and Xiao, Yujie and Huang, Shun and "
+        "Jin, Jiarui and Liu, Hongmin and Wang, Guodong and Chen, Shuohua and "
+        "Lin, Liming and Wu, Shouling and Li, Hongyan and Hong, Shenda"
+    )
+    impute_entry = re.search(
+        r"@article\{fang2026imputeecg,(.*?)(?=\n\})",
+        references,
+        flags=re.DOTALL,
+    )
+    if impute_entry is None or expected_impute_authors not in impute_entry.group(1):
+        failures.append("ImputeECG bibliography author order is incomplete or incorrect")
 
     return failures
 

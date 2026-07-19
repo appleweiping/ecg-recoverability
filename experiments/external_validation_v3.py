@@ -4,8 +4,9 @@
 untouched external 20% patient test split.  It contains no fitting code.
 
 ``cohort-maps`` is a secondary analysis fitted only on the external 60% patient
-train split.  It compares recoverability rankings with the frozen PTB-XL map and
-never reads external test signals.
+train split.  It compares the preregistered ``A_robust`` ranking with the frozen
+PTB-XL map, retains ``R_lower`` only as a secondary diagnostic, and never reads
+external test signals.
 """
 from __future__ import annotations
 
@@ -21,8 +22,9 @@ import pandas as pd
 
 from ecgcert import lineage
 from ecgcert.benchmarking import (
+    COHORT_MAP_RANKING_SCHEMA_VERSION,
     EXPECTED_METHODS,
-    compare_recoverability_rankings,
+    compare_cohort_maps,
     evaluate_zero_transfer_bundles,
     load_benchmark_bundles,
     path_sha256,
@@ -34,6 +36,9 @@ from ecgcert.data.manifest import DatasetManifest
 from ecgcert.data.ptbxl import PTBXL
 from ecgcert.protocol import (
     BOOTSTRAP_REPLICATES,
+    EXTERNAL_MAP_PRIMARY_METRIC,
+    EXTERNAL_MAP_PRIMARY_ORDER,
+    EXTERNAL_MAP_SECONDARY_DIAGNOSTIC,
     PRIMARY_RATE_HZ,
     PRIMARY_SEGMENTS,
     RANK_GRID,
@@ -43,10 +48,13 @@ from ecgcert.protocol import (
 )
 from ecgcert.reconstruction import (
     EvaluationRecord,
+    METRIC_INVENTORY_FILENAME,
+    MetricDatasetWriter,
+    MetricShardKey,
     evaluation_records_sha256,
     load_fitted_reconstructor,
     load_training_predictors,
-    write_benchmark_artifacts,
+    metric_coverage_contract,
 )
 from ecgcert.recoverability import bootstrap_spatial_model_bank
 
@@ -130,6 +138,7 @@ def _load_external_records(
     for raw_record_id in record_ids:
         record_id = str(raw_record_id)
         item = by_id[record_id]
+        base_audit = None
         try:
             signal, base_audit = cohort.signal_with_audit(record_id, rate=PRIMARY_RATE_HZ)
             signal = np.asarray(signal, dtype=float)
@@ -142,6 +151,7 @@ def _load_external_records(
                 window,
                 fs=PRIMARY_RATE_HZ,
                 method=delineator,
+                strict=True,
             )
             counts = {
                 segment: int(segment_indices[segment].size) for segment in PRIMARY_SEGMENTS
@@ -169,6 +179,18 @@ def _load_external_records(
                 )
             )
         except Exception as exc:
+            retained = {}
+            if base_audit is not None:
+                retained = {
+                    "source_rate_hz": base_audit.source_rate_hz,
+                    "n_samples": base_audit.n_samples,
+                    "input_leads": base_audit.input_leads,
+                    "input_units": base_audit.input_units,
+                    "canonical_leads": base_audit.canonical_leads,
+                    "source_channel_indices": base_audit.source_channel_indices,
+                    "unit_scales_to_mv": base_audit.unit_scales_to_mv,
+                    "output_unit": base_audit.output_unit,
+                }
             trail.append(
                 SignalAudit(
                     cohort=manifest.cohort,
@@ -177,6 +199,7 @@ def _load_external_records(
                     status="excluded",
                     reason=f"{type(exc).__name__}: {exc}",
                     requested_rate_hz=PRIMARY_RATE_HZ,
+                    **retained,
                 )
             )
     if not records:
@@ -319,6 +342,8 @@ def _manifest(arguments: argparse.Namespace, override: DatasetManifest | None) -
             )
     split = manifest.split()
     split.validate()
+    if getattr(arguments, "release", False):
+        manifest.validate_release_contract(arguments.cohort)
     if split.calibration:
         raise ValueError("external manifest must not define a calibration partition")
     if override is None and (not split.train or not split.tune or not split.test):
@@ -368,7 +393,7 @@ def run_zero_transfer(
 
     if source_manifest_sha256 is None:
         source_manifest_sha256 = load_ptbxl_manifest(
-            arguments.source_manifest
+            arguments.source_manifest, release=arguments.release
         ).manifest_sha256
     if rank_maps_sha256 is None:
         rank_maps_sha256 = path_sha256(arguments.rank_maps)
@@ -385,16 +410,80 @@ def run_zero_transfer(
         if rank_maps_path.is_dir():
             protected.append(rank_maps_path)
     _require_disjoint_output(output, protected)
-    metrics = evaluate_zero_transfer_bundles(
+    evaluation_contract_sha256 = evaluation_records_sha256(
+        evaluation_records,
+        segments=PRIMARY_SEGMENTS,
+    )
+    expected_metric_shards = tuple(
+        MetricShardKey.from_values(
+            cohort=manifest.cohort,
+            partition="test",
+            method=method,
+            model_seed=seed,
+            configuration=configuration,
+        )
+        for method in EXPECTED_METHODS
+        for seed in bundles[method].seeds
+        for configuration in bundles[method].configurations
+    )
+    coverage_by_configuration = {
+        tuple(configuration): metric_coverage_contract(
+            evaluation_records,
+            configuration=configuration,
+            segments=PRIMARY_SEGMENTS,
+        )
+        for method in EXPECTED_METHODS
+        for configuration in bundles[method].configurations
+    }
+    metric_writer = MetricDatasetWriter(
+        output,
+        expected_shards=expected_metric_shards,
+        expected_coverage={
+            key: coverage_by_configuration[tuple(key.configuration.split("+"))]
+            for key in expected_metric_shards
+        },
+        dataset_identity={
+            "schema_version": SCHEMA_VERSION,
+            "mode": "zero-transfer",
+            "cohort": manifest.cohort,
+            "source_manifest_sha256": source_manifest_sha256,
+            "target_manifest_sha256": manifest.sha256(),
+            "target_split_sha256": split.sha256(),
+            "rank_maps_sha256": rank_maps_sha256,
+            "evaluation_records_sha256": evaluation_contract_sha256,
+            "rate_hz": PRIMARY_RATE_HZ,
+            "segments": list(PRIMARY_SEGMENTS),
+            "delineator": arguments.delineator,
+            "device": arguments.device,
+            "benchmark_bundles": {
+                method: {
+                    "bundle_sha256": lineage.artifact_sha256(
+                        bundles[method].root / "bundle.v3.json"
+                    ),
+                    "summary_sha256": lineage.artifact_sha256(
+                        bundles[method].root / "summary.v3.json"
+                    ),
+                    "training_predictors_sha256": bundles[
+                        method
+                    ].training_predictors_sha256,
+                    "seeds": list(bundles[method].seeds),
+                    "configurations": [
+                        list(value) for value in bundles[method].configurations
+                    ],
+                }
+                for method in EXPECTED_METHODS
+            },
+        },
+        resume=(output / METRIC_INVENTORY_FILENAME).is_file(),
+    )
+    predictor_content_sha256 = evaluate_zero_transfer_bundles(
         bundles,
         evaluation_records,
         cohort=manifest.cohort,
         device=arguments.device,
+        metric_writer=metric_writer,
         model_loader=model_loader,
         predictor_loader=predictor_loader,
-    )
-    predictor_content_sha256 = metrics.attrs.get(
-        "training_predictors_content_sha256"
     )
     if not isinstance(predictor_content_sha256, str) or len(predictor_content_sha256) != 64:
         raise RuntimeError("zero-transfer evaluation lacks predictor content lineage")
@@ -413,10 +502,7 @@ def run_zero_transfer(
         "target_split_sha256": split.sha256(),
         "rank_maps_sha256": rank_maps_sha256,
         "training_predictors_content_sha256": predictor_content_sha256,
-        "evaluation_records_sha256": evaluation_records_sha256(
-            evaluation_records,
-            segments=PRIMARY_SEGMENTS,
-        ),
+        "evaluation_records_sha256": evaluation_contract_sha256,
         "benchmark_bundles": {
             method: {
                 "bundle_sha256": lineage.artifact_sha256(
@@ -469,7 +555,7 @@ def run_zero_transfer(
             }
         },
     }
-    return write_benchmark_artifacts(metrics, output, summary=summary)
+    return metric_writer.finalize(summary=summary)
 
 
 def _validate_cohort_segment_data(
@@ -611,7 +697,8 @@ def run_cohort_maps(
         "configuration",
         "target",
         "target_observed",
-        "recoverability_lower",
+        EXTERNAL_MAP_PRIMARY_METRIC,
+        EXTERNAL_MAP_SECONDARY_DIAGNOSTIC,
     }
     missing_primary_columns = required_primary_columns - set(primary_cells.columns)
     if missing_primary_columns:
@@ -650,7 +737,12 @@ def run_cohort_maps(
         primary_cells["target_observed"].to_numpy(dtype=bool), expected_observed
     ):
         raise ValueError("primary rank-map observed-target flags are inconsistent")
-    recoverability = primary_cells["recoverability_lower"].to_numpy(dtype=float)
+    ambiguity = primary_cells[EXTERNAL_MAP_PRIMARY_METRIC].to_numpy(dtype=float)
+    if not np.isfinite(ambiguity).all() or np.any(ambiguity < 0.0):
+        raise ValueError("primary A_robust scores must be finite and non-negative")
+    recoverability = primary_cells[EXTERNAL_MAP_SECONDARY_DIAGNOSTIC].to_numpy(
+        dtype=float
+    )
     if not np.isfinite(recoverability).all() or np.any(
         (recoverability < 0.0) | (recoverability > 1.0)
     ):
@@ -694,12 +786,54 @@ def run_cohort_maps(
         }
     rank_path = pd.concat(rank_frames, ignore_index=True)
     map_cells = pd.concat(map_frames, ignore_index=True)
-    agreement = compare_recoverability_rankings(map_cells, primary_cells)
+    agreement = compare_cohort_maps(map_cells, primary_cells)
     overall = agreement[
         (agreement["segment"] == "__all__") & (agreement["target"] == "__all__")
     ]
-    if overall.empty or not np.isfinite(float(overall.iloc[0]["spearman_rho"])):
-        raise ValueError("overall PTB/external recoverability ranking is undefined")
+    if (
+        set(agreement["schema_version"]) != {COHORT_MAP_RANKING_SCHEMA_VERSION}
+        or set(overall["score_role"]) != {"primary", "secondary_diagnostic"}
+        or len(overall) != 2
+    ):
+        raise RuntimeError("cohort-map ranking artifact violates its versioned role contract")
+    primary_rows = agreement[agreement["score_role"] == "primary"]
+    diagnostic_rows = agreement[agreement["score_role"] == "secondary_diagnostic"]
+    if (
+        set(primary_rows["source_metric"]) != {EXTERNAL_MAP_PRIMARY_METRIC}
+        or set(primary_rows["recoverability_order"]) != {EXTERNAL_MAP_PRIMARY_ORDER}
+        or not primary_rows["headline_eligible"].eq(True).all()
+        or set(diagnostic_rows["source_metric"])
+        != {EXTERNAL_MAP_SECONDARY_DIAGNOSTIC}
+        or set(diagnostic_rows["recoverability_order"])
+        != {"higher_is_more_recoverable"}
+        or not diagnostic_rows["headline_eligible"].eq(False).all()
+        or set(primary_rows[["segment", "target"]].itertuples(index=False, name=None))
+        != set(
+            diagnostic_rows[["segment", "target"]].itertuples(index=False, name=None)
+        )
+    ):
+        raise RuntimeError("cohort-map ranking roles or orientations are inconsistent")
+    primary_overall = overall[overall["score_role"] == "primary"]
+    diagnostic_overall = overall[overall["score_role"] == "secondary_diagnostic"]
+    if (
+        len(primary_overall) != 1
+        or primary_overall.iloc[0]["source_metric"] != EXTERNAL_MAP_PRIMARY_METRIC
+        or primary_overall.iloc[0]["recoverability_order"]
+        != EXTERNAL_MAP_PRIMARY_ORDER
+        or bool(primary_overall.iloc[0]["headline_eligible"]) is not True
+        or not np.isfinite(float(primary_overall.iloc[0]["spearman_rho"]))
+        or not np.isfinite(float(primary_overall.iloc[0]["spearman_pvalue"]))
+    ):
+        raise ValueError("primary PTB/external A_robust ranking is undefined or mislabeled")
+    if (
+        len(diagnostic_overall) != 1
+        or diagnostic_overall.iloc[0]["source_metric"]
+        != EXTERNAL_MAP_SECONDARY_DIAGNOSTIC
+        or bool(diagnostic_overall.iloc[0]["headline_eligible"]) is not False
+        or not np.isfinite(float(diagnostic_overall.iloc[0]["spearman_rho"]))
+        or not np.isfinite(float(diagnostic_overall.iloc[0]["spearman_pvalue"]))
+    ):
+        raise ValueError("secondary PTB/external R_lower diagnostic is undefined or mislabeled")
 
     output = arguments.output_dir.resolve()
     _require_disjoint_output(output, [primary_root])
@@ -741,8 +875,38 @@ def run_cohort_maps(
         "target_split_sha256": split.sha256(),
         "primary_rank_maps_sha256": primary_rank_maps_sha256,
         "observation_variance_mv2": observation_variance,
-        "ranking_metric": "Spearman(recoverability_lower), missing targets only",
-        "overall_spearman_rho": float(overall.iloc[0]["spearman_rho"]),
+        "ranking_stability": {
+            "schema_version": COHORT_MAP_RANKING_SCHEMA_VERSION,
+            "population": "missing_targets_only",
+            "comparison": "external_train60_vs_ptbxl_folds1_7",
+            "n_cells": int(primary_overall.iloc[0]["n_cells"]),
+            "primary": {
+                "metric": EXTERNAL_MAP_PRIMARY_METRIC,
+                "symbol": "A_robust",
+                "unit": "mV",
+                "recoverability_order": EXTERNAL_MAP_PRIMARY_ORDER,
+                "headline_eligible": True,
+                "overall_spearman_rho": float(
+                    primary_overall.iloc[0]["spearman_rho"]
+                ),
+                "overall_spearman_pvalue": float(
+                    primary_overall.iloc[0]["spearman_pvalue"]
+                ),
+            },
+            "secondary_diagnostic": {
+                "metric": EXTERNAL_MAP_SECONDARY_DIAGNOSTIC,
+                "symbol": "R_lower",
+                "unit": "dimensionless",
+                "recoverability_order": "higher_is_more_recoverable",
+                "headline_eligible": False,
+                "overall_spearman_rho": float(
+                    diagnostic_overall.iloc[0]["spearman_rho"]
+                ),
+                "overall_spearman_pvalue": float(
+                    diagnostic_overall.iloc[0]["spearman_pvalue"]
+                ),
+            },
+        },
         "test_records_accessed": 0,
         "protocol": protocol,
         "protocol_sha256": lineage.canonical_sha256(protocol),

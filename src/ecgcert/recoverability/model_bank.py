@@ -31,6 +31,9 @@ from ecgcert.recoverability.rank_path import (
 )
 
 
+BOOTSTRAP_MOMENT_BATCH_SIZE = 64
+
+
 def _patient_key(patient_id: Hashable) -> tuple[type, Hashable]:
     """Validate an id and retain type information in its internal codebook key."""
 
@@ -135,6 +138,113 @@ class PatientClusterSufficientStatistics:
 
 
 @dataclass(frozen=True)
+class PatientBootstrapAttemptLedger:
+    """Immutable audit trail for every proposed patient-bootstrap draw.
+
+    Rows retain proposal order, including draws rejected because their centred
+    scatter cannot support the preregistered rank grid.  Accepted indices are
+    dense and zero based; rejected attempts use ``-1``.  Multiplicities use the
+    narrowest lossless unsigned representation so the complete ledger remains
+    practical for large patient cohorts.
+    """
+
+    multiplicities: np.ndarray
+    accepted: np.ndarray
+    accepted_bootstrap_index: np.ndarray
+
+    def __post_init__(self) -> None:
+        supplied_multiplicities = np.asarray(self.multiplicities)
+        if supplied_multiplicities.ndim != 2:
+            raise ValueError("attempt multiplicities must be a two-dimensional array")
+        n_attempts, n_patients = supplied_multiplicities.shape
+        if n_attempts < 1 or n_patients < 2:
+            raise ValueError("attempt ledger requires at least one draw and two patients")
+        if not np.issubdtype(supplied_multiplicities.dtype, np.integer):
+            raise ValueError("attempt multiplicities must contain integers")
+        if np.any(supplied_multiplicities < 0):
+            raise ValueError("attempt multiplicities cannot be negative")
+        if n_patients > np.iinfo(np.uint32).max:
+            raise ValueError("patient count exceeds the uint32 multiplicity contract")
+        multiplicity_dtype = (
+            np.uint16 if n_patients <= np.iinfo(np.uint16).max else np.uint32
+        )
+        multiplicities = np.array(
+            supplied_multiplicities,
+            dtype=multiplicity_dtype,
+            copy=True,
+        )
+        if not np.all(multiplicities.sum(axis=1, dtype=np.uint64) == n_patients):
+            raise ValueError("each attempted draw must contain n_patients clusters")
+
+        supplied_accepted = np.asarray(self.accepted)
+        if supplied_accepted.dtype != np.bool_ or supplied_accepted.shape != (n_attempts,):
+            raise ValueError("accepted must be a one-dimensional boolean array")
+        accepted = np.array(supplied_accepted, dtype=np.bool_, copy=True)
+        if not bool(accepted[-1]):
+            raise ValueError("the final attempt must be accepted when bootstrap sampling stops")
+
+        supplied_indices = np.asarray(self.accepted_bootstrap_index)
+        if not np.issubdtype(supplied_indices.dtype, np.integer):
+            raise ValueError("accepted_bootstrap_index must contain integers")
+        if supplied_indices.shape != (n_attempts,):
+            raise ValueError(
+                "accepted_bootstrap_index must be aligned with attempted draws"
+            )
+        if int(accepted.sum()) > np.iinfo(np.int32).max:
+            raise ValueError("accepted draw count exceeds the int32 index contract")
+        accepted_bootstrap_index = np.array(
+            supplied_indices,
+            dtype=np.int32,
+            copy=True,
+        )
+        if np.any(accepted_bootstrap_index[~accepted] != -1):
+            raise ValueError("rejected attempts must use accepted_bootstrap_index=-1")
+        expected_accepted_indices = np.arange(int(accepted.sum()), dtype=np.int32)
+        if not np.array_equal(
+            accepted_bootstrap_index[accepted],
+            expected_accepted_indices,
+        ):
+            raise ValueError(
+                "accepted bootstrap indices must be dense and follow attempt order"
+            )
+
+        multiplicities.setflags(write=False)
+        accepted.setflags(write=False)
+        accepted_bootstrap_index.setflags(write=False)
+        object.__setattr__(self, "multiplicities", multiplicities)
+        object.__setattr__(self, "accepted", accepted)
+        object.__setattr__(
+            self,
+            "accepted_bootstrap_index",
+            accepted_bootstrap_index,
+        )
+
+    @property
+    def n_attempts(self) -> int:
+        return int(self.multiplicities.shape[0])
+
+    @property
+    def n_patients(self) -> int:
+        return int(self.multiplicities.shape[1])
+
+    @property
+    def n_boot(self) -> int:
+        return int(self.accepted.sum())
+
+    @property
+    def rejected_draws(self) -> int:
+        return self.n_attempts - self.n_boot
+
+    @property
+    def accepted_multiplicities(self) -> np.ndarray:
+        """Return accepted rows in bootstrap-index order as an immutable copy."""
+
+        result = np.array(self.multiplicities[self.accepted], copy=True)
+        result.setflags(write=False)
+        return result
+
+
+@dataclass(frozen=True)
 class PatientBootstrapModelBank:
     """Point models and bootstrap models grouped by patient-cluster draw.
 
@@ -152,6 +262,7 @@ class PatientBootstrapModelBank:
     basis_variants: tuple[BasisVariant, ...]
     fit_cohort: str
     seed: int
+    attempt_ledger: PatientBootstrapAttemptLedger
     rejected_draws: int = 0
 
     def __post_init__(self) -> None:
@@ -193,6 +304,21 @@ class PatientBootstrapModelBank:
             raise ValueError("bootstrap multiplicities cannot be negative")
         if not np.all(multiplicities.sum(axis=1) == self.statistics.n_patients):
             raise ValueError("each bootstrap draw must contain n_patients clusters")
+        if not isinstance(self.attempt_ledger, PatientBootstrapAttemptLedger):
+            raise ValueError("attempt_ledger must be a PatientBootstrapAttemptLedger")
+        if self.attempt_ledger.n_patients != self.statistics.n_patients:
+            raise ValueError("attempt ledger patient dimension does not match statistics")
+        if self.attempt_ledger.n_boot != len(bootstrap_models):
+            raise ValueError("attempt ledger accepted count does not match model groups")
+        if self.attempt_ledger.rejected_draws != self.rejected_draws:
+            raise ValueError("attempt ledger rejected count does not match rejected_draws")
+        if not np.array_equal(
+            multiplicities,
+            self.attempt_ledger.accepted_multiplicities,
+        ):
+            raise ValueError(
+                "accepted bootstrap multiplicities do not match the attempt ledger"
+            )
 
         expected_keys = tuple(
             (variant, rank) for variant in variants for rank in ranks
@@ -470,6 +596,147 @@ def _validated_grid(
     return normalized_ranks, variants
 
 
+def rebuild_spatial_model_bank(
+    statistics: PatientClusterSufficientStatistics,
+    attempt_ledger: PatientBootstrapAttemptLedger,
+    *,
+    ranks: Sequence[int] = DEFAULT_RANK_GRID,
+    basis_variants: Sequence[BasisVariant] = BASIS_VARIANTS,
+    fit_cohort: str = "unspecified",
+    seed: int = 0,
+    verify_rng_sequence: bool = True,
+) -> PatientBootstrapModelBank:
+    """Rebuild and authenticate a model bank from moments and its attempt ledger.
+
+    The complete proposal sequence is authoritative evidence, but it is also
+    checked against ``numpy.default_rng(seed)`` by default.  Every accepted row
+    must produce the requested model grid and every rejected row must reproduce
+    the same rank-deficiency decision.  This is the shared replay primitive used
+    by artifact readers and evidence validators.
+    """
+
+    if not isinstance(statistics, PatientClusterSufficientStatistics):
+        raise ValueError("statistics must be PatientClusterSufficientStatistics")
+    if not isinstance(attempt_ledger, PatientBootstrapAttemptLedger):
+        raise ValueError("attempt_ledger must be PatientBootstrapAttemptLedger")
+    if attempt_ledger.n_patients != statistics.n_patients:
+        raise ValueError("attempt ledger patient dimension does not match statistics")
+    normalized_ranks, variants = _validated_grid(statistics, ranks, basis_variants)
+    if isinstance(seed, bool):
+        raise ValueError(f"seed must be an integer; got {seed!r}")
+    try:
+        normalized_seed = integer_index(seed)
+    except TypeError as exc:
+        raise ValueError(f"seed must be an integer; got {seed!r}") from exc
+    if not isinstance(verify_rng_sequence, bool):
+        raise ValueError("verify_rng_sequence must be boolean")
+
+    if verify_rng_sequence:
+        rng = np.random.default_rng(normalized_seed)
+        for attempt_index, recorded in enumerate(attempt_ledger.multiplicities):
+            drawn_codes = rng.integers(
+                0,
+                statistics.n_patients,
+                size=statistics.n_patients,
+            )
+            expected = np.bincount(
+                drawn_codes,
+                minlength=statistics.n_patients,
+            )
+            if not np.array_equal(recorded, expected):
+                raise ValueError(
+                    "attempt multiplicities do not match the declared RNG seed "
+                    f"at attempt {attempt_index}"
+                )
+
+    try:
+        point_models = _models_from_moments(
+            statistics.n_samples,
+            statistics.sums.sum(axis=0),
+            statistics.crossproducts.sum(axis=0),
+            origin=statistics.origin,
+            ranks=normalized_ranks,
+            basis_variants=variants,
+            fit_cohort=fit_cohort,
+            fit_ids=tuple(range(statistics.n_patients)),
+        )
+    except _InsufficientSpatialRank as exc:
+        raise ValueError(f"point sample cannot support the requested rank grid: {exc}") from exc
+
+    accepted_models: list[tuple[SpatialSubspaceModel, ...] | None] = [
+        None
+    ] * attempt_ledger.n_boot
+    attempt_start = 0
+    accepted_before_batch = 0
+    while attempt_start < attempt_ledger.n_attempts:
+        candidate_count = min(
+            BOOTSTRAP_MOMENT_BATCH_SIZE,
+            attempt_ledger.n_boot - accepted_before_batch,
+        )
+        attempt_stop = attempt_start + candidate_count
+        if candidate_count < 1 or attempt_stop > attempt_ledger.n_attempts:
+            raise ValueError("attempt ledger cannot arise from the declared batch sampler")
+        batch_multiplicities = attempt_ledger.multiplicities[
+            attempt_start:attempt_stop
+        ]
+        weights = batch_multiplicities.astype(float)
+        sample_counts = weights @ statistics.counts
+        sample_sums = weights @ statistics.sums
+        sample_crossproducts = np.tensordot(
+            weights,
+            statistics.crossproducts,
+            axes=(1, 0),
+        )
+        for local_index in range(candidate_count):
+            attempt_index = attempt_start + local_index
+            try:
+                models = _models_from_moments(
+                    int(round(float(sample_counts[local_index]))),
+                    sample_sums[local_index],
+                    sample_crossproducts[local_index],
+                    origin=statistics.origin,
+                    ranks=normalized_ranks,
+                    basis_variants=variants,
+                    fit_cohort=fit_cohort,
+                )
+            except _InsufficientSpatialRank as exc:
+                if bool(attempt_ledger.accepted[attempt_index]):
+                    raise ValueError(
+                        f"attempt {attempt_index} is marked accepted but replays as rank deficient"
+                    ) from exc
+                continue
+            if not bool(attempt_ledger.accepted[attempt_index]):
+                raise ValueError(
+                    f"attempt {attempt_index} is marked rejected but replays as accepted"
+                )
+            bootstrap_index = int(
+                attempt_ledger.accepted_bootstrap_index[attempt_index]
+            )
+            accepted_models[bootstrap_index] = models
+        accepted_before_batch += int(
+            attempt_ledger.accepted[attempt_start:attempt_stop].sum()
+        )
+        attempt_start = attempt_stop
+
+    if any(models is None for models in accepted_models):  # pragma: no cover - ledger guards.
+        raise ValueError("attempt ledger does not reconstruct every accepted model")
+    bootstrap_models = tuple(
+        models for models in accepted_models if models is not None
+    )
+    return PatientBootstrapModelBank(
+        statistics=statistics,
+        point_models=point_models,
+        bootstrap_models=bootstrap_models,
+        bootstrap_multiplicities=attempt_ledger.accepted_multiplicities,
+        ranks=normalized_ranks,
+        basis_variants=variants,
+        fit_cohort=fit_cohort,
+        seed=normalized_seed,
+        attempt_ledger=attempt_ledger,
+        rejected_draws=attempt_ledger.rejected_draws,
+    )
+
+
 def bootstrap_spatial_model_bank(
     data: np.ndarray | PatientClusterSufficientStatistics,
     patient_ids: Iterable[Hashable] | None = None,
@@ -529,14 +796,16 @@ def bootstrap_spatial_model_bank(
         raise ValueError(f"point sample cannot support the requested rank grid: {exc}") from exc
 
     bootstrap_groups: list[tuple[SpatialSubspaceModel, ...]] = []
+    attempt_multiplicity_chunks: list[np.ndarray] = []
+    attempt_acceptance_chunks: list[np.ndarray] = []
+    attempt_index_chunks: list[np.ndarray] = []
     # Batch moment aggregation uses dense BLAS while bounding temporary memory for
     # large cohorts.  The eigendecompositions remain one pair per bootstrap draw.
-    moment_batch_size = 64
     accepted_draws = 0
     rejected_draws = 0
     maximum_attempts = max(1000, 100 * n_boot)
     while accepted_draws < n_boot:
-        candidate_count = min(moment_batch_size, n_boot - accepted_draws)
+        candidate_count = min(BOOTSTRAP_MOMENT_BATCH_SIZE, n_boot - accepted_draws)
         candidate_multiplicities = np.empty(
             (candidate_count, n_patients),
             dtype=multiplicity_dtype,
@@ -556,6 +825,8 @@ def bootstrap_spatial_model_bank(
             statistics.crossproducts,
             axes=(1, 0),
         )
+        candidate_accepted = np.zeros(candidate_count, dtype=np.bool_)
+        candidate_accepted_indices = np.full(candidate_count, -1, dtype=np.int32)
         for candidate_index in range(candidate_count):
             try:
                 models = _models_from_moments(
@@ -577,7 +848,18 @@ def bootstrap_spatial_model_bank(
                 continue
             multiplicities[accepted_draws] = candidate_multiplicities[candidate_index]
             bootstrap_groups.append(models)
+            candidate_accepted[candidate_index] = True
+            candidate_accepted_indices[candidate_index] = accepted_draws
             accepted_draws += 1
+        attempt_multiplicity_chunks.append(candidate_multiplicities)
+        attempt_acceptance_chunks.append(candidate_accepted)
+        attempt_index_chunks.append(candidate_accepted_indices)
+
+    attempt_ledger = PatientBootstrapAttemptLedger(
+        multiplicities=np.concatenate(attempt_multiplicity_chunks, axis=0),
+        accepted=np.concatenate(attempt_acceptance_chunks),
+        accepted_bootstrap_index=np.concatenate(attempt_index_chunks),
+    )
 
     return PatientBootstrapModelBank(
         statistics=statistics,
@@ -588,6 +870,7 @@ def bootstrap_spatial_model_bank(
         basis_variants=variants,
         fit_cohort=fit_cohort,
         seed=normalized_seed,
+        attempt_ledger=attempt_ledger,
         rejected_draws=rejected_draws,
     )
 
@@ -628,9 +911,12 @@ def rank_path_from_model_bank(
 
 
 __all__ = [
+    "BOOTSTRAP_MOMENT_BATCH_SIZE",
+    "PatientBootstrapAttemptLedger",
     "PatientBootstrapModelBank",
     "PatientClusterSufficientStatistics",
     "bootstrap_spatial_model_bank",
     "cache_patient_cluster_statistics",
     "rank_path_from_model_bank",
+    "rebuild_spatial_model_bank",
 ]

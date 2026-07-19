@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 from typing import Any, Mapping
 
-SCHEMA_VERSION = "ecg-result-envelope/v2"
+SCHEMA_VERSION = "ecg-result-envelope/v3"
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
@@ -64,6 +64,8 @@ class ResultEnvelope:
     hardware: dict[str, Any]
     seed: int
     upstream_sha256: dict[str, str]
+    late_control_inputs_sha256: dict[str, str]
+    late_control_snapshot_sha256: str
     checkpoint_sha256: dict[str, str]
     outputs_sha256: dict[str, str]
 
@@ -99,6 +101,12 @@ class ResultEnvelope:
         if isinstance(self.seed, bool) or not isinstance(self.seed, int):
             raise ValueError("seed must be an integer")
         _validate_hash_map("upstream_sha256", self.upstream_sha256)
+        _validate_hash_map(
+            "late_control_inputs_sha256", self.late_control_inputs_sha256
+        )
+        _validate_hash(
+            "late_control_snapshot_sha256", self.late_control_snapshot_sha256
+        )
         _validate_hash_map("checkpoint_sha256", self.checkpoint_sha256)
         _validate_hash_map("outputs_sha256", self.outputs_sha256, nonempty=True)
 

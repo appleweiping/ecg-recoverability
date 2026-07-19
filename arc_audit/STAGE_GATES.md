@@ -11,9 +11,9 @@ The repository is configured for AutoResearchClaw v0.5.0 in semi-auto/co-pilot m
 runtime now has pinned `acpx` and ACP adapters in an external tools directory. A fresh real co-pilot
 probe connected its ACP agent but failed with `Queue owner disconnected before prompt completion`;
 it produced zero Stage-01 artifacts and is not research evidence. A later ARC probe must complete
-successfully before any ARC review claim may be made. The remote
-experiment profile is real (`ssh_remote`), but execution additionally requires verified key-based
-SSH access; password fallback is prohibited.
+successfully before any ARC review claim may be made. ARC remains a local sandboxed control plane;
+the experiment DAG runs separately on the authenticated server and exchanges only hash-bound
+control/evidence artifacts through the reviewed bridge.
 
 | Gate | ARC stage | Human decision | Minimum evidence | Current status |
 |---|---:|---|---|---|

@@ -14,6 +14,7 @@ def main() -> int:
     parser.add_argument("--profile", choices=("icassp", "extended", "legacy"), default="icassp")
     parser.add_argument("--run-root", default=str(ROOT.parent / "ecg-recoverability-runs"))
     parser.add_argument("--run-id")
+    parser.add_argument("--environment-lock", choices=("cpu", "gpu"), required=True)
     arguments = parser.parse_args()
     command = [
         sys.executable,
@@ -22,6 +23,8 @@ def main() -> int:
         arguments.profile,
         "--run-root",
         arguments.run_root,
+        "--environment-lock",
+        arguments.environment_lock,
     ]
     if arguments.run_id:
         command.extend(["--run-id", arguments.run_id])

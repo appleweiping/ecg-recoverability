@@ -6,7 +6,10 @@
   "local_archive": {
     "path": "D:\\Project\\ecg-recoverability-archive\\20260719-9cb384f-pre-refactor\\results",
     "copied": true,
-    "source_files_left_untouched": true,
+    "source_files_left_untouched": false,
+    "workspace_disposition": "restored the 15 tracked legacy result paths from the frozen commit after verifying every modified file against this archive",
+    "archive_verified_before_restore": true,
+    "archive_verified_artifact_count": 15,
     "artifacts": [
       {"path": "active_selection.json", "size_bytes": 5722, "sha256": "02d4ecedcf367599f0e8205fcae11d79605562661fa11e70d409dc81238aa827"},
       {"path": "baselines_physics.json", "size_bytes": 19570, "sha256": "3a11bede54a142a9d5765223de6df9b1b010e02b36a2933dc2dd9047bd9b5c68"},
@@ -30,7 +33,11 @@
     "size_bytes": 9695605,
     "sha256": "9aad8b6f601ed9e4bfda76e22b8758c7655438e299ba3742bd6206b9d22bc37a",
     "hash_verified": true,
-    "copied": false,
-    "reason": "key-only SSH and pinned known_hosts are not yet provisioned; password fallback is prohibited"
+    "copied": true,
+    "archive_path": "/root/autodl-fs/ecg-legacy-archive/20260719-presubmission-rebuild/source-and-results.tar.gz",
+    "archive_sha256": "1765dd6278d303a6be167a2e4121f9f2e323acfc360e1c8799132e244b2a117c",
+    "results_manifest_sha256": "60238e290169893672426f85eceefb15337e3bf2d34ef00bed765f80a0a65a7f",
+    "source_left_untouched": true,
+    "disposition": "preserved in the read-only remote legacy archive; excluded from primary evidence"
   }
 }

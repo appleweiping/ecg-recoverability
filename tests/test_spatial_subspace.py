@@ -5,6 +5,8 @@ import pytest
 
 from ecgcert.physics import (
     DipolarModel,
+    INDEPENDENT_LEADS,
+    LEADS,
     LEAD_INDEX,
     SpatialSubspaceModel,
     fit_spatial_subspace,
@@ -113,16 +115,18 @@ def test_quantized_raw12_is_near_full_limb_rank_but_lifted_is_exact_rank_two():
     assert full_precision_kappa > 100 * deployed_kappa
 
 
-def test_rank_path_metrics_are_invariant_to_coordinate_rotation():
+@pytest.mark.parametrize("basis_variant", ["raw12_pca", "independent8_lifted"])
+@pytest.mark.parametrize("rank", range(1, 7))
+def test_rank_path_metrics_are_invariant_to_coordinate_rotation(basis_variant, rank):
     rng = np.random.default_rng(41)
     model = fit_spatial_subspace(
         _population(seed=17),
-        rank=4,
-        basis_variant="raw12_pca",
+        rank=rank,
+        basis_variant=basis_variant,
         fit_cohort="development",
         fit_ids=(1, 2, 3),
     )
-    rotation, _ = np.linalg.qr(rng.standard_normal((4, 4)))
+    rotation, _ = np.linalg.qr(rng.standard_normal((rank, rank)))
     rotated = SpatialSubspaceModel(
         rank=model.rank,
         basis_variant=model.basis_variant,
@@ -158,3 +162,71 @@ def test_rank_path_metrics_are_invariant_to_coordinate_rotation():
     assert not model.M.flags.writeable
     assert not model.covariance.flags.writeable
     assert LEAD_INDEX["V2"] == 7
+
+
+@pytest.mark.parametrize("rank", range(1, 7))
+def test_lifted8_rank_path_obeys_exact_lead_algebra_and_ignores_raw12_residual(rank):
+    rng = np.random.default_rng(610 + rank)
+    independent = rng.normal(size=(360, len(INDEPENDENT_LEADS)))
+    raw12 = independent @ lead_transform_T().T
+    contaminated = raw12.copy()
+    dependent = [LEAD_INDEX[lead] for lead in ("III", "aVR", "aVL", "aVF")]
+    contaminated[:, dependent] += rng.normal(scale=0.4, size=(len(raw12), 4))
+
+    reference = fit_spatial_subspace(
+        raw12,
+        rank=rank,
+        basis_variant="independent8_lifted",
+        fit_cohort="lifted-reference",
+    )
+    lifted = fit_spatial_subspace(
+        contaminated,
+        rank=rank,
+        basis_variant="independent8_lifted",
+        fit_cohort="lifted-contaminated",
+    )
+    np.testing.assert_array_equal(reference.M, lifted.M)
+    np.testing.assert_array_equal(reference.mu, lifted.mu)
+    np.testing.assert_array_equal(reference.covariance, lifted.covariance)
+
+    for values in (lifted.mu[:, None], lifted.M):
+        np.testing.assert_allclose(
+            values[LEAD_INDEX["III"]],
+            values[LEAD_INDEX["II"]] - values[LEAD_INDEX["I"]],
+            atol=2e-15,
+        )
+        np.testing.assert_allclose(
+            values[LEAD_INDEX["aVR"]],
+            -(values[LEAD_INDEX["I"]] + values[LEAD_INDEX["II"]]) / 2.0,
+            atol=2e-15,
+        )
+        np.testing.assert_allclose(
+            values[LEAD_INDEX["aVL"]],
+            values[LEAD_INDEX["I"]] - values[LEAD_INDEX["II"]] / 2.0,
+            atol=2e-15,
+        )
+        np.testing.assert_allclose(
+            values[LEAD_INDEX["aVF"]],
+            values[LEAD_INDEX["II"]] - values[LEAD_INDEX["I"]] / 2.0,
+            atol=2e-15,
+        )
+
+    raw_reference = fit_spatial_subspace(
+        raw12,
+        rank=rank,
+        basis_variant="raw12_pca",
+        fit_cohort="raw-reference",
+    )
+    raw_contaminated = fit_spatial_subspace(
+        contaminated,
+        rank=rank,
+        basis_variant="raw12_pca",
+        fit_cohort="raw-contaminated",
+    )
+    assert not np.allclose(
+        raw_reference.M @ raw_reference.M.T,
+        raw_contaminated.M @ raw_contaminated.M.T,
+        atol=1e-5,
+        rtol=1e-5,
+    )
+    assert len(LEADS) == 12

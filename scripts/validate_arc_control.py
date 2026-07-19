@@ -32,9 +32,34 @@ def main() -> None:
         type=Path,
         help="optional new file for the normalized validation report",
     )
+    parser.add_argument(
+        "--previous-report",
+        type=Path,
+        help="required prior formal ARC report for Stages 9, 15, and 20",
+    )
     arguments = parser.parse_args()
+    if arguments.stage == 5 and arguments.previous_report is not None:
+        raise SystemExit("Stage 5 must not specify --previous-report")
+    if arguments.stage != 5 and arguments.previous_report is None:
+        raise SystemExit(
+            f"Stage {arguments.stage} requires --previous-report for formal lineage"
+        )
+    previous_report = None
+    if arguments.previous_report is not None:
+        try:
+            previous_report = json.loads(
+                arguments.previous_report.read_text(encoding="utf-8")
+            )
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise SystemExit(f"cannot read prior ARC control report: {error}") from error
+        if not isinstance(previous_report, dict):
+            raise SystemExit("prior ARC control report must be a JSON object")
     try:
-        report = validate_arc_control_bundle(arguments.bundle, arguments.stage)
+        report = validate_arc_control_bundle(
+            arguments.bundle,
+            arguments.stage,
+            previous_report=previous_report,
+        )
     except ArcControlValidationError as error:
         raise SystemExit(f"ARC control validation failed: {error}") from error
 

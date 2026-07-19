@@ -8,6 +8,9 @@ import pandas as pd
 import pytest
 
 from ecgcert import lineage
+from ecgcert.data.audit import SignalAudit
+from ecgcert.data.common import CANONICAL_LEADS
+from ecgcert.data.ptbxl import PTBXL
 from ecgcert.estimators import (
     MaskedUNetReconstructor,
     ReconstructorConfig,
@@ -30,6 +33,8 @@ from ecgcert.reconstruction import (
     write_bundle_metadata,
 )
 from experiments.reconstruction_benchmark_v3 import (
+    PTBXLManifestV3,
+    _load_evaluation_records,
     _resolve_official_source,
     _score_partitions,
     _streaming_training_moments,
@@ -50,6 +55,12 @@ class _ChangesObserved:
         prediction = np.where(observed_mask, signal, 0.0)
         prediction[observed_mask] += 1e-6
         return prediction
+
+
+class _MutatesObservedInputInPlace:
+    def reconstruct(self, signal, observed_mask):
+        signal[observed_mask] += 1.0
+        return signal
 
 
 def _evaluation_records():
@@ -107,6 +118,17 @@ def test_observed_samples_are_checked_independently_and_fail_closed():
             training_predictors=_training_predictors((("I", "V1"),)),
         )
 
+    with pytest.raises(ObservedSampleViolation, match="changed observed"):
+        evaluate_reconstructor(
+            _MutatesObservedInputInPlace(),
+            _evaluation_records(),
+            configuration=("I", "V1"),
+            method="in-place-broken",
+            model_seed=0,
+            segments=("QRS",),
+            training_predictors=_training_predictors((("I", "V1"),)),
+        )
+
 
 def test_official_bridge_receives_no_missing_truth(tmp_path):
     source = tmp_path / "source"
@@ -115,23 +137,45 @@ def test_official_bridge_receives_no_missing_truth(tmp_path):
     checkpoint.write_bytes(b"official-checkpoint")
     bridge = source / "bridge.py"
     bridge.write_text(
+        "from pathlib import Path\n"
         "import numpy as np, sys\n"
         "x=np.load(sys.argv[1], allow_pickle=False)\n"
         "s=x['observed_signal']; m=x['observed_mask']\n"
+        "assert s.ndim == 3 and m.shape == s.shape\n"
         "assert np.all(s[~m] == 0)\n"
+        "count=Path(sys.argv[3])\n"
+        "count.write_text(str(int(count.read_text()) + 1))\n"
         "np.savez(sys.argv[2], reconstruction=s)\n",
         encoding="utf-8",
     )
+    count_path = tmp_path / "bridge-calls.txt"
+    count_path.write_text("0", encoding="utf-8")
     model = OfficialCommandBridgeReconstructor(
-        command=[sys.executable, "bridge.py", "{input}", "{output}"],
+        command=[
+            sys.executable,
+            "bridge.py",
+            "{input}",
+            "{output}",
+            str(count_path),
+        ],
         checkpoint=checkpoint,
         source_dir=source,
         single_input_only=True,
+        records_per_process=2,
     )
-    record = _evaluation_records()[0]
+    template = _evaluation_records()[0]
+    records = [
+        EvaluationRecord(
+            patient_id=f"batch-patient-{index}",
+            record_id=f"batch-record-{index}",
+            signal=template.signal + index * 0.01,
+            segment_indices=template.segment_indices,
+        )
+        for index in range(5)
+    ]
     frame = evaluate_reconstructor(
         model,
-        [record],
+        records,
         configuration=("II",),
         method="ecgrecover",
         model_seed=0,
@@ -140,6 +184,7 @@ def test_official_bridge_receives_no_missing_truth(tmp_path):
     )
     assert not frame.empty
     assert set(frame["n_observed"]) == {1}
+    assert count_path.read_text(encoding="utf-8") == "3"
 
 
 def test_training_only_simple_predictors_are_fixed_across_fold8_9_10_and_patients():
@@ -196,6 +241,8 @@ def _release_arguments(tmp_path, *extra):
             str(output),
             "--tuning-config",
             str(tuning),
+            "--training-inclusion",
+            str(tmp_path / "training-inclusion.json"),
             "--release",
             *extra,
         ]
@@ -255,6 +302,99 @@ def test_ptbxl_manifest_contract_verifies_hash_folds_and_patient_roles(tmp_path)
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="patient leakage"):
         load_ptbxl_manifest(path)
+
+
+def test_ptbxl_release_loader_rejects_self_consistent_partial_manifest(tmp_path):
+    path, payload = _ptbxl_manifest(tmp_path)
+    payload.update(
+        {
+            "version": "1.0.3",
+            "source_url": "https://physionet.org/content/ptb-xl/1.0.3/",
+            "population": "all_records_no_diagnosis_filter",
+            "split_algorithm": "official-strat-folds-1-7_8_9_10-v1",
+            "structure": {
+                "n_records": 4,
+                "n_patients": 4,
+                "folds": {
+                    str(fold): {
+                        "n_records": int(fold in {1, 8, 9, 10}),
+                        "n_patients": int(fold in {1, 8, 9, 10}),
+                    }
+                    for fold in range(1, 11)
+                },
+                "split": {
+                    role: {"n_records": 1, "n_patients": 1}
+                    for role in ("train", "tune", "calibration", "test")
+                },
+            },
+        }
+    )
+    payload["manifest_sha256"] = lineage.canonical_sha256(
+        {key: value for key, value in payload.items() if key != "manifest_sha256"}
+    )
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="official v1.0.3 contract"):
+        load_ptbxl_manifest(path, release=True)
+
+
+def test_primary_evaluation_requests_strict_delineation(monkeypatch, tmp_path):
+    signal = np.zeros((100, 12), dtype=np.float32)
+    audit = SignalAudit(
+        cohort="PTB-XL",
+        record_id="1",
+        patient_id="patient-1",
+        status="included",
+        reason=None,
+        requested_rate_hz=500,
+        source_rate_hz=500,
+        n_samples=100,
+        input_leads=CANONICAL_LEADS,
+        input_units=("mV",) * 12,
+        canonical_leads=CANONICAL_LEADS,
+        source_channel_indices=tuple(range(12)),
+        unit_scales_to_mv=(1.0,) * 12,
+        output_unit="mV",
+    )
+
+    class FixtureDB:
+        def signal_with_audit(self, _record_id, *, rate):
+            assert rate == 500
+            return signal, audit
+
+    observed = {}
+
+    def delineate(_signal, *, fs, method, strict):
+        observed.update(fs=fs, method=method, strict=strict)
+        return {
+            "QRS": np.asarray([1, 2]),
+            "ST": np.asarray([3, 4]),
+            "T": np.asarray([5, 6]),
+        }
+
+    monkeypatch.setattr(PTBXL, "segment_indices", staticmethod(delineate))
+    contract = PTBXLManifestV3(
+        path=tmp_path / "manifest.json",
+        root=tmp_path,
+        records={"1": {"patient_id": "patient-1"}},
+        split={"test": ("1",)},
+        manifest_sha256="0" * 64,
+        split_sha256="1" * 64,
+    )
+    records, evaluation_audit = _load_evaluation_records(
+        FixtureDB(),
+        contract,
+        ("1",),
+        rate=500,
+        segments=("QRS", "ST", "T"),
+        delineator="dwt",
+        partition="fold10/test",
+    )
+
+    assert len(records) == 1
+    assert observed == {"fs": 500, "method": "dwt", "strict": True}
+    assert evaluation_audit["records"][0]["source_channel_indices"] == tuple(range(12))
+    assert evaluation_audit["records"][0]["output_unit"] == "mV"
 
 
 def test_official_method_missing_source_or_config_is_an_explicit_failure(tmp_path):
@@ -408,6 +548,7 @@ def test_ecgrecover_bundle_freezes_the_official_single_input_contract(tmp_path, 
             "official": {
                 "source_dir": str(source),
                 "input_lead": "II",
+                "inference_records_per_process": 128,
                 "inference_bridge": bridge,
             },
         },
@@ -431,7 +572,7 @@ def test_ecgrecover_bundle_freezes_the_official_single_input_contract(tmp_path, 
         load_fitted_reconstructor(bundle, "ecgrecover", 0)
 
 
-def test_summary_and_parquet_contract_include_reload_metadata(tmp_path, monkeypatch):
+def test_summary_and_parquet_contract_include_reload_metadata(tmp_path):
     frame = evaluate_reconstructor(
         _ZeroMissing(),
         [_evaluation_records()[0]],
@@ -442,10 +583,6 @@ def test_summary_and_parquet_contract_include_reload_metadata(tmp_path, monkeypa
         training_predictors=_training_predictors((("I",),)),
     )
 
-    def fake_to_parquet(self, path, **_kwargs):
-        Path(path).write_bytes(b"PAR1-test-fixture")
-
-    monkeypatch.setattr(pd.DataFrame, "to_parquet", fake_to_parquet)
     value = write_benchmark_artifacts(
         frame,
         tmp_path,
@@ -463,6 +600,14 @@ def test_summary_and_parquet_contract_include_reload_metadata(tmp_path, monkeypa
     assert persisted["method"] == "lowrank"
     assert persisted["artifacts"]["patient_metrics"]["path"] == "patient_metrics.parquet"
     assert len(persisted["artifacts"]["patient_metrics"]["sha256"]) == 64
+    inventory = json.loads(
+        (tmp_path / "patient_metrics.inventory.v1.json").read_text(encoding="utf-8")
+    )
+    assert inventory["status"] == "complete"
+    assert inventory["total_rows"] == len(frame)
+    assert inventory["shards"][0]["row_group_start"] == 0
+    assert inventory["shards"][0]["parquet_sha256"]
+    assert not inventory["shards"][0]["staging_retained"]
 
 
 def test_training_predictor_bundle_artifact_is_hash_checked(tmp_path, monkeypatch):

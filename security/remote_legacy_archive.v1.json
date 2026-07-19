@@ -1,0 +1,21 @@
+{
+  "schema_version": "ecgcert-remote-legacy-archive-v1",
+  "created_at": "2026-07-19T17:45:55+08:00",
+  "source": {
+    "repository_path": "/root/autodl-tmp/ecg-recoverability",
+    "head": "2370ee266167f960de92d833908b070ba85adfe6",
+    "working_tree_preserved_in_place": true,
+    "reset_or_overwrite_performed": false,
+    "status_entries": 24,
+    "result_files": 37
+  },
+  "archive": {
+    "path": "/root/autodl-fs/ecg-legacy-archive/20260719-presubmission-rebuild",
+    "read_only": true,
+    "data_directory_excluded": true,
+    "source_and_results_tar_sha256": "1765dd6278d303a6be167a2e4121f9f2e323acfc360e1c8799132e244b2a117c",
+    "archive_manifest_sha256": "08a784e384e9d643c1891a3fb19919a858082bfef8ca71204e145ce75a308c35",
+    "results_manifest_sha256": "60238e290169893672426f85eceefb15337e3bf2d34ef00bed765f80a0a65a7f",
+    "status_sha256": "98c4eb5ab37958d5016a6071c01343c8f8f25b5f4e08a6e9a432a22a3248b74c"
+  }
+}

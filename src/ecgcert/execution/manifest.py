@@ -24,9 +24,32 @@ def _safe_relative(value: Any, field: str) -> str:
         raise ManifestError(f"{field} entries must be non-empty strings")
     value = value.replace("\\", "/")
     path = PurePosixPath(value)
-    if path.is_absolute() or ".." in path.parts or value.startswith("~"):
+    # A manifest is executed on both POSIX and Windows hosts.  PurePosixPath
+    # intentionally does not recognise Windows drive-qualified paths, and a
+    # colon can also name an NTFS alternate data stream.  Reject both forms
+    # before joining the value to a workspace root.
+    if (
+        path.is_absolute()
+        or ".." in path.parts
+        or value.startswith("~")
+        or ":" in value
+        or "\x00" in value
+        or path.as_posix() == "."
+    ):
         raise ManifestError(f"{field} contains unsafe path: {value!r}")
     return path.as_posix()
+
+
+def _path_contains(parent: str, child: str) -> bool:
+    """Return whether two normalized manifest paths have containment."""
+
+    parent_path = PurePosixPath(parent)
+    child_path = PurePosixPath(child)
+    return parent_path == child_path or parent_path in child_path.parents
+
+
+def _paths_overlap(left: str, right: str) -> bool:
+    return _path_contains(left, right) or _path_contains(right, left)
 
 
 @dataclass(frozen=True)
@@ -66,6 +89,7 @@ class ExperimentNode:
     resource: ResourceSpec
     deps: tuple[str, ...]
     inputs: tuple[str, ...]
+    late_control_inputs: tuple[str, ...]
     outputs: tuple[str, ...]
     timeout: int
     seed: int = 0
@@ -76,7 +100,7 @@ class ExperimentNode:
         if not isinstance(value, Mapping):
             raise ManifestError("each node must be an object")
         missing = sorted(required - set(value))
-        unknown = sorted(set(value) - required - {"seed"})
+        unknown = sorted(set(value) - required - {"seed", "late_control_inputs"})
         if missing:
             raise ManifestError(f"node missing fields: {missing}")
         if unknown:
@@ -101,12 +125,18 @@ class ExperimentNode:
             raise ManifestError(f"{node_id}: command must be a non-empty string list")
         deps = value["deps"]
         inputs = value["inputs"]
+        late_control_inputs = value.get("late_control_inputs", [])
         outputs = value["outputs"]
         if not isinstance(deps, list) or not all(
             isinstance(x, str) and _SAFE_ID.fullmatch(x) for x in deps
         ):
             raise ManifestError(f"{node_id}: deps must contain safe node ids")
-        if not isinstance(inputs, list) or not isinstance(outputs, list) or not outputs:
+        if (
+            not isinstance(inputs, list)
+            or not isinstance(late_control_inputs, list)
+            or not isinstance(outputs, list)
+            or not outputs
+        ):
             raise ManifestError(f"{node_id}: inputs must be a list and outputs a non-empty list")
         timeout = value["timeout"]
         seed = value.get("seed", 0)
@@ -115,10 +145,52 @@ class ExperimentNode:
         if isinstance(seed, bool) or not isinstance(seed, int):
             raise ManifestError(f"{node_id}: seed must be an integer")
         safe_inputs = tuple(_safe_relative(x, f"{node_id}.inputs") for x in inputs)
+        safe_late_inputs = tuple(
+            _safe_relative(x, f"{node_id}.late_control_inputs")
+            for x in late_control_inputs
+        )
         safe_outputs = tuple(_safe_relative(x, f"{node_id}.outputs") for x in outputs)
-        overlap = sorted(set(safe_inputs) & set(safe_outputs))
+        if len(set(safe_late_inputs)) != len(safe_late_inputs):
+            raise ManifestError(f"{node_id}: late_control_inputs contains duplicates")
+        if any(
+            not _path_contains("artifacts/gates", path) for path in safe_late_inputs
+        ):
+            raise ManifestError(
+                f"{node_id}: late_control_inputs must be confined to artifacts/gates"
+            )
+        if any(path not in command for path in safe_late_inputs):
+            raise ManifestError(
+                f"{node_id}: every late_control_inputs path must be an exact command token"
+            )
+        overlap = sorted(
+            (input_path, output_path)
+            for input_path in (*safe_inputs, *safe_late_inputs)
+            for output_path in safe_outputs
+            if _paths_overlap(input_path, output_path)
+        )
         if overlap:
             raise ManifestError(f"{node_id}: inputs and outputs overlap: {overlap}")
+        ordinary_late_overlap = sorted(
+            (input_path, late_path)
+            for input_path in safe_inputs
+            for late_path in safe_late_inputs
+            if _paths_overlap(input_path, late_path)
+        )
+        if ordinary_late_overlap:
+            raise ManifestError(
+                f"{node_id}: inputs and late_control_inputs overlap: "
+                f"{ordinary_late_overlap}"
+            )
+        nested_late = sorted(
+            (left, right)
+            for index, left in enumerate(safe_late_inputs)
+            for right in safe_late_inputs[index + 1 :]
+            if _paths_overlap(left, right)
+        )
+        if nested_late:
+            raise ManifestError(
+                f"{node_id}: late_control_inputs overlap each other: {nested_late}"
+            )
         return cls(
             id=node_id,
             profile=tuple(dict.fromkeys(profile)),
@@ -126,13 +198,30 @@ class ExperimentNode:
             resource=ResourceSpec.parse(value["resource"]),
             deps=tuple(dict.fromkeys(deps)),
             inputs=safe_inputs,
+            late_control_inputs=safe_late_inputs,
             outputs=safe_outputs,
             timeout=timeout,
             seed=seed,
         )
 
-    def config_sha256(self) -> str:
-        return canonical_sha256(asdict(self))
+    def config_sha256(
+        self,
+        *,
+        late_control_inputs_sha256: Mapping[str, str] | None = None,
+    ) -> str:
+        """Hash the declaration and, for execution, realized control content."""
+
+        payload: dict[str, Any] = {"node": asdict(self)}
+        if late_control_inputs_sha256 is not None:
+            if set(late_control_inputs_sha256) != set(self.late_control_inputs):
+                raise ManifestError(
+                    f"{self.id}: realized late-control input set does not match manifest"
+                )
+            payload["late_control_inputs_sha256"] = {
+                path: late_control_inputs_sha256[path]
+                for path in sorted(late_control_inputs_sha256)
+            }
+        return canonical_sha256(payload)
 
 
 @dataclass(frozen=True)
@@ -171,6 +260,12 @@ class ExperimentManifest:
                 if output in output_owner:
                     raise ManifestError(
                         f"duplicate output {output!r}: {output_owner[output]} and {node.id}")
+                for owned_output, owner in output_owner.items():
+                    if _paths_overlap(output, owned_output):
+                        raise ManifestError(
+                            f"nested outputs are ambiguous: {output!r} ({node.id}) and "
+                            f"{owned_output!r} ({owner})"
+                        )
                 output_owner[output] = node.id
         for node in self.nodes:
             missing = [dep for dep in node.deps if dep not in by_id]
@@ -186,12 +281,39 @@ class ExperimentManifest:
                         f"{sorted(absent_profiles)}"
                     )
             for input_path in node.inputs:
-                owner = output_owner.get(input_path)
-                if owner and owner not in node.deps:
-                    raise ManifestError(
-                        f"{node.id}: input {input_path!r} is produced by {owner} "
-                        "but that node is not a dependency"
-                    )
+                for output_path, owner in output_owner.items():
+                    if owner == node.id or not _paths_overlap(input_path, output_path):
+                        continue
+                    if owner not in node.deps:
+                        raise ManifestError(
+                            f"{node.id}: input {input_path!r} overlaps output "
+                            f"{output_path!r} produced by {owner}, but that node is "
+                            "not a dependency"
+                        )
+            for late_path in node.late_control_inputs:
+                for output_path, owner in output_owner.items():
+                    if _paths_overlap(late_path, output_path):
+                        raise ManifestError(
+                            f"{node.id}: late control input {late_path!r} overlaps DAG "
+                            f"output {output_path!r} produced by {owner}; late controls "
+                            "must come only from the authenticated external inbox"
+                        )
+            declared_command_paths = {
+                *node.inputs,
+                *node.late_control_inputs,
+                *node.outputs,
+            }
+            undeclared_gate_tokens = sorted(
+                token
+                for token in node.command
+                if _path_contains("artifacts/gates", token)
+                and token not in declared_command_paths
+            )
+            if undeclared_gate_tokens:
+                raise ManifestError(
+                    f"{node.id}: command has undeclared artifacts/gates control paths: "
+                    f"{undeclared_gate_tokens}"
+                )
         self.topological()
         seen_profiles = {profile for node in self.nodes for profile in node.profile}
         missing_profiles = ALLOWED_PROFILES - seen_profiles

@@ -7,11 +7,18 @@ import pytest
 
 from ecgcert import lineage
 from ecgcert.benchmarking import EXPECTED_METHODS, RELEASE_NEURAL_SEEDS
+from ecgcert.data.manifest import (
+    RELEASE_COHORT_CONTRACTS,
+    DatasetManifest,
+    ManifestRecord,
+)
 from ecgcert.protocol import PRIMARY_SEGMENTS, configuration_panel_sha256, deep_configuration_panel
 from ecgcert.reconstruction import SCHEMA_VERSION as BENCHMARK_SCHEMA_VERSION
 from experiments.meta_analysis_v3 import (
     COMMON_PANEL_METHODS,
     EXTERNAL_VALIDATION_SCHEMA_VERSION,
+    _attach_robust_map,
+    _external_manifest_index,
     _validate_common_panel_metrics,
     _validate_external_release_bundle,
 )
@@ -73,6 +80,38 @@ def test_release_panel_is_complete_within_every_partition() -> None:
         )
 
 
+def test_rank_map_diagnostics_cannot_overwrite_folds1_7_predictors() -> None:
+    metrics = pd.DataFrame(
+        [
+            {
+                "segment": "QRS",
+                "configuration": "I",
+                "target": "II",
+                "target_rms": 1.25,
+                "max_target_observed_correlation": 0.4,
+            }
+        ]
+    )
+    rank_map = pd.DataFrame(
+        [
+            {
+                "segment": "QRS",
+                "configuration": "I",
+                "target": "II",
+                "ambiguity_robust_mv": 0.2,
+                "configuration_rank_max": 3,
+                "log10_condition_max": 1.5,
+                "target_rms": 99.0,
+                "max_target_observed_correlation": 0.99,
+            }
+        ]
+    )
+    attached = _attach_robust_map(metrics, rank_map)
+    assert attached.loc[0, "target_rms"] == 1.25
+    assert attached.loc[0, "max_target_observed_correlation"] == 0.4
+    assert attached.loc[0, "ambiguity_robust_mv"] == 0.2
+
+
 def _descriptor(path: Path) -> dict[str, str]:
     return {"path": path.name, "sha256": lineage.artifact_sha256(path)}
 
@@ -93,7 +132,7 @@ def _external_release_fixture(tmp_path: Path):
             "ecgrecover",
         } else (0,)
         configurations = (("I",),) if method == "ecgrecover" else deep_configuration_panel()
-        predictor_sha256 = (method[0] * 64)[:64]
+        predictor_sha256 = "e" * 64
         benchmark_bundles[method] = SimpleNamespace(
             root=method_root,
             seeds=seeds,
@@ -109,6 +148,44 @@ def _external_release_fixture(tmp_path: Path):
 
     root = tmp_path / "external"
     root.mkdir()
+    target_manifest = DatasetManifest(
+        cohort="chapman",
+        version="fixture-v1",
+        source_url="https://example.invalid/chapman",
+        root=str(tmp_path / "external-data"),
+        records=tuple(
+            ManifestRecord(
+                record_id=f"record-{index:03d}",
+                patient_id=f"patient-{index:03d}",
+                relative_header=f"record-{index:03d}.hea",
+                header_sha256="0" * 64,
+                signal_file=f"record-{index:03d}.dat",
+                signal_size_bytes=1,
+                signal_sha256="1" * 64,
+            )
+            for index in range(100)
+        ),
+        split_salt="meta-release-contract-v1",
+    )
+    target_split = target_manifest.split()
+    assert target_split.train and target_split.tune and target_split.test
+    target_manifest_path = tmp_path / "chapman-manifest.json"
+    target_manifest_path.write_text(
+        json.dumps(target_manifest.to_dict()), encoding="utf-8"
+    )
+    target_records = {
+        record.record_id: record.patient_id for record in target_manifest.records
+    }
+    data_audit_records = [
+        {
+            "record_id": str(record_id),
+            "patient_id": target_records[str(record_id)],
+            "status": "included",
+            "reason": None,
+            "segment_counts": {"QRS": 10, "ST": 8, "T": 6},
+        }
+        for record_id in target_split.test
+    ]
     metrics_path = root / "patient_metrics.parquet"
     pd.DataFrame([{"patient_id": "external-1"}]).to_parquet(metrics_path, index=False)
     audit_path = root / "evaluation_audit.json"
@@ -120,8 +197,21 @@ def _external_release_fixture(tmp_path: Path):
         "no_external_fit": True,
         "source_manifest_sha256": source_manifest_sha256,
         "rank_maps_sha256": rank_maps_sha256,
-        "target_manifest_sha256": "c" * 64,
-        "target_split_sha256": "d" * 64,
+        "target_manifest_sha256": target_manifest.sha256(),
+        "target_split_sha256": target_split.sha256(),
+        "training_predictors_content_sha256": "f" * 64,
+        "requested_record_ids_sha256": lineage.canonical_sha256(
+            sorted(str(value) for value in target_split.test)
+        ),
+        "data_audit": {
+            "summary": {
+                "n_total": len(data_audit_records),
+                "n_included": len(data_audit_records),
+                "n_excluded": 0,
+                "exclusion_reasons": {},
+            },
+            "records": data_audit_records,
+        },
     }
     audit_path.write_text(json.dumps(audit), encoding="utf-8")
     summary = {
@@ -135,10 +225,13 @@ def _external_release_fixture(tmp_path: Path):
         "configuration_panel_sha256": configuration_panel_sha256(),
         "common_panel_methods": list(COMMON_PANEL_METHODS),
         "cohort": "chapman",
-        "n_test_records_included": 1,
+        "n_test_records_requested": len(data_audit_records),
+        "n_test_records_included": len(data_audit_records),
+        "n_test_records_excluded": 0,
         "n_patient_metric_rows": 1,
-        "target_manifest_sha256": "c" * 64,
-        "target_split_sha256": "d" * 64,
+        "target_manifest_sha256": target_manifest.sha256(),
+        "target_split_sha256": target_split.sha256(),
+        "training_predictors_content_sha256": "f" * 64,
         "benchmark_bundles": inventory,
         "artifacts": {
             "patient_metrics": _descriptor(metrics_path),
@@ -146,17 +239,50 @@ def _external_release_fixture(tmp_path: Path):
         },
     }
     (root / "summary.v3.json").write_text(json.dumps(summary), encoding="utf-8")
-    return root, source_manifest_sha256, rank_maps_sha256, benchmark_bundles
-
-
-def test_external_release_accepts_external_audit_schema(tmp_path: Path) -> None:
-    root, source_sha, rank_sha, benchmarks = _external_release_fixture(tmp_path)
-    metrics, cohort, report = _validate_external_release_bundle(
+    return (
         root,
+        target_manifest_path,
+        source_manifest_sha256,
+        rank_maps_sha256,
+        benchmark_bundles,
+    )
+
+
+def test_external_release_accepts_external_audit_schema(tmp_path: Path, monkeypatch) -> None:
+    root, target_manifest, source_sha, rank_sha, benchmarks = (
+        _external_release_fixture(tmp_path)
+    )
+    fixture_manifest = DatasetManifest.from_path(target_manifest)
+    monkeypatch.setitem(
+        RELEASE_COHORT_CONTRACTS,
+        "chapman",
+        {
+            "version": fixture_manifest.version,
+            "source_url": fixture_manifest.source_url,
+            "n_records": len(fixture_manifest.records),
+            "n_patient_ids": len(fixture_manifest.records),
+            "patient_id_strategy": fixture_manifest.patient_id_strategy,
+        },
+    )
+    metrics_path, cohort, report, coverage = _validate_external_release_bundle(
+        root,
+        target_manifest=target_manifest,
         source_manifest_sha256=source_sha,
         rank_maps_sha256=rank_sha,
+        predictor_content_sha256="f" * 64,
         benchmark_bundles=benchmarks,
     )
     assert cohort == "chapman"
-    assert len(metrics) == 1
+    import pyarrow.parquet as pq
+
+    assert pq.ParquetFile(metrics_path).metadata.num_rows == 1
     assert report["no_external_fit"] is True
+    assert len(coverage.included_record_ids) == len(coverage.attempted_record_ids)
+
+
+def test_external_manifest_cohort_mapping_rejects_duplicate_names(tmp_path: Path) -> None:
+    _, target_manifest, *_rest = _external_release_fixture(tmp_path)
+    duplicate = tmp_path / "duplicate-chapman.json"
+    duplicate.write_bytes(target_manifest.read_bytes())
+    with pytest.raises(ValueError, match="map uniquely"):
+        _external_manifest_index((target_manifest, duplicate))

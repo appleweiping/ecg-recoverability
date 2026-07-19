@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from operator import index as integer_index
 from typing import Iterable, Sequence
 
@@ -17,7 +17,6 @@ from ecgcert.physics import (
     SpatialSubspaceModel,
     eta_normalized_per_lead,
     eta_per_lead,
-    fit_spatial_subspace,
     kappa,
     kappa_per_lead,
 )
@@ -95,6 +94,88 @@ class BootstrapRankPath:
     seed: int
     n_boot: int
     patient_ids: tuple[Hashable, ...]
+
+    def __post_init__(self) -> None:
+        point = tuple(self.point)
+        replicates = tuple(self.replicates)
+        patient_ids = tuple(self.patient_ids)
+        if isinstance(self.n_boot, bool):
+            raise ValueError("n_boot must be a positive integer, not a boolean")
+        try:
+            n_boot = integer_index(self.n_boot)
+        except TypeError as exc:
+            raise ValueError("n_boot must be a positive integer") from exc
+        if n_boot < 1:
+            raise ValueError("n_boot must be a positive integer")
+        if isinstance(self.seed, bool):
+            raise ValueError("seed must be an integer, not a boolean")
+        try:
+            seed = integer_index(self.seed)
+        except TypeError as exc:
+            raise ValueError("seed must be an integer") from exc
+        if not point:
+            raise ValueError("bootstrap rank path requires at least one point model")
+        point_keys = tuple(entry.model_key for entry in point)
+        if len(set(point_keys)) != len(point_keys):
+            raise ValueError("bootstrap rank-path point model keys must be unique")
+        if any(entry.bootstrap_index is not None for entry in point):
+            raise ValueError("point rank-path entries cannot carry a bootstrap index")
+        observed = point[0].observed_leads
+        if any(entry.observed_leads != observed for entry in point):
+            raise ValueError("all point rank-path entries must use the same observed leads")
+
+        expected_replicates = n_boot * len(point)
+        if len(replicates) != expected_replicates:
+            raise ValueError(
+                "bootstrap rank path must contain exactly one entry per "
+                f"bootstrap/model cell; expected {expected_replicates}, got {len(replicates)}"
+            )
+        indices_by_key: dict[ModelKey, list[int]] = {key: [] for key in point_keys}
+        for entry in replicates:
+            if entry.observed_leads != observed:
+                raise ValueError("all bootstrap entries must use the point observed leads")
+            if entry.model_key not in indices_by_key:
+                raise ValueError(
+                    f"bootstrap entry has no matching point model: {entry.model_key!r}"
+                )
+            if isinstance(entry.bootstrap_index, bool) or entry.bootstrap_index is None:
+                raise ValueError("bootstrap entries require an integer bootstrap index")
+            try:
+                bootstrap_index = integer_index(entry.bootstrap_index)
+            except TypeError as exc:
+                raise ValueError("bootstrap entries require an integer bootstrap index") from exc
+            indices_by_key[entry.model_key].append(bootstrap_index)
+        expected_indices = list(range(n_boot))
+        for key, indices in indices_by_key.items():
+            if sorted(indices) != expected_indices:
+                raise ValueError(
+                    "bootstrap indices must cover every accepted draw exactly once "
+                    f"for model {key!r}"
+                )
+
+        seen_patient_ids: set[tuple[type, Hashable]] = set()
+        if len(patient_ids) < 2:
+            raise ValueError("patient-cluster bootstrap requires at least two patients")
+        for patient_id in patient_ids:
+            if patient_id is None or isinstance(patient_id, (bool, np.bool_)):
+                raise ValueError("patient ids must be non-missing, non-boolean values")
+            try:
+                key = (type(patient_id), patient_id)
+                hash(key)
+                reflexive = patient_id == patient_id
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"invalid patient id {patient_id!r}") from exc
+            if not isinstance(reflexive, (bool, np.bool_)) or not bool(reflexive):
+                raise ValueError(f"invalid patient id {patient_id!r}")
+            if key in seen_patient_ids:
+                raise ValueError(f"patient ids must be unique; duplicate {patient_id!r}")
+            seen_patient_ids.add(key)
+
+        object.__setattr__(self, "point", point)
+        object.__setattr__(self, "replicates", replicates)
+        object.__setattr__(self, "patient_ids", patient_ids)
+        object.__setattr__(self, "n_boot", n_boot)
+        object.__setattr__(self, "seed", seed)
 
     @property
     def record_ids(self) -> tuple[Hashable, ...]:
@@ -222,80 +303,53 @@ def bootstrap_rank_path(
     row block rather than being collapsed to unique ids.
     """
 
-    X = np.asarray(X, dtype=float)
-    pid = np.asarray(patient_ids, dtype=object)
-    if X.ndim != 2 or X.shape[1] != len(LEADS):
-        raise ValueError(f"X must be (n_samples, {len(LEADS)}); got {X.shape}")
-    if pid.ndim != 1 or pid.shape[0] != X.shape[0]:
-        raise ValueError("patient_ids must be one-dimensional and aligned with X rows")
-    for patient_id in pid:
-        try:
-            hash(patient_id)
-        except TypeError as exc:
-            raise ValueError(f"patient ids must be hashable; got {patient_id!r}") from exc
-    if not np.all(np.isfinite(X)):
-        raise ValueError("X must contain only finite values")
-    if not isinstance(n_boot, int) or n_boot < 1:
-        raise ValueError(f"n_boot must be a positive integer; got {n_boot!r}")
-    ranks = tuple(int(rank) for rank in ranks)
-    if not ranks or len(set(ranks)) != len(ranks):
-        raise ValueError("ranks must be a non-empty sequence of unique integers")
-    variants = tuple(basis_variants)
-    if not variants or len(set(variants)) != len(variants):
-        raise ValueError("basis_variants must be a non-empty sequence of unique values")
+    # Import locally to avoid the module-level rank_path <-> model_bank dependency.
+    # The shared model-bank implementation provides exact integer/rank validation,
+    # type-aware patient clustering, deterministic rank-deficient-draw rejection,
+    # and the same proposal stream used by release artifacts.
+    from ecgcert.recoverability.model_bank import (
+        bootstrap_spatial_model_bank,
+        rank_path_from_model_bank,
+    )
 
-    unique_ids = tuple(dict.fromkeys(pid.tolist()))
-    if len(unique_ids) < 2:
-        raise ValueError("patient-cluster bootstrap requires at least two unique patients")
-    patient_code = {patient_id: code for code, patient_id in enumerate(unique_ids)}
-    coded = np.asarray([patient_code[value] for value in pid], dtype=np.int64)
-    unique_codes = np.arange(len(unique_ids), dtype=np.int64)
-    row_lookup = {int(code): np.flatnonzero(coded == code) for code in unique_codes}
-
-    def fit_models(samples: np.ndarray, fit_ids: Sequence[int]) -> tuple[SpatialSubspaceModel, ...]:
-        return tuple(
-            fit_spatial_subspace(
-                samples,
-                rank=rank,
-                basis_variant=variant,
-                fit_cohort=fit_cohort,
-                fit_ids=fit_ids,
-            )
-            for variant in variants
-            for rank in ranks
-        )
-
-    point_models = fit_models(X, unique_codes)
-    point = compute_rank_path(
-        point_models,
+    bank = bootstrap_spatial_model_bank(
+        X,
+        patient_ids,
+        ranks=ranks,
+        basis_variants=basis_variants,
+        fit_cohort=fit_cohort,
+        n_boot=n_boot,
+        seed=seed,
+    )
+    path = rank_path_from_model_bank(
+        bank,
         observed_leads,
         observation_variance_mv2=observation_variance_mv2,
         rcond=rcond,
     )
-
-    rng = np.random.default_rng(seed)
-    replicates: list[RankPathEntry] = []
-    for bootstrap_index in range(n_boot):
-        drawn_ids = unique_codes[rng.integers(0, len(unique_codes), len(unique_codes))]
-        rows = np.concatenate([row_lookup[int(code)] for code in drawn_ids])
-        models = fit_models(X[rows], drawn_ids)
-        replicates.extend(
-            evaluate_spatial_model(
-                model,
-                observed_leads,
-                observation_variance_mv2=observation_variance_mv2,
-                rcond=rcond,
-                bootstrap_index=bootstrap_index,
-            )
-            for model in models
+    # Preserve the compatibility API's compact integer draw provenance without
+    # duplicating arbitrary patient-id objects into every fitted model.
+    fit_ids_by_bootstrap = tuple(
+        tuple(
+            patient_code
+            for patient_code, multiplicity in enumerate(multiplicities)
+            for _ in range(int(multiplicity))
         )
-
+        for multiplicities in bank.bootstrap_multiplicities
+    )
+    replicates = tuple(
+        replace(
+            entry,
+            fit_ids=fit_ids_by_bootstrap[int(entry.bootstrap_index)],
+        )
+        for entry in path.replicates
+    )
     return BootstrapRankPath(
-        point=point,
-        replicates=tuple(replicates),
-        seed=int(seed),
-        n_boot=n_boot,
-        patient_ids=unique_ids,
+        point=path.point,
+        replicates=replicates,
+        seed=path.seed,
+        n_boot=path.n_boot,
+        patient_ids=path.patient_ids,
     )
 
 

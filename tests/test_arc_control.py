@@ -21,6 +21,7 @@ from ecgcert.arc_control import (
     REPORT_SCHEMA,
     ArcControlValidationError,
     validate_arc_control_bundle,
+    validate_arc_control_chain,
     validate_arc_control_report,
 )
 
@@ -49,10 +50,18 @@ def _descriptor(bundle: Path, relative: str) -> dict[str, str]:
     return {"path": relative, "sha256": _sha256(bundle / relative)}
 
 
-def _make_bundle(root: Path, *, stage: int = 5, status: str = "done") -> Path:
+def _make_bundle(
+    root: Path,
+    *,
+    stage: int = 5,
+    status: str = "blocked_approval",
+    previous_handoff_sha256: str | None = None,
+    decision_value: str | None = None,
+    run_id: str = "rc-20260719-120000-control",
+    session_id: str = "session-control-1",
+) -> Path:
     bundle = root / f"arc-stage-{stage}"
     stage_dir = f"stage-{stage:02d}"
-    run_id = "rc-20260719-120000-control"
     output_name = "scientific_output.json"
     _write_json(bundle / stage_dir / output_name, {"stage": stage, "evidence": "frozen"})
     _write_json(
@@ -61,10 +70,18 @@ def _make_bundle(root: Path, *, stage: int = 5, status: str = "done") -> Path:
             "stage_id": f"{stage:02d}-{STAGE_NAMES[stage]}",
             "run_id": run_id,
             "status": status,
-            "decision": "proceed" if status == "done" else "retry",
-            "output_artifacts": [output_name] if status == "done" else [],
-            "evidence_refs": [f"{stage_dir}/{output_name}"] if status == "done" else [],
-            "error": None if status == "done" else "Queue owner disconnected",
+            "decision": decision_value or (
+                "block" if status == "blocked_approval" else "retry"
+            ),
+            "output_artifacts": (
+                [output_name] if status == "blocked_approval" else []
+            ),
+            "evidence_refs": (
+                [f"{stage_dir}/{output_name}"] if status == "blocked_approval" else []
+            ),
+            "error": (
+                None if status == "blocked_approval" else "Queue owner disconnected"
+            ),
             "ts": "2026-07-19T04:01:00+00:00",
             "next_stage": stage + 1 if status == "done" else stage,
         },
@@ -76,15 +93,17 @@ def _make_bundle(root: Path, *, stage: int = 5, status: str = "done") -> Path:
             "run_id": run_id,
             "duration_sec": 61.25,
             "status": status,
-            "artifacts_count": 1 if status == "done" else 0,
-            "error": None if status == "done" else "Queue owner disconnected",
+            "artifacts_count": 1 if status == "blocked_approval" else 0,
+            "error": (
+                None if status == "blocked_approval" else "Queue owner disconnected"
+            ),
             "timestamp": "2026-07-19T04:01:01+00:00",
         },
     )
     _write_json(
         bundle / "hitl" / "session.json",
         {
-            "session_id": "session-control-1",
+            "session_id": session_id,
             "run_id": run_id,
             "state": "active",
             "mode": "co-pilot",
@@ -126,6 +145,132 @@ def _make_bundle(root: Path, *, stage: int = 5, status: str = "done") -> Path:
         json.dumps(intervention, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
+    intervention_sha256 = hashlib.sha256(
+        json.dumps(
+            intervention,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+    ).hexdigest()
+
+    prior_stages = [candidate for candidate in STAGE_NAMES if candidate < stage]
+    prior_stage = prior_stages[-1] if prior_stages else None
+    if prior_stage is not None and previous_handoff_sha256 is None:
+        previous_handoff_sha256 = "d" * 64
+    handoff_relative = f"control/gate-handoff-stage-{stage:02d}.v2.json"
+    waiting_sha256 = "2" * 64
+    nonce = "3" * 64
+    _write_json(
+        bundle / "checkpoint.json",
+        {"last_completed_stage": stage - 1, "frozen": True},
+    )
+    checkpoint_sha256 = _sha256(bundle / "checkpoint.json")
+    response = {
+        "schema_version": "arc-operator-response-v2",
+        "stage": stage,
+        "run_id": run_id,
+        "session_id": session_id,
+        "waiting_sha256": waiting_sha256,
+        "preapproval_checkpoint_sha256": checkpoint_sha256,
+        "nonce": nonce,
+        "action": "approve",
+        "issued_at": "2026-07-19T04:02:00+00:00",
+        "message": "Reviewed the frozen stage evidence.",
+    }
+    response_staging = (
+        bundle
+        / "control"
+        / "operator-response-snapshots"
+        / f"stage-{stage:02d}-pending.v2.json"
+    )
+    _write_json(response_staging, response)
+    response_sha256 = _sha256(response_staging)
+    response_relative = (
+        f"control/operator-response-snapshots/stage-{stage:02d}-"
+        f"{response_sha256}.v2.json"
+    )
+    response_staging.replace(bundle / response_relative)
+    consumption_relative = (
+        f"control/operator-response-consumption/stage-{stage:02d}-"
+        + waiting_sha256
+        + ".v1.json"
+    )
+    _write_json(
+        bundle / consumption_relative,
+        {
+            "schema_version": "arc-operator-response-consumption-v1",
+            "claimed_at": "2026-07-19T04:02:01+00:00",
+            "response_path": response_relative,
+            "response_sha256": response_sha256,
+            "stage": stage,
+            "run_id": run_id,
+            "session_id": session_id,
+            "waiting_sha256": waiting_sha256,
+            "preapproval_checkpoint_sha256": checkpoint_sha256,
+            "nonce": nonce,
+            "response": response,
+        },
+    )
+    consumption_sha256 = _sha256(bundle / consumption_relative)
+    stage_files = [
+        _descriptor(bundle, f"{stage_dir}/decision.json"),
+        _descriptor(bundle, f"{stage_dir}/stage_health.json"),
+    ]
+    if status == "blocked_approval":
+        stage_files.append(_descriptor(bundle, f"{stage_dir}/{output_name}"))
+    next_stage_names = {
+        5: "KNOWLEDGE_EXTRACT",
+        9: "CODE_GENERATION",
+        15: "PAPER_OUTLINE",
+        20: "KNOWLEDGE_ARCHIVE",
+    }
+    _write_json(
+        bundle / handoff_relative,
+        {
+            "schema_version": "arc-gate-handoff-v2",
+            "created_at": "2026-07-19T04:02:30+00:00",
+            "stage": stage,
+            "stage_name": STAGE_NAMES[stage].upper(),
+            "native_identity": {
+                "run_id": run_id,
+                "session_id": session_id,
+            },
+            "next_stage": stage + 1,
+            "next_stage_name": next_stage_names[stage],
+            "stage_files": stage_files,
+            "approval": {
+                "response_sha256": response_sha256,
+                "waiting_sha256": waiting_sha256,
+                "run_id": run_id,
+                "session_id": session_id,
+                "nonce": nonce,
+                "consumption_receipt_path": consumption_relative,
+                "consumption_receipt_sha256": consumption_sha256,
+                "native_intervention_ordinal": 0,
+                "native_intervention_sha256": intervention_sha256,
+                "bridge_event_ordinal": 0,
+                "bridge_event_sha256": "6" * 64,
+            },
+            "checkpoint": {
+                "path": "checkpoint.json",
+                "sha256": checkpoint_sha256,
+                "last_completed_stage": stage - 1,
+            },
+            "lineage": {
+                "source_config_snapshot_sha256": "8" * 64,
+                "effective_config_sha256": "9" * 64,
+                "project_state_sha256": "a" * 64,
+                "previous_handoff_path": (
+                    f"control/gate-handoff-stage-{prior_stage:02d}.v2.json"
+                    if prior_stage is not None
+                    else None
+                ),
+                "previous_handoff_sha256": previous_handoff_sha256,
+            },
+        },
+    )
 
     receipt = {
         "schema_version": RECEIPT_SCHEMA,
@@ -148,6 +293,7 @@ def _make_bundle(root: Path, *, stage: int = 5, status: str = "done") -> Path:
             "session": _descriptor(bundle, "hitl/session.json"),
             "interventions": _descriptor(bundle, "hitl/interventions.jsonl"),
             "stage_outputs": [_descriptor(bundle, f"{stage_dir}/{output_name}")],
+            "gate_handoff": _descriptor(bundle, handoff_relative),
         },
     }
     _write_json(bundle / "receipt.v1.json", receipt)
@@ -169,11 +315,61 @@ def _rehash_control(bundle: Path, name: str) -> None:
     _mutate_receipt(bundle, update)
 
 
+def _validated_through(
+    root: Path, stage: int, *, final_decision: str | None = None
+) -> tuple[Path, dict[str, Any]]:
+    previous: dict[str, Any] | None = None
+    bundle: Path | None = None
+    for candidate in STAGE_NAMES:
+        if candidate > stage:
+            break
+        bundle = _make_bundle(
+            root,
+            stage=candidate,
+            previous_handoff_sha256=(
+                previous["gate_handoff"]["sha256"] if previous is not None else None
+            ),
+            decision_value=final_decision if candidate == stage else None,
+        )
+        previous = validate_arc_control_bundle(
+            bundle,
+            candidate,
+            previous_report=previous,
+        )
+    assert bundle is not None and previous is not None
+    return bundle, previous
+
+
+def _validated_reports(
+    root: Path,
+    *,
+    run_id: str = "rc-20260719-120000-control",
+    session_id: str = "session-control-1",
+) -> list[dict[str, Any]]:
+    reports: list[dict[str, Any]] = []
+    previous: dict[str, Any] | None = None
+    for stage in STAGE_NAMES:
+        bundle = _make_bundle(
+            root,
+            stage=stage,
+            previous_handoff_sha256=(
+                previous["gate_handoff"]["sha256"] if previous is not None else None
+            ),
+            run_id=run_id,
+            session_id=session_id,
+        )
+        previous = validate_arc_control_bundle(
+            bundle,
+            stage,
+            previous_report=previous,
+        )
+        reports.append(previous)
+    return reports
+
+
 @pytest.mark.parametrize("stage", [5, 9, 15, 20])
 def test_validate_official_control_bundle(stage: int, tmp_path: Path) -> None:
-    bundle = _make_bundle(tmp_path, stage=stage)
-
-    report = validate_arc_control_bundle(bundle, stage)
+    bundle, report = _validated_through(tmp_path, stage)
 
     assert report["schema_version"] == REPORT_SCHEMA
     assert report["validated"] is True
@@ -195,17 +391,39 @@ def test_validate_official_control_bundle(stage: int, tmp_path: Path) -> None:
     assert report["receipt_sha256"] == _sha256(bundle / "receipt.v1.json")
 
 
-def test_stage_15_accepts_successful_pivot_direction(tmp_path: Path) -> None:
-    bundle = _make_bundle(tmp_path, stage=15)
-    decision_path = bundle / "stage-15" / "decision.json"
-    decision = json.loads(decision_path.read_text(encoding="utf-8"))
-    decision["decision"] = "pivot"
-    _write_json(decision_path, decision)
-    _rehash_control(bundle, "decision")
+def test_stage_15_control_approval_is_separate_from_scientific_pivot(
+    tmp_path: Path,
+) -> None:
+    _bundle, report = _validated_through(tmp_path, 15)
 
-    report = validate_arc_control_bundle(bundle, 15)
+    assert report["decision"] == "proceed"
 
-    assert report["decision"] == "pivot"
+
+def test_complete_formal_gate_chain_rejects_cross_run_splice(tmp_path: Path) -> None:
+    first = _validated_reports(
+        tmp_path / "first", run_id="rc-first", session_id="session-first"
+    )
+    second = _validated_reports(
+        tmp_path / "second", run_id="rc-second", session_id="session-second"
+    )
+
+    with pytest.raises(
+        ArcControlValidationError,
+        match="run_id/session_id changed|supplied predecessor",
+    ):
+        validate_arc_control_chain([first[0], first[1], second[2], second[3]])
+
+
+def test_complete_formal_gate_chain_rejects_tampered_hash_link(tmp_path: Path) -> None:
+    reports = _validated_reports(tmp_path)
+    tampered = json.loads(json.dumps(reports))
+    tampered[2]["gate_lineage"]["previous_handoff_sha256"] = "f" * 64
+
+    with pytest.raises(
+        ArcControlValidationError,
+        match="predecessor hashes disagree|lineage hash is invalid|supplied predecessor",
+    ):
+        validate_arc_control_chain(tampered)
 
 
 def test_hash_mismatch_fails_closed(tmp_path: Path) -> None:
@@ -215,6 +433,52 @@ def test_hash_mismatch_fails_closed(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ArcControlValidationError, match="sha256 mismatch"):
+        validate_arc_control_bundle(bundle, 5)
+
+
+@pytest.mark.parametrize(
+    "artifact",
+    ["operator_response_snapshot", "consumption_receipt", "checkpoint_snapshot"],
+)
+def test_transitive_approval_artifact_tampering_fails_closed(
+    artifact: str, tmp_path: Path
+) -> None:
+    bundle = _make_bundle(tmp_path)
+    handoff = json.loads(
+        (bundle / "control" / "gate-handoff-stage-05.v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    if artifact == "operator_response_snapshot":
+        consumption = json.loads(
+            (bundle / handoff["approval"]["consumption_receipt_path"]).read_text(
+                encoding="utf-8"
+            )
+        )
+        path = bundle / consumption["response_path"]
+    elif artifact == "consumption_receipt":
+        path = bundle / handoff["approval"]["consumption_receipt_path"]
+    else:
+        path = bundle / handoff["checkpoint"]["path"]
+    path.write_text("{}\n", encoding="utf-8")
+
+    with pytest.raises(ArcControlValidationError, match="sha256 mismatch"):
+        validate_arc_control_bundle(bundle, 5)
+
+
+def test_gate_handoff_stage_files_must_exactly_match_receipt(tmp_path: Path) -> None:
+    bundle = _make_bundle(tmp_path)
+    extra = bundle / "stage-05" / "unclaimed.json"
+    _write_json(extra, {"not": "declared by ARC"})
+    handoff_path = bundle / "control" / "gate-handoff-stage-05.v2.json"
+    handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
+    handoff["stage_files"].append(
+        {"path": "stage-05/unclaimed.json", "sha256": _sha256(extra)}
+    )
+    _write_json(handoff_path, handoff)
+    _rehash_control(bundle, "gate_handoff")
+
+    with pytest.raises(ArcControlValidationError, match="artifact set or hashes"):
         validate_arc_control_bundle(bundle, 5)
 
 
@@ -276,7 +540,7 @@ def test_failed_official_stage_fails_even_when_files_are_hash_bound(tmp_path: Pa
         lambda receipt: receipt["artifacts"].update(stage_outputs=[]),
     )
 
-    with pytest.raises(ArcControlValidationError, match="status 'done'"):
+    with pytest.raises(ArcControlValidationError, match="blocked_approval/block"):
         validate_arc_control_bundle(bundle, 5)
 
 

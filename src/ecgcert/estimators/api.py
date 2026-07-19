@@ -26,6 +26,8 @@ class TrainManifest:
 
     ``signals_path`` is a NumPy array with shape ``(N,12,T)`` or ``(N,T,12)``.
     Raw arrays remain outside git; hashes make the manifest immutable.
+    ``record_ids_sha256`` and ``patient_ids_sha256`` bind the aligned array-row
+    sequences (the latter retains repeated patient IDs rather than hashing a set).
     """
 
     dataset: str
@@ -37,6 +39,8 @@ class TrainManifest:
     lead_order: tuple[str, ...] = CANONICAL_LEADS
     normalization: str = "raw_mV"
     patient_ids_sha256: str = ""
+    record_ids_sha256: str = ""
+    training_inclusion_sha256: str = ""
 
     def validate(self, *, verify_file: bool = True) -> None:
         path = Path(self.signals_path)
@@ -53,6 +57,16 @@ class TrainManifest:
         }.items():
             if not isinstance(value, str) or len(value) != 64:
                 raise ValueError(f"{name} must be a full SHA-256 digest")
+        for name, value in {
+            "record_ids_sha256": self.record_ids_sha256,
+            "training_inclusion_sha256": self.training_inclusion_sha256,
+        }.items():
+            if value and (not isinstance(value, str) or len(value) != 64):
+                raise ValueError(f"{name} must be empty or a full SHA-256 digest")
+        if bool(self.record_ids_sha256) != bool(self.training_inclusion_sha256):
+            raise ValueError(
+                "record_ids_sha256 and training_inclusion_sha256 must be supplied together"
+            )
         if verify_file and sha256_file(path) != self.signals_sha256:
             raise ValueError("training signal hash mismatch")
 
@@ -109,6 +123,7 @@ class Reconstructor(ABC):
 
     method_id: str = "abstract"
     upstream_commit: str = "native"
+    preferred_batch_size: int = 1
 
     def __init__(self) -> None:
         self._checkpoint_path: Path | None = None
@@ -137,6 +152,55 @@ class Reconstructor(ABC):
         if not np.all(np.isfinite(predicted)):
             raise ValueError("reconstructor produced non-finite values")
         return np.where(mask, source, predicted)
+
+    def reconstruct_batch(
+        self,
+        signals: np.ndarray | Sequence[np.ndarray],
+        observed_masks: np.ndarray | Sequence[np.ndarray],
+    ) -> np.ndarray:
+        """Reconstruct a homogeneous ``(N,12,T)`` batch.
+
+        Subclasses with a batch-capable network override
+        :meth:`_predict_missing_batch`; the default preserves exact scalar
+        semantics.  Observed samples are copied at this shared boundary.
+        """
+
+        if not self._fitted:
+            raise RuntimeError(f"{self.method_id} must be fitted or loaded before reconstruction")
+        source = np.asarray(signals, dtype=float)
+        if source.ndim != 3 or source.shape[0] < 1 or source.shape[1] != 12:
+            raise ValueError(f"signals must have shape (N,12,T), got {source.shape}")
+        raw_masks = np.asarray(observed_masks, dtype=bool)
+        if raw_masks.shape == source.shape[:2]:
+            raw_masks = np.repeat(raw_masks[:, :, None], source.shape[2], axis=2)
+        if raw_masks.shape != source.shape:
+            raise ValueError(
+                f"observed_masks shape {raw_masks.shape} does not match {source.shape}"
+            )
+        masks = np.stack(
+            [
+                normalize_observed_mask(mask, signal.shape)
+                for signal, mask in zip(source, raw_masks, strict=True)
+            ]
+        )
+        predicted = np.asarray(self._predict_missing_batch(source, masks), dtype=float)
+        if predicted.shape != source.shape:
+            raise ValueError(
+                f"batch reconstructor returned {predicted.shape}, expected {source.shape}"
+            )
+        if not np.all(np.isfinite(predicted)):
+            raise ValueError("batch reconstructor produced non-finite values")
+        return np.where(masks, source, predicted)
+
+    def _predict_missing_batch(
+        self, signals: np.ndarray, observed_masks: np.ndarray
+    ) -> np.ndarray:
+        return np.stack(
+            [
+                np.asarray(self._predict_missing(signal, mask), dtype=float)
+                for signal, mask in zip(signals, observed_masks, strict=True)
+            ]
+        )
 
     @property
     def checkpoint_sha256(self) -> str:

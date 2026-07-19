@@ -32,7 +32,8 @@ safety language, “any SNR”, or a fixed-rank algebraic result as the headline
 In scope:
 
 - target lead × observed configuration × waveform segment recoverability scores;
-- robustness to candidate rank, independent-vs-displayed-lead weighting, and patient resampling;
+- robustness to candidate rank, independent-vs-displayed-lead weighting, the timepoint cap, and
+  patient resampling;
 - held-out prediction of patient-level reconstruction error;
 - transparent and learned reconstruction families;
 - external validation of the score–error relationship.
@@ -60,22 +61,53 @@ Primary cohort: the complete PTB-XL diagnostic population using its official pat
 - fold 9: fit the two frozen error meta-models;
 - fold 10: open exactly once for the frozen primary analysis.
 
-External cohorts: complete Chapman–Shaoxing–Ningbo and CPSC 2018 cohorts.  Each patient is assigned
-to 60/20/20 train/validation/test by the frozen patient hash.  The primary external result applies
-the PTB-XL score, checkpoints, and meta-model directly to the external 20% test set without
-fine-tuning.  The 60% split is used only for the secondary cohort-specific map and cross-cohort rank
-stability.  Any unavoidable cohort-specific preprocessing must be declared before outcomes are
-inspected and reported as a deviation.
+External cohorts: complete Chapman–Shaoxing–Ningbo (45,152 records) and CPSC 2018 (6,877 records)
+cohorts.  Salted SHA-256 orders patient identifiers before an exact largest-remainder 60/20/20
+allocation.  Chapman provides one unique record identifier per patient.  The public CPSC WFDB
+release provides no verifiable cross-record patient key, so its unique record name is explicitly
+treated as a pseudopatient identifier; CPSC patient-disjointness beyond that public identity cannot
+be claimed.  The primary external result applies the PTB-XL score, checkpoints, and meta-model
+directly to the external 20% test set without fine-tuning.  The 60% split is used only for the
+secondary cohort-specific map and cross-cohort rank stability.  Any unavoidable cohort-specific
+preprocessing must be declared before outcomes are inspected and reported as a deviation.
+For that secondary map comparison, the preregistered primary ranking metric is `A_robust` in mV,
+ordered with lower ambiguity as more recoverable.  Spearman agreement is computed across matched
+missing-target cells.  `R_lower` is reported separately as a secondary decomposition diagnostic and
+is not eligible to replace the `A_robust` ranking in a headline result.
 
-The patient is the split and resampling unit. No beat, time window, or duplicate record from one
-patient may cross roles. The eight algebraically independent measured channels define the primary
-spatial fit. A 12-displayed-lead weighting is a sensitivity analysis, not silent duplication of the
-limb-lead information.
+The patient is the split and resampling unit wherever a public patient key exists; the disclosed
+CPSC pseudopatient limitation is the sole exception. No beat, time window, or duplicate record from
+one known patient may cross roles. The eight algebraically independent measured channels in locked
+order `[I, II, V1, V2, V3, V4, V5, V6]` define the primary spatial fit. A 12-displayed-lead weighting
+is a sensitivity analysis, not silent duplication of the limb-lead information.
 
 The primary analysis is 500 Hz and uses QRS, ST, and T segments.  P-wave, 100 Hz, alternative
 delineator, and direct raw-12 PCA analyses are supplement-only sensitivities.  NORM and the major
 diagnostic superclasses are multilabel-stratified sensitivities.  Every exclusion, channel reorder,
 unit conversion, and segmentation failure is retained in a patient-level audit record.
+
+One authenticated folds-1--7 inclusion artifact owns reconstruction-training eligibility for all
+five methods. A record is included only when strict delineation yields nonempty QRS, ST, and T
+windows; no consumer may make a second method-specific exclusion. The artifact binds the ordered
+record sequence, the aligned per-record patient sequence (including repeated patient IDs), each
+canonical float32 signal hash, the source audit, and the folds-1--7 simple-predictor table. Any later
+signal/audit drift or artifact mismatch fails closed before a training array is consumed. Folds
+8--10 are invalid inputs to this artifact.
+
+For spatial-map fitting, each included record contributes at most 40 timepoints to each waveform
+segment. This outcome-independent cap prevents records with longer delineated intervals from
+dominating the spatial covariance and bounds the folds-1--7 working set; it is not an estimate of 40
+independent observations, because the patient remains the bootstrap unit. If a record/segment has
+more than 40 eligible indices, SHA-256 of the locked algorithm identifier, base seed `20260719`,
+role namespace, record identifier, and segment name seeds an independent NumPy PCG64 stream. The
+first 40 entries of its full without-replacement permutation are retained and returned in temporal
+order. The two role namespaces are `PTB-XL/folds1-7/spatial-map-fit` and
+`PTB-XL/fold8/regularization-tuning`; the algorithm identifier is
+`sha256-namespace-record-segment-pcg64-permutation-prefix-v1`. An extended-only, preregistered
+cap-80 analysis repeats the map while reusing the primary fold-8 regularizer. Its selected indices
+contain every cap-40 selected index and add points wherever more than 40 are eligible, isolating the
+effect of admitting more timepoints. This sensitivity cannot feed the frozen primary claim or change
+the primary cap.
 
 ## 4. Frozen score family
 
@@ -110,9 +142,24 @@ checkpoints, preprocessing, licenses, masks, and input/output compatibility must
 public method cannot be run, the reason and attempted pinned version stay in the evidence ledger; it
 cannot be replaced by a vague “representative” claim.
 
+ECGrecover is fixed to official commit `ed49dddf8e5e599b8af702e871a1f66b1d628518`. Its U-Net,
+MSE-minus-0.1-Pearson loss, and training loop remain upstream code. The project-owned bridge makes
+one necessary disclosed adaptation: the upstream record-and-target-specific min-max preprocessing
+would expose a missing target's amplitude, so it is replaced by a folds-1--7-only fixed per-lead
+scale for truth-free raw-mV scoring. Missing inputs retain the published random-valued masking,
+restricted to lead I, and the observed lead is copied exactly at the evaluator boundary. The
+frozen execution adapter uses 128 records per bridge process and 64 records per GPU micro-batch;
+mask noise remains record-derived so batch membership cannot change its inputs. The
+upstream repository contains no license declaration (`NOASSERTION`) and is not redistributed here;
+the owner's reported author permission is an ARC Stage 9 review item.
+
 All methods receive the same observed samples, masks, target definitions, split roles, and scoring
 code. Required simple comparison variables are lead count, configuration rank, target RMS, maximum
-pairwise observed–target correlation, and global conditioning.
+pairwise observed–target correlation, and global conditioning. Target RMS and correlation are
+computed once from the authenticated folds-1--7 `training_predictors.parquet`; the four common-panel
+methods must have identical artifact hashes and values, and external evaluation reuses that exact
+PTB-XL table. Any similarly named rank-map columns are diagnostics only and cannot overwrite the
+benchmark predictors used by either meta-model.
 
 ## 6. Endpoints and statistical analysis
 
@@ -129,16 +176,34 @@ lead count, global configuration rank/condition, training-only target RMS, and t
 target--observed correlation.  The augmented model adds `A_robust`.  Leave-one-configuration-out
 prediction is evaluated on fold 10.  The primary effect is
 `Delta R^2 = R^2_augmented - R^2_simple`, with a 95% patient-cluster bootstrap interval that nests
-neural-seed resampling.  The same frozen PTB-XL meta-model is tested without refitting on both
+neural-seed resampling.  Within every replicate and neural method, five seeds are drawn with
+replacement from that method's five preregistered fitted runs and their outcomes are averaged again
+at the patient/configuration/segment/target cell level; one patient draw is shared across all methods.
+This makes the bootstrap estimator match the five-run mean used by the point estimate.  The same
+frozen PTB-XL meta-model is tested without refitting on both
 external test sets.
 
-Stage 15 `PROCEED` requires the fold-10 interval lower bound to exceed zero; at least one external
+The diagnostic supplement contains two scientifically different multilabel sensitivities and keeps
+their artifacts separate.  The diagnosis-specific spatial-map nodes refit a structural map within
+NORM, MI, STTC, CD, and HYP records; they do not test the frozen prediction claim.  A separate
+extended-only fold-10 subgroup node performs no map, reconstructor, hyperparameter, or meta-model
+fit.  It unions the authenticated record-level `diagnostic_superclasses` in the PTB-XL manifest at
+the patient level, subsets the already-frozen point/seed/paired sufficient evidence, and applies the
+same shared-patient plus five-seed-mean bootstrap estimator as the primary analysis.  Every
+prespecified superclass is emitted with its point estimate, 95% interval, and patient count, or an
+explicit not-estimable reason when the subgroup cannot support the estimator.  These results are
+supplementary and cannot alter or satisfy Stage 15.
+
+Stage 15 `PROCEED` requires the fold-10 interval lower bound to exceed zero; the Chapman
 zero-transfer interval lower bound to exceed zero; and at least three of the four common-panel
 reconstructors (low-rank, ridge, masked U-Net, ImputeECG) to have positive point estimates.  Failure
 cannot trigger rank, score, or hyperparameter retuning: the paper must transparently PIVOT to a
 negative benchmark result or the submission must be abandoned.  Effect sizes and uncertainty take
 precedence over thresholded significance; subspace-angle similarity alone is not validation.  The
-primary bootstrap count is fixed at 2,000.
+primary bootstrap count is fixed at 2,000.  CPSC2018 remains a required, fully reported
+zero-transfer sensitivity, but its public WFDB record names are treated as pseudopatients because no
+cross-record patient key is available; therefore CPSC2018 cannot by itself satisfy the patient-level
+external hard gate.
 
 ## 7. Artifact and lineage contract
 
@@ -157,10 +222,12 @@ Every claim-bearing result must trace to an immutable run ID containing:
 - leakage-test report and observed-mask integrity test;
 - generated tables/figures linked to the run IDs.
 
-No credential may appear in a config, log, manuscript, or run manifest.  Because the original remote
-password was exposed, it must be rotated and cannot be used by this workflow.  Remote execution is
-key-only with an explicitly supplied private key and pinned `known_hosts`; automatic host-key
-acceptance and password fallback fail closed.
+No credential may appear in a config, log, manuscript, or run manifest.  The project owner explicitly
+declined rotation of the exposed remote password and accepted the resulting residual risk; this
+deviation is recorded in the versioned security status and must be bound by the signed Stage-9
+review.  The password is nevertheless forbidden to this workflow.  Remote execution is key-only
+with an explicitly supplied private key and a host key matched against the pre-existing historical
+`known_hosts` entry; automatic host-key acceptance and password fallback fail closed.
 
 The repository-external execution control root contains an atomic run lease and a hash-chained
 cross-run budget ledger. Normal reservations may consume at most 400 of the 500 GPU-hours, leaving
@@ -168,6 +235,17 @@ cross-run budget ledger. Normal reservations may consume at most 400 of the 500 
 core-hours and 100 GiB. A crashed or unreconciled lease blocks new work rather than being stolen.
 
 ## 8. Human gates
+
+Each of Stages 5, 9, 15, and 20 executes first, emits and validates its declared artifacts, and
+then pauses exactly once for named-user review.  There is no pre-stage approval at these gates.
+Stage 15 is evidence review only: it consumes the already-generated, immutable Stage 14 and native
+DAG evidence and must not launch, rerun, tune, or open any server test itself.
+Its automatic decision has exactly three hard gates: positive PTB-XL lower CI, at least one positive
+external lower CI, and at least three positive common-panel method point estimates. The prohibition
+on post-test retuning is a study policy, not an extra outcome-dependent hard gate.
+All four reviews belong to one continuous official ARC process with one native `run_id` and one
+HITL `session_id`.  ARC v0.5.0 restart and `--from-stage` entrypoints create new identities, so they
+are not valid continuation mechanisms for this evidence run; a process loss invalidates the run.
 
 ### Stage 5 — literature screen
 
@@ -187,7 +265,8 @@ Approval freezes:
 
 - the single claim and non-claims;
 - split roles and patient grouping;
-- score formula, fixed rank set, basis variants, tolerances, and segment rules;
+- score formula, fixed rank set, basis variants, tolerances, segment rules, and the keyed cap-40
+  timepoint-sampling contract plus cap-80 sensitivity;
 - reconstructors, public-baseline acceptance rules, seeds, and checkpoints policy;
 - endpoints, simple covariates, nested models, uncertainty method, multiplicity handling;
 - external-cohort harmonization rules;

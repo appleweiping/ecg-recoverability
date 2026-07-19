@@ -9,6 +9,10 @@ from pathlib import Path
 import time
 
 from ecgcert import lineage
+from ecgcert.execution.late_inputs import (
+    LateControlInputError,
+    capture_late_control_input,
+)
 from ecgcert.stage_gates import (
     DEFAULT_REVIEWER_PUBLIC_KEY,
     json_artifact_bytes,
@@ -45,6 +49,7 @@ def wait_for_review(
     timeout_hours: float,
     poll_seconds: float,
     public_key_path: Path = DEFAULT_REVIEWER_PUBLIC_KEY,
+    require_capture_policy: bool = False,
 ) -> tuple[dict, dict]:
     """Return the combined decision and mandatory review artifact."""
     raw_gate = gate_path.read_bytes()
@@ -60,7 +65,16 @@ def wait_for_review(
     monotonic_deadline = time.monotonic() + budget_seconds
     while True:
         if approval_path.is_file():
-            raw_approval = approval_path.read_bytes()
+            try:
+                captured_approval = capture_late_control_input(
+                    approval_path,
+                    require_policy=require_capture_policy,
+                )
+            except LateControlInputError as error:
+                raise ValueError(
+                    f"cannot atomically capture signed approval: {error}"
+                ) from error
+            raw_approval = captured_approval.read_bytes()
             candidate = json.loads(raw_approval.decode("utf-8"))
             if raw_approval != json_artifact_bytes(candidate):
                 raise ValueError("approval artifact is not in the canonical signed encoding")
@@ -111,6 +125,7 @@ def main() -> None:
         timeout_hours=arguments.timeout_hours,
         poll_seconds=arguments.poll_seconds,
         public_key_path=public_key,
+        require_capture_policy=True,
     )
     stage = int(combined["stage"])
     final_status = combined["status"]

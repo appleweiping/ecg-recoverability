@@ -62,32 +62,40 @@ def pinned_source_dir(upstreams: str | Path, spec: UpstreamSpec) -> Path:
 
 
 def source_tree_sha256(source_dir: str | Path) -> tuple[str, tuple[dict[str, str], ...]]:
-    """Hash every tracked file in a clean checkout, independent of mtimes."""
+    """SHA-256-bind the complete Git tree without materializing unused blobs.
+
+    Exact commit and root-tree validation provide the content-addressed source
+    identity.  Hashing the canonical ``git ls-tree`` table avoids downloading
+    upstream model weights that are neither imported nor redistributed, while
+    the integration descriptor separately SHA-256-binds every executed file.
+    """
 
     source = Path(source_dir).resolve()
     completed = subprocess.run(
-        ["git", "-C", str(source), "ls-files", "-z"],
+        ["git", "-C", str(source), "ls-tree", "-r", "-z", "--full-tree", "HEAD"],
         check=True,
         capture_output=True,
     )
-    names = tuple(
-        value.decode("utf-8", errors="strict")
-        for value in completed.stdout.split(b"\0")
-        if value
-    )
-    if not names:
+    raw_entries = tuple(value for value in completed.stdout.split(b"\0") if value)
+    if not raw_entries:
         raise ValueError(f"pinned checkout has no tracked files: {source}")
     entries = []
-    for relative in sorted(names):
-        path = (source / relative).resolve()
-        try:
-            path.relative_to(source)
-        except ValueError as exc:
-            raise ValueError(f"tracked path escapes checkout: {relative}") from exc
-        if not path.is_file():
-            raise FileNotFoundError(path)
-        entries.append({"path": relative.replace("\\", "/"), "sha256": sha256_file(path)})
-    frozen = tuple(entries)
+    for raw in raw_entries:
+        metadata, separator, raw_path = raw.partition(b"\t")
+        fields = metadata.decode("ascii", errors="strict").split()
+        if not separator or len(fields) != 3:
+            raise ValueError("cannot parse pinned checkout ls-tree output")
+        mode, object_type, object_id = fields
+        relative = raw_path.decode("utf-8", errors="strict").replace("\\", "/")
+        entries.append(
+            {
+                "path": relative,
+                "mode": mode,
+                "type": object_type,
+                "git_object": object_id,
+            }
+        )
+    frozen = tuple(sorted(entries, key=lambda item: item["path"]))
     return canonical_sha256(frozen), frozen
 
 
@@ -147,6 +155,13 @@ def _validate_hashed_files(
 class ECGRecoverIntegration:
     input_lead: str
     native_rate_hz: int
+    model_samples: int
+    inference_records_per_process: int
+    inference_micro_batch_size: int
+    license_spdx: str
+    redistribution: bool
+    permission_basis: str
+    adaptation_disclosure: tuple[str, ...]
     train_command: tuple[str, ...]
     inference_command: tuple[str, ...]
     checkpoint: str
@@ -182,27 +197,61 @@ def load_ecgrecover_integration(
         raise ValueError(f"ECGrecover integration must use {INTEGRATION_SCHEMA_VERSION}")
     if value.get("upstream_commit") != ECG_RECOVER.commit:
         raise ValueError("ECGrecover integration is not bound to the pinned upstream commit")
+    if value.get("upstream_root_tree") != ECG_RECOVER.root_tree:
+        raise ValueError("ECGrecover integration is not bound to the pinned upstream root tree")
     input_lead = str(value.get("input_lead", ""))
     if input_lead not in INDEPENDENT_LEADS:
         raise ValueError("ECGrecover integration requires one canonical independent input lead")
     native_rate_hz = int(value.get("native_rate_hz", 0))
     if native_rate_hz <= 0:
         raise ValueError("ECGrecover integration must disclose a positive native_rate_hz")
+    model_samples = int(value.get("model_samples", 0))
+    if model_samples != 512:
+        raise ValueError("ECGrecover integration must disclose the official 512-sample tensor")
+    inference_records_per_process = int(value.get("inference_records_per_process", 0))
+    if inference_records_per_process < 1:
+        raise ValueError("ECGrecover inference_records_per_process must be positive")
+    inference_micro_batch_size = int(value.get("inference_micro_batch_size", 0))
+    if inference_micro_batch_size < 1:
+        raise ValueError("ECGrecover inference_micro_batch_size must be positive")
+    if inference_micro_batch_size > inference_records_per_process:
+        raise ValueError("ECGrecover micro-batch cannot exceed records per process")
+    license_spdx = str(value.get("license_spdx", ""))
+    if license_spdx != ECG_RECOVER.license_spdx:
+        raise ValueError("ECGrecover integration has an incorrect license assertion")
+    redistribution = value.get("redistribution")
+    if redistribution is not False:
+        raise ValueError("ECGrecover source redistribution is forbidden without license evidence")
+    permission_basis = str(value.get("permission_basis", ""))
+    if permission_basis != "author_permission_reported_by_project_owner":
+        raise ValueError("ECGrecover integration lacks the reported author-permission basis")
+    raw_disclosure = value.get("adaptation_disclosure")
+    if (
+        not isinstance(raw_disclosure, list)
+        or len(raw_disclosure) < 4
+        or any(not isinstance(item, str) or not item.strip() for item in raw_disclosure)
+    ):
+        raise ValueError("ECGrecover integration must disclose every adapter-level change")
+    adaptation_disclosure = tuple(raw_disclosure)
+    joined_disclosure = "\n".join(adaptation_disclosure).lower()
+    for required in ("u-net", "loss", "scaling", "single-input"):
+        if required not in joined_disclosure:
+            raise ValueError(f"ECGrecover adaptation disclosure omits {required}")
     train = _argv(value.get("train_command"), label="ECGrecover train_command")
     inference = _argv(value.get("inference_command"), label="ECGrecover inference_command")
     _require_markers(
         train,
-        ("source_dir", "data_dir", "bridge_root", "seed", "output_dir"),
+        ("python", "source_dir", "data_dir", "bridge_root", "seed", "output_dir"),
         label="ECGrecover train_command",
     )
     _require_markers(
         inference,
-        ("source_dir", "bridge_root", "input", "output", "checkpoint"),
+        ("python", "source_dir", "bridge_root", "input", "output", "checkpoint"),
         label="ECGrecover inference_command",
     )
     _restrict_markers(
         train,
-        {"source_dir", "data_dir", "bridge_root", "seed", "output_dir"},
+        {"python", "source_dir", "data_dir", "bridge_root", "seed", "output_dir"},
         label="ECGrecover train_command",
     )
     joined_inference = "\n".join(inference).lower()
@@ -210,9 +259,20 @@ def load_ecgrecover_integration(
         raise ValueError("ECGrecover inference command must not receive training or missing truth")
     _restrict_markers(
         inference,
-        {"source_dir", "bridge_root", "input", "output", "checkpoint"},
+        {"python", "source_dir", "bridge_root", "input", "output", "checkpoint"},
         label="ECGrecover inference_command",
     )
+    try:
+        micro_batch_index = inference.index("--micro-batch-size") + 1
+        command_micro_batch = int(inference[micro_batch_index])
+    except (ValueError, IndexError) as exc:
+        raise ValueError(
+            "ECGrecover inference_command must fix --micro-batch-size"
+        ) from exc
+    if command_micro_batch != inference_micro_batch_size:
+        raise ValueError(
+            "ECGrecover inference command and descriptor micro-batch sizes disagree"
+        )
     checkpoint = str(value.get("checkpoint", ""))
     if "{output_dir}" not in checkpoint:
         raise ValueError("ECGrecover checkpoint path must be rooted at {output_dir}")
@@ -245,6 +305,13 @@ def load_ecgrecover_integration(
     return ECGRecoverIntegration(
         input_lead=input_lead,
         native_rate_hz=native_rate_hz,
+        model_samples=model_samples,
+        inference_records_per_process=inference_records_per_process,
+        inference_micro_batch_size=inference_micro_batch_size,
+        license_spdx=license_spdx,
+        redistribution=redistribution,
+        permission_basis=permission_basis,
+        adaptation_disclosure=adaptation_disclosure,
         train_command=train,
         inference_command=inference,
         checkpoint=checkpoint,

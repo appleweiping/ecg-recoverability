@@ -54,3 +54,14 @@ def test_complete_hash_locked_cpu_and_gpu_environments() -> None:
             assert locked["torch"] == "2.8.0+cu128"
         else:
             assert locked["torch"] == "2.8.0"
+
+
+def test_gpu_uv_multi_index_exception_is_narrow_and_hash_checked() -> None:
+    for relative in ("README.md", "environments/README.md"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        assert "--require-hashes --index-strategy unsafe-best-match" in text
+        assert "exact `==` pins" in text
+        assert "unhashed or floating" in text
+    project_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert 'FROZEN_COMMIT="$(git rev-parse HEAD)"' not in project_readme
+    assert 'FROZEN_COMMIT="$REVIEWED_SOURCE_COMMIT"' in project_readme

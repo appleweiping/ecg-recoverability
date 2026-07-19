@@ -1,0 +1,24 @@
+{
+  "autoresearchclaw_formal_receipts": {},
+  "human_verification": {
+    "ai_systems_are_not_authors": false,
+    "any_submitted_section_entirely_generated_by_ai": null,
+    "authors_substantively_rewrote_and_verified_ai_assisted_text": false,
+    "citations_checked_against_primary_sources": false,
+    "code_and_statistics_reviewed": false,
+    "manuscript_read_and_approved": false,
+    "most_or_significant_manuscript_components_generated_by_ai": null,
+    "numerical_claims_traced_to_artifacts": false,
+    "scientific_judgment_retained_by_authors": false,
+    "verified_at": null,
+    "verified_by": null
+  },
+  "schema_version": "paper-tool-provenance-v1",
+  "signed_at": null,
+  "signer": null,
+  "signer_public_key_sha256": null,
+  "signature_algorithm": "Ed25519",
+  "sps_policy_url": "https://signalprocessingsociety.org/publications-resources/publication-guidelines/policy-on-using-large-language-models-llms",
+  "status": "PENDING_HUMAN_VERIFICATION",
+  "tools": []
+}
